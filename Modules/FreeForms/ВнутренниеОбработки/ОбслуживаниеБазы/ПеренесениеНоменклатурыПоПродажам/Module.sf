@@ -1,0 +1,93 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function OnExecute(СпУстановки)
+  НачДата:=BegOfDay(Form.НачДата.Value);
+  КонДата:=BegOfDay(Form.КонДата.Value);
+  оУдал:=Form.оУдал.Value;
+  оН2:=Form.оН2.Value;
+  оН:=Form.оН.Value;
+  оТГ:=Form.оТГ.Value;
+  оОтбор:=Form.оОтбор.Value.SelectedLine;
+  
+  If оН2.Selected()=0 Then
+    Box("Выберите папку для переноса номенклатуры!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  ТЗ:="зСтатус:=Ref.тмцНоменклатура.@Status;"+?(оУдал=1,"Condition(зСтатус=1);")+
+  "зН:=Ref.тмцНоменклатура;
+  |зТГ:=Ref.тмцНоменклатура.ТоварнаяГруппа;
+  |Condition(зН IN оН.Get(1));
+  |Condition(зН NOT IN оН.Get(2));
+  |Condition(зТГ IN оТГ.Get(1));
+  |Condition(зТГ NOT IN оТГ.Get(2));
+  |Group зН;";
+  З:=Query.Create();
+  aTab:=З.Execute(ТЗ,0);
+  
+  If оОтбор<3 Then
+    ТЗ:="Period From НачДата to КонДата;
+    |зН:=Storage.ДвижениеТМЦ.Номенклатура;
+    |зТГ:=Storage.ДвижениеТМЦ.Номенклатура.ТоварнаяГруппа;
+    |зД:=Storage.ДвижениеТМЦ.Договор;
+    |зС0:=Storage.ДвижениеТМЦ.Сумма;
+    |зК0:=Storage.ДвижениеТМЦ.Количество;
+    |зМрТип:=Storage.ДвижениеТМЦ.ТипЗаписи;
+    |Condition(зМрТип<>4);
+    |зСмП:=SUM(?(зС0>0,зС0,0));
+    |зСмР:=SUM(?(зС0<0,зС0,0));
+    |зКлП:=SUM(?(зК0>0,зК0,0));
+    |зКлР:=SUM(?(зК0<0,зК0,0));
+    |Condition(зН IN оН.Get(1));
+    |Condition(зН NOT IN оН.Get(2));
+    |Condition(зТГ IN оТГ.Get(1));
+    |Condition(зТГ NOT IN оТГ.Get(2));
+    |Group зН,зД;";
+    
+    З2:=Query.Create();
+    З2.Execute(ТЗ);
+  EndIf;
+
+  aTab.Select();
+  While aTab.Next() Do
+    зН:=aTab.зН;
+    If оОтбор<3 Then
+      З2.ResultTable.CurLine:=0;
+      If З2.ResultTable.LocateAndGoto("@LEVEL,зН",2,зН)>0 then
+        Фл:=0;
+        While З2.Next(2) Do
+          If (З2.зСмП<>0)Or(З2.зСмР<>0)Or(З2.зКлП<>0)Or(З2.зКлР<>0) Then
+            Фл:=1;
+            Break;
+          EndIf;
+        EndDo;
+        If Фл And(оОтбор<>2) Then
+          Continue;
+        ElseIf (оОтбор=2)And(not Фл) Then
+          Continue;
+        EndIf;
+      ElseIf оОтбор=2 Then
+        Continue;
+      EndIf;
+    EndIf;
+
+    If not глЗаблокировать(зН,1) Then
+      Continue;
+    EndIf;
+    Try
+      зН.Reload();
+      зН.Folder(оН2);
+      зН.Save();
+      Message("Перенесен элемент: "+зН);
+    Finally
+      зН.Unlock();
+    EndTry;
+  EndDo;
+  
+  Message("Работа завершена успешно!","I");
+EndFunction
+
+

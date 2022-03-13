@@ -1,0 +1,72 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=395
+  Height=20
+  OnOpen
+    @@>@e@D@X_,r#S1@M_[F_'_.@K4F_6@k?W_1@J@PI._1_f#@d_+_,%|@I_f@M?^_UM@[@{_.Xo_G@3_&@
+    @u@X@u@I@|@u'P@A@/_Fr_m@F_)@F_F_U@:k_I@7@F%_8_?@iKZ_G@u2_,_V}_M%_!@i_I_l_I@B_+@;@
+    @uhva_LB@~h_Qd_&_/t@?,M@3@*u@x@;\_:_6_V_LyW_9t7[*@K@{_9@*@n@OOc@\@]@&@6CFf_>nA@w_
+    @.@i@=A@M@J@t@6T%,KUp@k@li_+2)Z@4u@B@O@aL@;6@W@Gl@^@n@s!_2@Y&f@Q'_4@#6|v_H'@Z@&_
+    @Te@=^@D)k_P@64_d@I_,@#_m_]@/R_c@<sE_!Egt@a@0o@-_WZ@rW@O9z@bn_J@r_.C@\0@F&_OD@k@H
+    @_D@:}q@5@weI@Q_k@d@Rv@e@}_'@YUo|_7n_T$_l@DT@w_49_a@h_3_G@eL1@|_.@P_i_\3@Z+6@#@6_
+    @f@8D_K<_QR_6@k_7@\A_2.@)@/)_'@O@P@Z@F@*<l@T@g4@V_7_j@A@v@$_G@L_?@5j_'~_S@%'_&_,
+    @@f@gYP;@-@+_c<_4@|@?R
+  End
+  OnTimerInterval=0
+  MaxControlSerial=3
+  LoadModes=0
+  Object LABEL
+    LayerName=Main
+    Left=150
+    Top=0
+    Width=245
+    Height=20
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=оѕриќст
+    ControlSerial=1
+    Caption=<масса, дал>
+    HAlign=2
+    VAlign=1
+    AttachedButtons=0#0@9#0###
+    OnAttachedButtons
+      @@>@e@3vq@5_Fd1_(E_]Aj[_E@Y@H@6q_/Cue_Q1iD_$k%=_<@sWvRv@F@(rB_l_,_F@'@J@)@B_2_W@~
+      @@Y@q@~<\@1_-k@n_D@N@#_8_'@?_a_R_8X;@^_9@b_W_d(E@B@>b@;_I@zU"E@X@"_Rb@B_m_8[@m_T_
+      @QL_LH_?@0_G_&&b@wh1@4!@P-d@yI@o#@Df_V@x{p@O_j:_lj^_Rf@H2+p_-_7@uz;@T[@^\J@8Dm_T_
+      @)@*b_O@7_9_,(_0E_j_T@yb_<_D@wU@}@F_,_Z@te_e_6@]@Z_U_j@L_Y@U_1_.@J_jDe@s(c@%@j_:_
+      @+ZPG@|@>@*ewknW@St?n@,e@cl_=!@q@<_H@n_;_6_G_[_d_+aB@Fl4@S@Qy_1y_%H@~@I@N@qt_RQA
+      @_Y@$@.p@3i_7@+@,@\@g@i+@+@wq_]e_^In@G?Yx@HF_#)_B@o&}_3z_PU{_FZ_b_l_\t"@YO_XW)@}@
+      @O(@j_#@m@+J+@u@r@C@\i@L@(@Q@,_&_"I_>A@w@?@.DbD@7l_Ru@)@C_l_:_4@$@P@4>_[@MS3@KN_1
+      @_T@T@K_'@d@y_D_X@;_9%f@i_SD@3@s@G_2)a76#@=@V@H@o(G_${@c@7_;@i_$@%_0?_#I@~_+_6@]
+      @VNS_i_%_2I_/@h^_1V@w_.3_.@u_H_8M_4@vzX_Yr~_8_>@0@n@B(_Qg@/_I@e@f_K_b_F@f@$_i_VM@
+      @"@V@2@p~"_VR_a%_h@HL@,_P@4_')E_!@*j@-@C_m@|_)}@y@;@K@9:_7v@;@*>h_WG@6@Uu_d_1_T}7
+      @_R@rHM"8_k@5_9@;_m_!@E@+_&@f_]@&\S@:@w_Y-_&@=@:_V_mA@{@F.T
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=0
+    Top=3
+    Width=145
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=2
+    Caption=—клад приемник:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+End

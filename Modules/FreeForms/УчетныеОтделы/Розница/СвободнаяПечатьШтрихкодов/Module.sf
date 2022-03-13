@@ -1,0 +1,274 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+var тШтрихкод Export;
+Var тТекущийВид Export;
+Var тПодвид Export;
+Var тВерсия Export;
+Var тКоррекция Export;
+Var Т Export;
+Var ФлОшибка Export;
+Var тСтрок Export, тСтолбцов Export;
+Var тECI Export;
+
+Function ОбновитьТексты(ФлПодвид=1)
+  оВид:=Form.оВид.Value.SelectedLine;
+  аВид:=?(оВид>0,Form.оВид.Value.Get(оВид),"");
+  оПодвид:=Form.оПодвид.Value;
+  ФлЛинейный:=оВид<10;
+  
+  Form.тПодвид.isDisabled:=ФлЛинейный;
+  Form.оПодвид.isDisabled:=ФлЛинейный;
+  If ФлПодвид Then
+    //Заполнение Подвида
+    If аВид="Aztec" Then
+      оПодвид.Clear();
+      оПодвид.Add(0,"(Aвтоопределение)");
+      оПодвид.Add(1,"Компактный символ");
+      оПодвид.Add(2,"Полноформатный символ");
+      оПодвид.Add(3,"Символ Aztec rune");
+    ElseIf аВид="PDF417" Then
+      оПодвид.Clear();
+      оПодвид.Add(0,"Стандартный символ");
+      оПодвид.Add(1,"Компактный символ");
+      оПодвид.Add(2,"Микро символ (MicroPDF417)");
+    ElseIf аВид="QR" Then
+      оПодвид.Clear();
+      оПодвид.Add(0,"Стандартный символ");
+      оПодвид.Add(1,"Микро символ (MicroQR)");
+    Else
+      оПодвид.Clear();
+      оПодвид.SelectedLine:=0;
+      Form.тПодвид.isDisabled:=1;
+      Form.оПодвид.isDisabled:=1;
+    EndIf;
+    If not Form.оПодвид.isDisabled Then
+      If оПодвид.SelectedLine=0 Then
+        оПодвид.SelectedLine:=1;
+      EndIf;
+    EndIf;
+  EndIf;  
+  
+  
+  //Заполнение Версии
+  аПодвид:=оПодвид.SelectedLine;
+  оВерсия:=Form.оВерсия.Value;
+  If (аВид="Aztec")And(аПодвид<4) Then
+    Form.тВерсия.isDisabled:=0;
+    Form.оВерсия.isDisabled:=0;
+    оВерсия.Clear();
+    оВерсия.Add(0,"(Aвтоопределение)");
+    For i:=1 To ?(аПодвид=2,3,32) Do
+      оВерсия.Add(i,"Версия "+i);
+    EndDo;
+  ElseIf (аВид="PDF417")And(аПодвид=3) Then
+    Form.тВерсия.isDisabled:=0;
+    Form.оВерсия.isDisabled:=0;
+    оВерсия.Clear();
+    оВерсия.Add(0,"(Aвтоопределение)");
+    Стр:="1x11,1x14,1x17,1x20,1x24,1x28,2x8,2x11,2x14,2x17,2x20,2x23,2x26,3x6,3x8,3x10,3x12,3x15,3x20,3x26,3x32,3x38,3x44,4x4,4x6,4x8,4x10,4x12,4x15,4x20,4x26,4x32,4x38,4x44";
+    i:=1;
+    While Стр<>"" Do
+      оВерсия.Add(i,TearStr(Стр,","));
+      i:=i+1;
+    EndDo;
+  ElseIf аВид="QR" Then
+    Form.тВерсия.isDisabled:=0;
+    Form.оВерсия.isDisabled:=0;
+    оВерсия.Clear();
+    оВерсия.Add(0,"(Aвтоопределение)");
+    For i:=1 To 40 Do
+      оВерсия.Add(i,"Версия "+i);
+    EndDo;
+  ElseIf аВид="Data Matrix" Then
+    Form.тВерсия.isDisabled:=0;
+    Form.оВерсия.isDisabled:=0;
+    оВерсия.Clear();
+    оВерсия.Add(0,"(Aвтоопределение)");
+    Стр:="10x10,12x12,14x14,16x16,18x18,20x20,22x22,24x24,26x26,32x32,36x36,40x40,44x44,48x48,52x52,64x64,72x72,80x80,88x88,96x96,104x104,120x120,132x132,144x144,18x8,32x8,26x12,36x12,36x16,48x16";
+    i:=1;
+    While Стр<>"" Do
+      оВерсия.Add(i,TearStr(Стр,","));
+      i:=i+1;
+    EndDo;
+  Else
+    оВерсия.Clear();
+    оВерсия.SelectedLine:=0;
+    Form.тВерсия.isDisabled:=1;
+    Form.оВерсия.isDisabled:=1;
+  EndIf;
+  If not Form.оВерсия.isDisabled Then
+    If оВерсия.SelectedLine=0 Then
+      оВерсия.SelectedLine:=1;
+    EndIf;
+  EndIf;
+  
+  
+  Form.тПропорция.isDisabled:=1-ФлЛинейный;
+  Form.оПропорция.isDisabled:=1-ФлЛинейный;
+  Form.оТекст.isDisabled:=1-ФлЛинейный;
+  Form.тКоррекция.isDisabled:=ФлЛинейный;
+  Form.оКоррекция.isDisabled:=ФлЛинейный;
+  //Заполнение коррекции
+  оКоррекция:=Form.оКоррекция.Value;
+  If аВид="Aztec" Then
+    оКоррекция.Clear();
+    оКоррекция.Add(0,"(Умолчание: 23%)");
+    оКоррекция.Add(5,"5%");
+    оКоррекция.Add(10,"10%");
+    оКоррекция.Add(15,"15%");
+    оКоррекция.Add(20,"20%");
+    оКоррекция.Add(25,"25%");
+    оКоррекция.Add(30,"30%");
+    оКоррекция.Add(35,"35%");
+    оКоррекция.Add(40,"40%");
+    оКоррекция.Add(45,"45%");
+    оКоррекция.Add(50,"50%");
+    оКоррекция.Add(55,"55%");
+    оКоррекция.Add(60,"60%");
+    оКоррекция.Add(65,"65%");
+    оКоррекция.Add(70,"70%");
+    оКоррекция.Add(75,"75%");
+    оКоррекция.Add(80,"80%");
+    оКоррекция.Add(85,"85%");
+    оКоррекция.Add(90,"90%");
+    оКоррекция.Add(95,"95%");
+  ElseIf аВид="PDF417" Then
+    оКоррекция.Clear();
+    оКоррекция.Add(-1,"(Рекомендованный уровень)");
+    оКоррекция.Add(0,"Уровень 0 (низкая коррекция)");
+    оКоррекция.Add(1,"Уровень 1");
+    оКоррекция.Add(2,"Уровень 2");
+    оКоррекция.Add(3,"Уровень 3");
+    оКоррекция.Add(4,"Уровень 4");
+    оКоррекция.Add(5,"Уровень 5");
+    оКоррекция.Add(6,"Уровень 6");
+    оКоррекция.Add(7,"Уровень 7");
+    оКоррекция.Add(8,"Уровень 8 (высокая коррекция)");
+  ElseIf аВид="QR" Then
+    оКоррекция.Clear();
+    оКоррекция.Add(-1,"(Рекомендуемый уровень)");
+    оКоррекция.Add(0,"Уровень 0 (7% исправляется)");
+    оКоррекция.Add(1,"Уровень 1 (15% исправляется)");
+    оКоррекция.Add(2,"Уровень 2 (25% исправляется)");
+    оКоррекция.Add(3,"Уровень 3 (30% исправляется)");
+  Else
+    Form.тКоррекция.isDisabled:=1;
+    Form.оКоррекция.isDisabled:=1;
+  EndIf;
+  if Form.оКоррекция.Value.SelectedLine>Form.оКоррекция.Value.Size() Then
+    Form.оКоррекция.Value.SelectedLine:=1;
+  EndIf;
+  
+  ФлПДФ:=аВид="PDF417";
+  Form.тСтрок.isDisabled:=1-ФлПДФ;
+  Form.оСтрок.isDisabled:=1-ФлПДФ;
+  Form.тСтолбцов.isDisabled:=1-ФлПДФ;
+  Form.оСтолбцов.isDisabled:=1-ФлПДФ;
+  If аВид="PDF417" Then
+    оСтрок:=Form.оСтрок.Value;
+    оСтрок.Clear();
+    оСтрок.Add(0,"(Автоопределение)");
+    For i:=3 to 90 Do
+      оСтрок.Add(i,""+i+?(i<45," (обычный/компакт символ, микро-символ)"," (обычный/компакт символ)"));
+    EndDo;
+    оСтолбцов:=Form.оСтолбцов.Value;
+    оСтолбцов.Clear();
+    оСтолбцов.Add(0,"(Автоопределение)");
+    For i:=1 to 30 Do
+      оСтолбцов.Add(i,""+i+?(i<5," (обычный/компакт символ, микро-символ)"," (обычный/компакт символ)"));
+    EndDo;
+  Else
+    Form.оСтрок.Value.Clear();
+    Form.оСтрок.Value.SelectedLine:=0;
+    Form.оСтолбцов.Value.Clear();
+    Form.оСтолбцов.Value.SelectedLine:=0;
+  EndIf;
+  Form.тECI.isDisabled:=ФлЛинейный;
+  Form.оECI.isDisabled:=ФлЛинейный;
+EndFunction
+
+Function OnFinishCopyObject(Name,Index)
+  If (Name="Штрихкод")And(Trim(тШтрихкод)<>"") Then
+    Try
+      оВид:=Form.оВид.Value.SelectedLine;
+      ФлЛинейный:=оВид<10;
+      If ФлЛинейный Then
+        Стр:="BR:2,F:Consolas|8,SCALE:5,BRT:0"+?(Form.оТекст.Value=1,",T:-");
+        iX:=0;iY:=0;
+        Generate1DBarcode(тТекущийВид,iX,iY,Trim(тШтрихкод),Стр);
+        iY:=iX*(Т.Objects(Index).Height/Т.Objects(Index).Width);
+        Картинка:=Generate1DBarcode(тТекущийВид,iX,iY,Trim(тШтрихкод),Стр+",BPP:32");
+      Else
+        Стр:="BR:2,SCALE:5,BRT:0"+?(тПодвид<>"",",STYPE:"+тПодвид)+?(тВерсия<>"",",SVER:"+тВерсия)+?(тКоррекция<>"",",ERR:"+тКоррекция)+?(тСтрок<>"",",LN:"+тСтрок)+?(тСтолбцов<>"",",CN:"+тСтолбцов)+
+          ?(тECI<>"",",ECIMODE:"+тECI);
+        Картинка:=Generate2DBarcode(тТекущийВид,-1,-1,Trim(тШтрихкод),Стр);
+      EndIf;  
+      Т.Objects(Index).Picture.Assign(Картинка);
+    Except
+      ФлОшибка:=1;
+      Message("Ошибка при создании штрихкода: "+PopError(4),"!");
+    EndTry;
+  EndIf;
+EndFunction;
+
+Function Печать(СпУстановки)
+  оВид:=Form.оВид.Value.SelectedLine;
+  аВид:=?(оВид>0,Form.оВид.Value.Get(оВид),"");
+  If аВид="" Then
+    Exit;
+  EndIf;
+  тТекущийВид:=аВид;
+  ФлЛинейный:=оВид<10;
+  оПропорция:=Form.оПропорция.Value.SelectedLine;
+  оПропорция:=?(оПропорция>0,Form.оПропорция.Value.Get(оПропорция),"");
+  If not ФлЛинейный Then
+    оПропорция:="2d";
+  EndIf;
+
+  ШтрихКод:=Form.оДанные.Value;
+  If Trim(ШтрихКод)="" Then
+    Exit;
+  EndIf;
+  тШтрихкод:=ШтрихКод;
+  
+  оПодвид:=Form.оПодвид.Value.SelectedLine;
+  тПодвид:=?(оПодвид=0,"",Form.оПодвид.Value.Get(оПодвид));
+  
+  оВерсия:=Form.оВерсия.Value.SelectedLine;
+  тВерсия:=?(оВерсия=0,"",Form.оВерсия.Value.Get(оВерсия));
+  
+  оКоррекция:=Form.оКоррекция.Value.SelectedLine;
+  тКоррекция:=?(оКоррекция=0,"",Form.оКоррекция.Value.Get(оКоррекция));
+  
+  оСтрок:=Form.оСтрок.Value.SelectedLine;
+  тСтрок:=?(оСтрок=0,"",Form.оСтрок.Value.Get(оСтрок));
+  
+  оСтолбцов:=Form.оСтолбцов.Value.SelectedLine;
+  тСтолбцов:=?(оСтолбцов=0,"",Form.оСтолбцов.Value.Get(оСтолбцов));
+  
+  оECI:=Form.оECI.Value.SelectedLine;
+  тECI:=?(оECI=0,"",Form.оECI.Value.Get(оECI));
+  
+  ФлОшибка:=0;
+  Т:=Table.Create();
+  Т.SetSourceName("Штрихкод");
+  Т.CopyByX("v"+оПропорция,1);
+  Т.Printing.Fields.Up:=0;
+  Т.Printing.Fields.Down:=0;
+  Т.Printing.Fields.Left:=0;
+  Т.Printing.Fields.Right:=0;
+  Т.Printing.Titles.Up.Size:=0;
+  Т.Printing.Titles.Down.Size:=0;
+  Т.Printing.PageOptions:=_PRN_PAGE_CENTERX+_PRN_PAGE_CENTERY;
+  if not ФлОшибка Then
+    глПечатнаяФорма(Т,0,"Штрихкод",1,"",1);
+    Т.Printing.ScaleMode:=3;
+  EndIf;  
+EndFunction;
+
+
+Function OnExecute(СпУстановки)
+  Печать(СпУстановки);
+EndFunction

@@ -1,0 +1,185 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var Д Export;
+Var ТипЦен Export;
+
+Function OnExecute(ТабНом=0)
+  If Form.IsFullyInitialized() Then
+    ТипЦен:=Form.оТипЦен.Value;
+  EndIf;
+  If TypeStr(ТабНом)<>"TAB" Then
+    ТабНом:=0;
+    aTab:=Д.LineParts("Номенклатура");
+  Else
+    aTab:=ТабНом;
+  EndIf;
+
+  Таб:=Tab.Create("Номенклатура,ШтрихКод");
+  Таб.AddColumn("Цена",,"Number");
+  aTab.Select();
+  While aTab.Next() Do
+    If isEmpty(ТабНом) Then
+      Цена:=глНайтиЦену(aTab.Номенклатура,ТипЦен,Д.DocDate);
+    Else
+      Цена:=глНайтиЦену(aTab.Номенклатура,ТипЦен,Date());
+    EndIf;  
+    If Цена>0 Then
+      пШК:=глПолучитьШтрихкод(aTab.Номенклатура,1,,1);
+      Таб.AddLine("Номенклатура,Цена,ШтрихКод",aTab.Номенклатура,Цена,пШК);
+    ElseIf not isEmpty(ТабНом) Then
+      Message("Для номенклатуры "+aTab.Номенклатура+" не найдена розничная цена, номенклатура будет пропущена!","!");
+    EndIf;
+  EndDo;
+  If Таб.Size()=0 Then
+    Exit;
+  EndIf;
+  
+  If TypeStr(Param)<>"LIST" Then
+    Param:=List.Create();
+  EndIf;
+  aList:=Param.Copy();
+  aList.SetByName("Object",Таб);
+  aList.SetByName("БезШК",0);
+  aList.SetByName("флБезМагазина",1);
+  aList.SetByName("ЮрЛицо",".");//Д.ЮрЛицо);
+  If isEmpty(ТабНом) Then
+    aList.SetByName("Колонтитул","Реализация "+Д.DocNum+" от "+Д.DocDate+", контрагент "+Д.Контрагент+", адрес "+Д.АдресДоставки);
+  EndIf;  
+  LoadModule(0,"Modules\FreeForms\ПечатныеФормы\Справочник.тмцНоменклатура\Ценник",aList,0);
+  
+  Т:=Table.Create();
+  Т.SetSourceName("Table");
+  If isEmpty(ТабНом) Then
+    оЗагол:="Справка по розничным ценам к документу "+Д;
+    оСвойства:="Контрагент: "+Д.Контрагент+" ("+Д.Контрагент.Code+")";
+  Else
+    КонДата:=Form.КонДата.Value;
+    НачДата:=Form.НачДата.Value;
+    оЗагол:="Справка по розничным ценам по анализу продаж";
+    оСвойства:=глСвойстваПечатиСложные(0,НачДата,КонДата,"оК,оД,оСк,оН");
+  EndIf;  
+
+  Т.CopyByX("v1",1);
+  Т.Options.FixedLine:=Т.Height();
+  пН:=0;
+  Кл0:=0;
+  См0:=0;
+  If isEmpty(ТабНом) Then
+    aTab:=Д.LineParts("Номенклатура");
+  Else
+    aTab:=ТабНом;
+  EndIf;
+  aTab.Select();
+  While aTab.Next() Do
+    If aTab.Количество=0 Then
+      Continue;
+    EndIf;
+    зН:=aTab.Номенклатура;
+    пЦ0:=Таб.FindAndGet("Цена",зН,,"Номенклатура");
+    If пЦ0=0 Then
+      Continue;
+    EndIf;
+    пЦ:=глФРМ(пЦ0);
+    пН:=пН+1;
+    пТМЦ:=aTab.Номенклатура;
+    пЕд:=пТМЦ.базЕдиница;
+    пКреп:=пТМЦ.сертКрепость;
+    Кл0:=Кл0+aTab.Количество;
+    См0:=См0+Round(aTab.Количество*пЦ0,2);
+    пКл:=глФРМЧл(aTab.Количество);
+    пСм:=глФРМЧл(aTab.Количество*пЦ0);
+    Т.CopyByX("v2",1);
+  EndDo;
+  
+  пКл:=глФРМЧл(Кл0);
+  пСм:=глФРМЧл(См0);
+  Т.CopyByX("v3",1);
+  If isEmpty(ТабНом) Then
+    глПечатнаяФорма(Т,Param,""+Д,0,,,-1);  
+  Else
+    глПечатнаяФорма(Т,Param,"Справка по розничным ценам",0,,,-1);  
+  EndIf;  
+  
+  Exit 1;
+EndFunction;
+
+
+Function OnOpen()
+  Result:=1;
+  If not IsEmpty(Param) Then    
+    Д:=Param.GetByName("Object");
+    If (TypeStr(Д)<>"TAB")And(Param.GetByName("БезПроверок")<>1) Then
+      If not глПроверкаПраваПечати(Д,Param,1) Then
+        Exit;
+      EndIf;
+    EndIf;
+    
+    If Param.GetByName("АвтоматическаяПечать")=1 Then
+      Result:=0;
+      
+      аАд:=Д.АдресДоставки;
+      If isEmpty(аАд.ПолочныеЦеныМагазина) Then
+        Message("Для точки "+аАд+" контрагента "+Д.Контрагент+" не заданы розничные цены!","!");
+        Exit;
+      EndIf;
+      ТипЦен:=аАд.ПолочныеЦеныМагазина;
+    
+      ФлБонусРаспечатан:=0;
+      Копий:=Max(1,Number(Param.GetByName("КоличествоКопий")));
+      Param.SetByName("КоличествоКопий",1);
+      For а:=1 to Копий Do
+        OnExecute();
+      EndDo;
+    EndIf;  
+  EndIf;
+EndFunction
+
+Function OnPrintButtonPress()
+  КонДата:=Form.КонДата.Value;
+  НачДата:=Form.НачДата.Value;
+  оК:=Form.оК.Value;
+  оД:=Form.оД.Value;
+  оСк:=Form.оСк.Value;
+  оМг:=Form.оМг.Value;
+  оН:=Form.оН.Value;
+
+  ТЗ:="Period From НачДата To КонДата;
+  |зД:=Storage.ДвижениеТМЦ.АдресДоставки.@Parent;
+  |Condition(зД IN оД.Get(1));
+  |Condition(зД NOT IN оД.Get(2));
+  |зК:=Storage.ДвижениеТМЦ.Договор.@Parent;
+  |Condition(зК IN оК.Get(1));
+  |Condition(зК NOT IN оК.Get(2));
+  |зТА:=Storage.ДвижениеТМЦ.Договор.@Parent.ТипАктива;Condition(зТА<>3);
+  |зН:=Storage.ДвижениеТМЦ.Номенклатура;
+  |Condition(зН IN оН.Get(1));
+  |Condition(зН NOT IN оН.Get(2));
+  |зСк:=Storage.ДвижениеТМЦ.Склад;
+  |Condition(зСк IN оСк.Get(1));
+  |Condition(зСк NOT IN оСк.Get(2));
+  |зМг:=Storage.ДвижениеТМЦ.Склад.Магазин;
+  |Condition(зМг IN оМг.Get(1));
+  |Condition(зМг NOT IN оМг.Get(2));
+  |зК0:=Storage.ДвижениеТМЦ.Количество;
+  |зМрТип:=Storage.ДвижениеТМЦ.ТипЗаписи;Condition(зМрТип<2);
+  |зМрТУ:=Storage.ДвижениеТМЦ.ТипУчета;Condition(зМрТУ=0);
+  |зКл:=SUM(зК0);
+  |Group зН;";
+  З:=Query.Create();
+  З.Execute(ТЗ);
+
+  aTab:=Tab.Create("Номенклатура,Количество");
+  While З.Next(1) Do
+    If З.зКл>0 Then
+      aTab.AddLine("Номенклатура,Количество",З.зН,З.зКл);
+    EndIf;  
+  EndDo;
+  If aTab.Size()=0 Then
+    Box("За выбранный период не было продаж по выбранным фильтрам!",Q_WARNING);
+    Exit;
+  EndIf;
+  OnExecute(aTab);
+  Result:=0;
+EndFunction

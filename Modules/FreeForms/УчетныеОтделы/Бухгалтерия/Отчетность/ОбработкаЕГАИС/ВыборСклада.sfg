@@ -1,0 +1,58 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=Выберите склад-источник перемещения
+  Width=665
+  Height=465
+  OnOpen
+    @@>@e@D@Yq@5_>d1@M_[@X_^Ajb[@Y_W@}=v*_h@HL@n.D"_9H_J@s7@U@#_Qg@0_g@D=1@Nn_b8@2_I
+    @@2@)[_d_F@$Yd@+@.@b@~@ZVi@I@R_(]U_[_W@-@,@"@x_"@e_BK@7d@T4@]_P?_(_*@)-v@E@\,@h_A
+    @@&@3@3@7_B_+_O@Z_30_5#0f?@{l!8e@I_U(_#_Qm@a{M_c_h_S@/@?_<_5@ek}@a_:t_Lk@rlTK@k_>
+    @@%20C@'Y@E_3dqg>@c@w@'@<@"_C_J@=_ialC@o*.@b_+@N0_W_L_.j.c0@);m@#*_P_.@a@pD@R@l=%
+    @.@49_/N@'_T?_Qpv_'X_hjs@J_B_U_;@8>@:Z@:q_.@Eg'E@B@q6@n@)~@WS@O|_7w_'@p_-gW(@F#_"
+    @}5@C_2Q@uv_U_\@x_1^@F@S$m_O@/[_(@1/^@O_T@F_i_-P@g_AV_4@b&@:fG_b+_m@)@-?k@)X@d_"_
+    @jR_.-p_T_V_/@;_fTe6@RR_L_,@5_M_:?@T@,@6@\@TUC8_SG_b@Umg_\_^*@8@Ac@|@B@O4@E@T^@'@
+    @o{Mi@R@N@M_Q@:@S0@A@d-_e_I_Z@.@i_B_!@s@\@0_Q_L9\_S@p@ma_X@t_0|@1_:_"@\_Re_&@ld_S
+    @@KZ_A+d@j_J@z_I"u_C@n'@&_[_7;_N@'_:S0@U_]@#_T@m_[_6_aE@lkx_Q#@pO5@v@q_)l_0_Q@,@l
+    @N@?@~v@I@'@nF@a@J@3X@g@&_)U_X2_E~@,_c@o_G_k|B@=_h_S@Y@'2_K@z@P_<@5~/K<#@W_9)@)@Z
+    @_Z@6?@?@F@(_E@m@SA@XU@S_-@wM_O@VHQpw~@q_5_"@&n_2;@]v2_f@Qz@.@]@zo_kM@h_hc9_lp@Cb
+    @)_2_H@;_]@}@5[@M@3c_M@A_W_D,@(@uf_T@\@$n\@(_Z_#_d@q_S@2XX_!@QaN_>_BI@k_B_!_C@^<_
+    @fI}o_A@(&_A_5A_=@l:@w
+  End
+  OnTimerInterval=0
+  MaxControlSerial=2
+  LoadModes=0
+  Object TABLE
+    LayerName=Main
+    Left=5
+    Top=5
+    Width=660
+    Height=460
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=15
+    Flags=33554440
+    Hint=
+    Name=MainTab
+    ControlSerial=1
+    AttachedButtons=
+    HotKey=
+    Folders=0
+    OnDoubleClick
+      @@>@e@3s_6n_.d5_I(_^0@^@u3l_>@wO_%@.@vv_\&7_e@/]_0@&T@H@aP_jm_,c@a@K@$@B_a@a@/<uM
+      @iSO@,_S_V_'Z_S@8_G_Y@1@E;_9_2b_W_i_J_P"p@zC_g_)zvL@K@Tn@<6@j&@vz_.@3l_AvvP@E_)1@
+      @'@~H|@mL@Z@s@K_'@i=@j_+~_B@"@m@}_0-_5_I@]@&@n_L_&_+3@+_c'&G_Vt@Z_NylD9_\@ai@WfG@
+      @Y@Ib1@]v@C@k@m_7_<@~o_C_OE@=@C@:@C7j@H_a@p@e]_C@h@|@w@w.@-_;|_"_7@-@Z@aqQ^_9r\R_
+      @%@-@"_C!@4_H_3._VR_Za@#_$"U@T_SL_0_5@y@d_F[@R_8_mH@2_O@n@E@&@'|z@=c@9_#_J_e_.k@,
+      @@<_d_9@Gs@N@|;@;_Y8_+@>@nx
+    End
+    HeaderColumnsData
+      @R#R#S#R#S#S#R#R#R#R#T#SRRRR#WVU#gG@"G@#GvGzG####gG@"G@#GvGzG###R#"R#R#S#R#S#S#R#
+      @S#R#R#T#SZR#SSS#cG@+G@,GvG@,G@"G~G####cG@+G@,GvG@,G@"G~G#RERdWEREEE#DCwCECECwC|C
+      @tCyC#S#"R#R#R#S#R#R#R#R#R#R#T#SRRRR#SRR#####sG@#G###R#
+    End
+  End
+End

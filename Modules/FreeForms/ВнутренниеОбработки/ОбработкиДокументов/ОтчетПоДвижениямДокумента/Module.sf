@@ -1,0 +1,245 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var Т Export;
+Var Док Export;
+
+
+Function ВывестиДокумент(Д,Т,Шир)
+  Тек:=?(Д=Док,0,3);
+  Стат:=?(Д.Status()>1,0,?(Д.Status()=1,2,1));
+  пДок:=Trim(Д)+?(Стат=0," (обработан)",?(Стат=1,""," (удален)"));
+  
+  См:="";
+  If глЕстьРеквизитДокумента("СуммаВзаиморасчетов",Д.DBName()) Then
+    См:=глФРМ(Д.СуммаВзаиморасчетов);
+  EndIf;
+  If См="" Then
+    If глЕстьРеквизитДокумента("Сумма",Д.DBName()) Then
+      См:=глФРМ(Д.Сумма);
+    EndIf;
+  EndIf;
+  
+  Кнт:="";
+  If глЕстьРеквизитДокумента("Контрагент",Д.DBName()) Then
+    Кнт:=Д.Контрагент;
+  EndIf;
+  
+  пДокДоп:=?(См="","","Сумма: "+См+", ")+?(Кнт="","",Кнт);
+  пДокР:=Д;
+  
+  Сп:=List.Create();
+  Сп.SetByName("Документ",Док);
+  Сп.SetByName("Строка",Т.Height()+1);
+  Сп.SetByName("Столбец",Шир);
+  Сп.SetByName("ДокР",Д);
+  Сп.SetByName("Таблица",Т);
+  
+  Т.CopyByX("v2|h2");
+  
+  
+  Т2:=Т.Source();
+  Т.Area(Шир+1,Т.Height()-1,Шир+10,Т.Height()).ColorProfile:=Т2.Area(2,10+Тек+Стат,2,10+Тек+Стат).ColorProfile;
+EndFunction
+
+
+Function ОпределитьТип(Стр,ByRef Точность)
+  Точность:="";
+  Рез:="h7";
+  If Pos("STRING.",Стр)>0 Then
+    tearStr(Стр,".");
+    i:=Number(Стр);
+    If i<11 Then
+      Рез:="h3";
+    ElseIf i<16 Then
+      Рез:="h4";
+    ElseIf i<26 Then
+      Рез:="h6";
+    Else  
+      Рез:="h7";
+    EndIf;
+  ElseIf Pos("DATE",Стр)=1 Then
+    Рез:="h4";
+  ElseIf Pos("NUMBER.",Стр)>0 Then
+    //NUMBER.<Размер>.<Точность>
+    TearStr(Стр,".");
+    TearStr(Стр,".");
+    Точность:=Number(Стр);
+    Рез:="h8";
+  ElseIf Pos("ENUM.",Стр)>0 Then
+    Рез:="h6";
+  EndIf;
+  Exit Рез;
+EndFunction
+
+
+Function Печать(Док,Т,Накопитель="")
+  If Накопитель="" Then
+    Стр:=Док.GetUsedStoragesNames;
+    if Pos(",",Стр)>0 Then
+      Стр:=SelectDataType(Стр,"Выберите накопитель для просмотра движений");
+      If isEmpty(Стр) Then
+        Exit;
+      EndIf;
+    ElseIf Стр="" Then
+      Box("Документ не имеет движений ни по одному из накопителей!",Q_INFORMATION);
+      Exit;
+    EndIf;
+    TearStr(Стр,".");
+  Else
+    Стр:=Накопитель;
+  EndIf;  
+  оЗагол:="Движения документа "+Док+" по накопителю "+Struct.Stor(Стр).Caption;
+  пСвойства:=глСвойстваПечатиПростые();
+  
+  aStor:=Struct.Stor(Стр);
+  Fl:=0;
+  If IsEmpty(Т) Then
+    Т:=Table.Create();
+  Else
+    Т.Lock();
+    Т.Clear();
+    Fl:=1;
+  EndIf;
+  Try  
+    Т.SetSourceName("Table");
+    
+    ТРеквизиты:=Tab.Create("Имя,Заголовок,Стл,Точность");
+    for i:=1 to aStor.Props.Count() do
+      if aStor.Props(i).Accumulator Then
+        ТРеквизиты.AddLine("Имя,Заголовок",aStor.Props(i).Name,aStor.Props(i).Caption);
+        ТРеквизиты.Стл:=ОпределитьТип(aStor.Props(i).DataType,ТРеквизиты.Точность);
+      EndIf;
+    enddo;
+    for i:=1 to aStor.Props.Count() do
+      if (not aStor.Props(i).Asset)and(not aStor.Props(i).Accumulator) Then
+        ТРеквизиты.AddLine("Имя,Заголовок",aStor.Props(i).Name,aStor.Props(i).Caption);
+        ТРеквизиты.Стл:=ОпределитьТип(aStor.Props(i).DataType,ТРеквизиты.Точность);
+      EndIf;
+    enddo;
+    for i:=1 to aStor.Props.Count() do
+      if aStor.Props(i).Asset Then
+        ТРеквизиты.AddLine("Имя,Заголовок",aStor.Props(i).Name,aStor.Props(i).Caption);
+        ТРеквизиты.Стл:=ОпределитьТип(aStor.Props(i).DataType,ТРеквизиты.Точность);
+        //ТРеквизиты.Стл:="h8";
+      EndIf;
+    enddo;
+    флДата:=aStor.PeriodicalStorage;
+    флДвижение:=aStor.DebitCreditMark;
+
+    Сп:=List.Create();
+    Сп.SetByName("Документ",Док);
+    Сп.SetByName("Накопитель",Стр);
+    Сп.SetByName("Таблица",Т);
+    Т.CopyByX("v1",1);
+    Т.CopyByX("v2",1);
+    
+    Т.CopyByX("v3|h1",1);
+    If флДвижение Then
+      Т.CopyByX("v3|h2");
+    EndIf;
+    If флДата Then
+      Т.CopyByX("v3|h9");
+    EndIf;
+    ТРеквизиты.Select();
+    While ТРеквизиты.Next() do
+      пРекв:=ТРеквизиты.Заголовок;
+      Т.CopyByX("v3|"+ТРеквизиты.Стл);
+    EndDo;
+    Т.CopyByX("v3|h10");
+    Т.Options.FixedLine:=Т.Height();
+
+    
+    aTab:=Док.LoadStorage(Стр);
+    aTab.Select();
+    While aTab.Next() Do
+      Form.StatusText("Вывод информации "+aTab.CurLine+" из "+aTab.Size());
+      Тип:="v6";
+      пТип:="";
+      If флДвижение Then
+        Тип:="v4";
+        пТип:="Приход";
+        If aTab._Expense Then
+          Тип:="v5";
+          пТип:="Расход";
+        EndIf;
+      EndIf;
+      
+      Т.CopyByX(Тип+"|h1",1);
+      If флДвижение Then
+        Т.CopyByX(Тип+"|h2");
+      EndIf;
+      If флДата Then
+        пЗн:=FormatDate(aTab._Date,"dd.mm.YYYY, hh:tt:ss");
+        Т.CopyByX(Тип+"|h9");
+      EndIf;
+      ТРеквизиты.Select();
+      While ТРеквизиты.Next() do
+        пЗн:=aTab.Get(aTab.CurLine,ТРеквизиты.Имя);
+        If TypeStr(ТРеквизиты.Точность)="NUMBER" Then
+          пЗн:=FormatNumber(пЗн,1," ",ТРеквизиты.Точность);
+        EndIf;
+        Т.CopyByX(Тип+"|"+ТРеквизиты.Стл);
+      EndDo;
+      Т.CopyByX(Тип+"|h10");
+    Enddo;
+    
+    If not Fl Then
+      глПечатнаяФорма(Т,Param,"Отчет по движению документа");
+    EndIf;
+  Finally
+    If Fl Then
+      Т.Unlock();
+      Т.EditorMode:=1;
+    EndIf;
+  EndTry;  
+EndFunction
+
+
+Function OnDoubleClick(Т2)
+  Result:=1;
+  If Т2.SelectionMode>1 Then
+    if Т2.SelectedObjects().Count()<1 Then
+      Exit;
+    EndIf;
+    Obj:=Т2.SelectedObjects().Get(1);
+    Сп:=Obj.Value;
+    If TypeStr(Сп)<>"LIST" Then
+      Exit;
+    EndIf;
+    Док:=Сп.GetByName("Документ");
+    Т:=Сп.GetByName("Таблица");
+    Накопитель:=Сп.GetByName("Накопитель");
+  
+    Док:=Док.Copy();//refresh
+    Печать(Док,Т,Str(Накопитель));
+    Exit 0;
+  EndIf;
+EndFunction
+
+Function OnRightClick(Т2)
+  OnDoubleClick(Т2);
+EndFunction
+
+Function OnOpen()
+  Result:=0;
+  If IsEmpty(Param)=1 Then
+    Exit;
+  EndIf;
+
+  If not глПользователь.общиеИзменениеПечатныхФорм Then
+    Box("Вам запрещено пользоваться этим отчетом!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  If not глПриОткрытииОтчета("ДвиженияДокумента",Param,0) Then
+    Exit;
+  EndIf;
+  
+  Док:=Param;
+  Печать(Док,Т);
+EndFunction
+
+
+

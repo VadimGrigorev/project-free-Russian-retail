@@ -1,0 +1,87 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=530
+  Height=360
+  OnTimerInterval=0
+  MaxControlSerial=5
+  LoadModes=0
+  Object TABLE
+    LayerName=Main
+    Left=5
+    Top=5
+    Width=525
+    Height=325
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=15
+    Flags=16392
+    Hint=
+    Name=MainTab
+    ControlSerial=1
+    AttachedButtons=0#0@10001#0###@10003#0###@10004#0###@10006#0###@10007#2###@10012#0###@10028#0###@10026#0###
+    HotKey=
+    Folders=0
+    DBSource
+      @@>@e@)VU@*T_?US@'#!&_D"V
+    End
+    Filters
+      @@>@e@9)/@7-*.@,T@*@{@z$!5@f#_?
+    End
+    InitialSortString
+      @@>@e_ao_7q_A'!&o"@v
+    End
+    HeaderColumnsData
+      @T#S#R#R#R#R#R#T#T#R#TR#TR#TR#####@3CdKCdWCdVC###R#"R#R#R#R#R#R#R#R#R#S#SRR#SRR#S
+      @RR#]G@(GzG####@-CdWCdLCdMC##DC|CwCECwCtCzCzCtCvCtC~CvC#R#"R#R#S#R#S#S#R#R#R#R#T#
+      @ZR#ZR#UG@'G{G@2G@'G~GGfC@"G@(GzG####UG@'G{G@2G@'G~GG]G@(GzG##DC|CwCECwCtCzCzCt
+      @CvCtC{C}C|CEC#R#"R#R#S#R#R#S#R#R#R#S#T#SRRRR#[T#]G@*GvG@,G@"G@(G{GfC@'GvG~G@$G{G
+      @@'G@(GxGvG@'G~G{G####@8CdICdUCdMC##DC|CwCECwCtCzCzCtCvCtC~CwC#R#"R#R#S#R#S#S#R#R
+      @#R#R#T#SRRR#STZ#eG@(G@#G@'G@(G{GfC@'GvG~G@$G{G@'G@(GxGvG@'G~G{G####eG@(G@#G@'GbG
+      @vG~G@$G{G@'G@(GxGvG@'G~G{G##DC|CwCECwCtCzCzCtCvCtC{C}C{CEC#R#"R#R#S#R#S#S#R#S#R#
+      @R#T#SYR#SRR#]G@-G@*G@+G####]G@-G@*G@+G#RERdWEREEEdYEREEE#DC|CwCECwCtCzCzCtCvCtC{
+      @C}CzCEC#R#
+    End
+  End
+  Object BUTTON
+    LayerName=Main
+    Left=5
+    Top=335
+    Width=90
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=2
+    Caption=Закрыть
+    HotKey=
+    Picture=0
+    OnClick
+      @@>@eW_1e+@It1'_L_(_L>_l@+f_V"@"+@3ah@}@ONCQ_j3@o@M@?_8@qs~@O5_A_-_A_e_Q@?@;K_W_O
+      @_l@K@T<}@%@J@r;@'@}_G3@a3@m_U_hO\@BJ@R_i_7h_T(@M@>@]_K-@5ss_=R@Hag_I_I&_l,u_W@+_
+      @5_N@._C@"_:}}Y_Y@j@O@lQ@}<p(
+    End
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\ПериодКнопка.sfg
+    LayerName=Main
+    Left=100
+    Top=335
+    Width=100
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=4
+  End
+End

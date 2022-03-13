@@ -1,0 +1,121 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+
+Function Видимость()
+  aEl:=Form.Object;
+  MainTab:=Form.MainTab.Value;
+  aTab:=aEl.LineParts("Содержание");
+  ФлПроводка:=aEl.ТипПроводки.Selected()<>0;
+  
+  If aEl.КодОперации=Enum.коПодотчетнаяОперация.Оплата Then
+    MainTab.Column("Контрагент").isVisible:=1;
+    MainTab.Column("Договор").isVisible:=1;
+    
+    MainTab.Column("СтавкаНДС").isVisible:=0;
+    MainTab.Column("СуммаНДС").isVisible:=0;
+    MainTab.Column("Счет").isVisible:=0;
+    MainTab.Column("Субконто1").isVisible:=0;
+    MainTab.Column("Субконто2").isVisible:=0;
+    MainTab.Column("Субконто3").isVisible:=0;
+    
+    If aTab.Sum("СуммаНДС")>0 Then
+      aTab.Select();
+      While aTab.Next() Do
+        aTab.СуммаНДС:=0;
+        aTab.СтавкаНДС:=Enum.СтавкиНДС.БезНДС;
+      EndDo;
+    EndIf;
+  Else
+    MainTab.Column("Контрагент").isVisible:=0;
+    MainTab.Column("Договор").isVisible:=0;
+    
+    MainTab.Column("СтавкаНДС").isVisible:=1;
+    MainTab.Column("СуммаНДС").isVisible:=1;
+    MainTab.Column("Счет").isVisible:=not ФлПроводка;
+    MainTab.Column("Субконто1").isVisible:=not ФлПроводка;
+    MainTab.Column("Субконто2").isVisible:=not ФлПроводка;
+    MainTab.Column("Субконто3").isVisible:=not ФлПроводка;
+    Form.УчитыватьВНалоговомУчете.isInvisible:=(aEl.ЮрЛицо.УчитыватьНДС>0);
+  EndIf;  
+EndFunction
+
+Function OnAfterCustomBuhChanged()
+  Видимость();
+EndFunction
+
+Function OnAfterChangeOperationCode()
+  Видимость();
+EndFunction
+
+Function OnCreateFromObject()
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+    Form.Close(0);
+    Exit;
+  EndIf;
+EndFunction
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("Содержание");
+  
+  If aEl.ЮрЛицо.Selected()=0 Then
+    Box("Не выбрано юр.лицо документа!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  If aEl.КодОперации=Enum.коПодотчетнаяОперация.Оплата Then
+    aTab.Select();
+    While aTab.Next() Do
+      If (aTab.Договор.Selected()=0)or(aTab.Контрагент.Selected()=0) Then
+        aTab.SelectedLine:=aTab.CurLine;
+        Box("Необходимо выбрать контрагента и договор в каждой из строк, прежде чем записывать или обрабатывать документ!",Q_STOP);
+        Exit 0;
+      EndIf;
+      If aEl.ЮрЛицо<>aTab.Договор.ЮрЛицо Then
+        aTab.SelectedLine:=aTab.CurLine;
+        Box("Юр. лицо в договоре строки документа не совпадает с юр. лицом документа!",Q_STOP);
+        Exit 0;
+      EndIf;
+    EndDo;
+  EndIf;
+  
+
+  If DBVar.РазрешитьЗатратыПоНачислению=1 Then
+    If (aEl.ЦентрЗатрат.Selected()=0)Or(aEl.СтатьяЗатрат.Selected()=0) Then
+      Box("Не выбраны центр затрат или статья затрат!",Q_STOP);
+      Exit 0;
+    EndIf;
+    If (aEl.СтатьяЗатрат.GetValue("ТипЗатраты",aEl.DocDate)=0)And(aEl.ЦентрЗатрат.ВнутреннееПеремещение<>1) Then
+      Box("На выбранную статью запрещается выписывать документы данного вида (статья только для затрат по оплате)! Пожалуйста, проверьте, вы ошиблись при указании статьи!",Q_STOP);
+      Exit 0;
+    EndIf;    
+  Else
+    aEl.ЦентрЗатрат:=0;
+    aEl.СтатьяЗатрат:=0;
+  EndIf;
+
+  If aEl.ТипПроводки.Selected()<>0 Then
+    If Trim(aEl.СубконтоТипаПроводки)="" Then
+      If not глРедактироватьСубконтоТипаПроводки(aEl,1) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  ElseIf aEl.КодОперации=Enum.коПодотчетнаяОперация.Прочее Then
+    aTab.Select();
+    While aTab.Next() Do
+      If not глПроверитьКорректностьЗаполненияСубконто(aTab,1) Then
+        Form.MainTab.Value.SelectedLine:=aTab.CurLine;
+        Exit 0;
+      EndIf;
+    EndDo;    
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+

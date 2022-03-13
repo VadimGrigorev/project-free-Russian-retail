@@ -1,0 +1,81 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function Видимость()
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("Содержание");
+  
+  If Form.оЗатраты.Value=1 Then
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=0;
+  Else
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=1;
+  EndIf;
+  
+  If aTab.Sum("Сумма")>=0 Then
+    Form.флЗнакСуммыВЗатратах.Caption:="Уменьшать затраты (обратить знак суммы)";
+  Else
+    Form.флЗнакСуммыВЗатратах.Caption:="Увеличивать затраты (обратить знак суммы)";
+  EndIf;
+EndFunction
+
+Function OnCreateFromObject()
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+    Form.Close(0);
+    Exit;
+  EndIf;
+EndFunction
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("Содержание");
+  
+  If aEl.ЮрЛицо.Selected()=0 Then
+    Box("Выберите юридическое лицо документа!",Q_STOP);
+    Exit 0;
+  EndIf;  
+  
+  If not aEl.флКорректировочныйДокумент Then
+    aTab.Select();
+    While aTab.Next() Do
+      If (aTab.СчетД.Selected()=0)Or(aTab.СчетК.Selected()=0) Then
+        If aTab.СчетД.Забалансовый+aTab.СчетК.Забалансовый=0 Then
+          aTab.SelectedLine:=aTab.CurLine;
+          Стр:="В указанной строке документа не выбран корреспондирующий счет! Такое возможно только для забалансовых счетов!";
+          If not глРаботаетРобот Then
+            Box(Стр,Q_STOP);
+            Exit 0;
+          EndIf;  
+          Message(Стр,"I");
+        EndIf;
+      ElseIf aTab.СчетД.Забалансовый+aTab.СчетК.Забалансовый=1 Then
+        aTab.SelectedLine:=aTab.CurLine;
+        Стр:="В указанной строке документа выбраны забалансовый и обычный счета! Такие проводки запрещены!";
+        If not глРаботаетРобот Then
+          Box(Стр,Q_STOP);
+          Exit 0;
+        EndIf;  
+        Message(Стр,"I");
+      EndIf;
+      If not глПроверитьПроблемностьУказанныхСчетов(aEl,aTab.СчетД,aTab.СчетК,aTab.Количество) Then
+        Exit 0;
+      EndIf;
+    EndDo;
+  EndIf;  
+  
+  If Form.оЗатраты.Value=1 Then
+    If (aEl.ЦентрЗатрат.Selected()=0)Or(aEl.СтатьяЗатрат.Selected()=0) Then
+      Box("Не выбраны центр затрат или статья затрат!",Q_STOP);
+      Exit 0;
+    EndIf;
+  Else
+    aEl.ЦентрЗатрат:=0;
+    aEl.СтатьяЗатрат:=0;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+

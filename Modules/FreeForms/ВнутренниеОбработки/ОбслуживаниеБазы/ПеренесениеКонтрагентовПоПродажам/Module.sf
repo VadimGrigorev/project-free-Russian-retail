@@ -1,0 +1,119 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function OnExecute(СпУстановки)
+  НачДата:=BegOfDay(Form.НачДата.Value);
+  КонДата:=BegOfDay(Form.КонДата.Value);
+  оУдал:=Form.оУдал.Value;
+  оК2:=Form.оК2.Value;
+  оК:=Form.оК.Value;
+  оОтбор:=Form.оОтбор.Value.SelectedLine;
+  
+  If оК2.Selected()=0 Then
+    Box("Выберите папку для переноса контрагентов!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  ТЗ:="зСтатус:=Ref.кнтКонтрагенты.@Status;"+?(оУдал=1,"Condition(зСтатус=1);")+
+  "зК:=Ref.кнтКонтрагенты;
+  |Condition(зК IN оК.Get(1));
+  |Condition(зК NOT IN оК.Get(2));
+  |Group зК;";
+  З:=Query.Create();
+  aTab:=З.Execute(ТЗ,0);
+  
+  If оОтбор<5 Then
+    ТЗ:="Period From НачДата to КонДата;
+    |зК:=Storage.ДвижениеТМЦ.Договор.@Parent;
+    |зД:=Storage.ДвижениеТМЦ.Договор;
+    |зС0:=Storage.ДвижениеТМЦ.Сумма;
+    |зК0:=Storage.ДвижениеТМЦ.Количество;
+    |зМрТип:=Storage.ДвижениеТМЦ.ТипЗаписи;
+    |Condition(зМрТип<>4);
+    |зСмП:=SUM(?(зС0>0,зС0,0));
+    |зСмР:=SUM(?(зС0<0,зС0,0));
+    |зКлП:=SUM(?(зК0>0,зК0,0));
+    |зКлР:=SUM(?(зК0<0,зК0,0));
+    |Condition(зК IN оК.Get(1));
+    |Condition(зК NOT IN оК.Get(2));
+    |Group зК,зД;";
+    
+    З2:=Query.Create();
+    З2.Execute(ТЗ);
+    
+    If (оОтбор=2)Or(оОтбор=3) Then
+      ТЗ:="Period From КонДата to КонДата;
+      |зК:=Storage.Взаиморасчеты.Договор.@Parent;
+      |зД:=Storage.Взаиморасчеты.Договор;
+      |зСм:=EndTotals(Сумма);
+      |зКл:=EndTotals(Количество);
+      |Condition(зК IN оК.Get(1));
+      |Condition(зК NOT IN оК.Get(2));
+      |Group зК,зД;";
+      
+      З3:=Query.Create();
+      З3.Execute(ТЗ);
+    EndIf;    
+  EndIf;
+
+  aTab.Select();
+  While aTab.Next() Do
+    зК:=aTab.зК;
+    If оОтбор<5 Then
+      З2.ResultTable.CurLine:=0;
+      If З2.ResultTable.LocateAndGoto("@LEVEL,зК",2,зК)>0 then
+        Фл:=0;
+        While З2.Next(2) Do
+          If (З2.зСмП<>0)Or(З2.зСмР<>0)Or(З2.зКлП<>0)Or(З2.зКлР<>0) Then
+            Фл:=1;
+            Break;
+          EndIf;
+        EndDo;
+        If Фл And(оОтбор<>4) Then
+          Continue;
+        ElseIf (оОтбор=4)And(not Фл) Then
+          Continue;
+        EndIf;
+      ElseIf оОтбор=4 Then
+        Continue;
+      EndIf;
+      If (оОтбор=2)Or(оОтбор=3) Then
+        З3.ResultTable.CurLine:=0;
+        If З3.ResultTable.LocateAndGoto("@LEVEL,зК",2,зК)>0 then
+          Фл:=0;
+          While З3.Next(2) Do
+            If (З3.зСм<>0)Or(З2.зКл<>0) Then
+              Фл:=1;
+              Break;
+            EndIf;
+          EndDo;
+          If Фл And(оОтбор=2) Then
+            Continue;
+          ElseIf (оОтбор=3)And(not Фл) Then
+            Continue;
+          EndIf;
+        ElseIf оОтбор=3 Then
+          Continue;
+        EndIf;
+      EndIf;
+    EndIf;
+
+    If not глЗаблокировать(зК,1) Then
+      Continue;
+    EndIf;
+    Try
+      зК.Reload();
+      зК.Folder(оК2);
+      зК.Save();
+      Message("Перенесен элемент: "+зК);
+    Finally
+      зК.Unlock();
+    EndTry;
+  EndDo;
+  
+  Message("Работа завершена успешно!","I");
+EndFunction
+
+

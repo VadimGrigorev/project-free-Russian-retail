@@ -1,0 +1,3178 @@
+//Глобальные (root) модули загружаются при старте системы. Загрузка начинается с модуля "module" и продолжается в алфавитном порядке.
+//Переменные и функции, объявленные с постфиксом export, будут доступны в любых других модулях в любых потоках системы.
+//Модуль может содержать специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Var глСервисныйПоток Export;
+Function глМаркиЗагрузитьДокумент(зДок,ФлЭлементы=0,ФлПустаяТаблица=0) Export Forward;
+Function глВыполнитьЗапросЕГАИССОжиданием(оМагазин,ФлВизуальный,ТекстЗапроса,СсылкаЗапроса,ТипЗапроса=0,стрФункция="") Export Forward;
+
+Function глРазделитьАдресИПрокси(ПолныйАдрес,ByRef Прокси="") Export
+  //<IP>:<Port>[@<ProxyType>@<ProxyIP>@<User>@<Password>]
+  Result:=TearStr(ПолныйАдрес,"@");
+  Прокси:=ПолныйАдрес;
+EndFunction
+
+Function глПолучитьНомерИконкиДокументаЕГАИС(Ид2,Ид3) Export
+  If Ид2<>"" Then
+    Exit 84;
+  ElseIf Left(Ид3,1)="!" Then
+    Exit 84;
+  ElseIf Left(Ид3,1)="=" Then
+    Exit 82;
+  ElseIf Left(Ид3,1)="#" Then
+    Exit 84;
+  ElseIf Left(Ид3,1)="%" Then
+    Exit 84;
+  ElseIf Left(Ид3,1)="+" Then
+    Exit 84;
+  ElseIf Left(Ид3,1)="-" Then
+    Exit 84;
+  ElseIf Left(Ид3,1)="*" Then
+    Exit 84;
+  EndIf;
+  Exit 0;
+EndFunction
+
+Function глСоздатьПеремещениеНаРегистр2ЕГАИС(ByRef РезДок,оМагазин,аДок,ФлПредупреждения=0) Export
+
+  СпБлок:=List.Create();
+  аПольз:="";аКомп:="";аДата:="";
+  If аДок.IsLocked()<>1 Then
+    If not аДок.Lock(аПольз,аКомп,аДата) Then
+      If ФлПредупреждения Then
+        Message("Документ "+аДок+" открыт на запись. В данный момент с ним работает пользователь "+аПольз+" (компьютер "+аКомп+")! Пожалуйста, закройте документ, чтобы выполнить операцию!","!");
+      EndIf;
+      Exit 0;
+    EndIf;
+    СпБлок.Add(аДок);
+  EndIf;  
+
+  Try
+    If СпБлок.Size()>0 Then
+      аДок.Reload();
+    EndIf;
+    aTab:=аДок.LineParts("Номенклатура").Copy();
+    aList:=аДок.LoadLinkedDocuments(1);
+    For i:=1 To aList.Size() Do 
+      бДок:=aList.Get(i);
+      If _And(бДок.DBName()="Регистр2ЕГАИС",_Or(бДок.Status()<>1,Left(бДок.УникальныйИдентификатор3,1)="=")) Then
+        РезДок:=бДок;
+        Exit 1;
+      EndIf;
+      If _Or(бДок.DBName()<>"ВозвратПоставщику",бДок.Status()<2) Then
+        Continue;
+      EndIf;
+      bTab:=бДок.LineParts("Номенклатура");
+      bTab.Select();
+      While bTab.Next() Do
+        If _Or(bTab.Номенклатура.флАлкогольнаяПродукция=0,bTab.Партия.Selected()=0,bTab.Партия.флМарочныйУчет=1) Then
+          Continue;
+        EndIf;
+        aTab.AddLine("Номенклатура,Партия,Количество",bTab.Номенклатура,bTab.Партия,-bTab.Количество);
+      EndDo;
+    EndDo;
+    aTab.Group("Номенклатура,Партия","Количество");
+  
+    aDoc:=Doc.Регистр2ЕГАИС;
+    aDoc.New();
+    aDoc.DocDate:=аДок.DocDate;
+    aDoc.Автор:=глПользователь;
+    aDoc.ЮрЛицо:=оМагазин.ЮрЛицо;
+    aDoc.Магазин:=оМагазин;
+    глУстановитьНовыйНомер(aDoc);
+    aDoc.ДокОснование:=аДок;
+    aDoc.КодОперации:=Enum.коРегистр2ЕГАИС.ПеремещениеНаРегистр2;
+    
+    bTab:=aDoc.LineParts("Номенклатура");
+    aTab.Select();
+    While aTab.Next() Do
+      If _Or(aTab.Номенклатура.флАлкогольнаяПродукция=0,aTab.Партия.Selected()=0,aTab.Партия.флМарочныйУчет=1,Round(aTab.Количество,6)<=0) Then
+        Continue;
+      EndIf;
+      bTab.AddLine("Номенклатура,Партия,Количество",aTab.Номенклатура,aTab.Партия,aTab.Количество);
+    EndDo;
+    If bTab.Size()=0 Then
+      If ФлПредупреждения Then
+        Box("Документ поступления не содержит позиций, требующих перемещения на регистр 2!",Q_STOP);
+      EndIf;
+      РезДок:=0;
+      Exit 1;
+    EndIf;
+  Finally
+    If СпБлок.Size()>0 Then
+      MassUnlock(СпБлок);
+    EndIf;  
+  EndTry;
+  РезДок:=aDoc;
+  Exit 1;
+EndFunction
+
+Function глОбновитьСтатусЕГАИСВДокументе(тТекст2,тТекст3=0,аДок,оТаблица=0,тТекст1=0) Export;
+  ФлВизуальныйВызов:=оТаблица<>0;
+  СпБлок:=List.Create();
+  флОк:=0;
+  
+  аПольз:="";аКомп:="";аДата:="";
+  If аДок.IsLocked()<>1 Then
+    If not аДок.Lock(аПольз,аКомп,аДата) Then
+      If ФлВизуальныйВызов Then
+        Message("Документ "+аДок+" открыт на запись. В данный момент с ним работает пользователь "+аПольз+" (компьютер "+аКомп+")! Пожалуйста, закройте документ, чтобы выполнить операцию!","!");
+      EndIf;
+      Exit 0;
+    EndIf;
+    СпБлок.Add(аДок);
+  EndIf;  
+  BeginTransaction();
+  Try
+    If СпБлок.Size()>0 Then
+      аДок.Reload();
+    EndIf;
+    аДок.УникальныйИдентификатор2:=тТекст2;
+    If аДок.ФлагОбмена<9 Then
+      аДок.ФлагОбмена:=?(аДок.Status()>1,0,1);
+    EndIf;  
+    If тТекст1<>0 Then //Только для документов пересорта
+      аДок.УникальныйИдентификатор:=тТекст1;
+    EndIf;
+    If тТекст3<>0 Then
+      СтарЗнач:=Trim(аДок.УникальныйИдентификатор3);
+      аДок.УникальныйИдентификатор3:=тТекст3;
+      If аДок.DBName()="ПоступлениеТМЦ" Then
+        aList:=аДок.LoadLinkedDocuments(1);
+        For i:=1 To aList.Size() Do 
+          бДок:=aList.Get(i);
+          If бДок.DBName()<>"ВозвратПоставщику" Then
+            Continue;
+          EndIf;
+          If (Trim(бДок.УникальныйИдентификатор3)<>СтарЗнач)And(Trim(бДок.УникальныйИдентификатор3)<>Trim(тТекст3)) Then
+            Continue;
+          EndIf;
+          If not бДок.Lock(аПольз,аКомп,аДата) Then
+            If ФлВизуальныйВызов Then
+              Message("Документ "+бДок+" открыт на запись. В данный момент с ним работает пользователь "+аПольз+" (компьютер "+аКомп+")! Пожалуйста, закройте документ, чтобы выполнить операцию!","!");
+            EndIf;
+            Exit 0;
+          EndIf;
+          СпБлок.Add(аДок);
+          бДок.Reload();
+          If (Trim(бДок.УникальныйИдентификатор3)<>СтарЗнач)And(Trim(бДок.УникальныйИдентификатор3)<>Trim(тТекст3)) Then
+            Continue;
+          EndIf;
+          бДок.УникальныйИдентификатор3:=тТекст3;
+          If бДок.ФлагОбмена<9 Then
+            бДок.ФлагОбмена:=?(бДок.Status()>1,0,1);
+          EndIf;  
+          If not глЗаписать(бДок,0,1) Then
+            If ФлВизуальныйВызов Then
+              Message("Невозможно изменить документ "+бДок+". Выполните операцию заново!","!");
+            EndIf;
+            Exit 0;
+          EndIf;
+        EndDo;
+      EndIf;
+    EndIf;
+    If not глЗаписать(аДок,0,1) Then
+      If ФлВизуальныйВызов Then
+        Message("Невозможно изменить документ "+аДок+". Выполните операцию заново!","!");
+      EndIf;
+      Exit 0;
+    EndIf;
+    If ФлВизуальныйВызов Then
+      Стл:="зДок";
+      If оТаблица.GetColumnIndex("Локальный")>0 Then
+        Стл:="Локальный";
+      EndIf;
+      If оТаблица.FindAndGoto(аДок,,Стл)>0 Then
+        оТаблица[Стл]:=аДок;
+      EndIf;
+    EndIf;
+    флОк:=1;
+  Finally
+    If флОк Then
+      CommitTransaction();
+    Else
+      RollbackTransaction();
+    EndIf;
+    If СпБлок.Size()>0 Then
+      MassUnlock(СпБлок);
+    EndIf;  
+  EndTry;
+  Exit 1;
+EndFunction
+
+
+Function глВыгрузитьДокументПеремещенияВЕГАИС(оМагазин,зДок,оПеремещения=0,ФлВизуальныйВызов=0) Export;
+
+  Function _ПолучитьТегиСтроки(зПрт)
+    зН:=зПрт.Parent();
+              
+    ФлНеПак:=?(зПрт.флБезУпаковки<>0,1,0);
+    пКПП3:=Trim(зПрт.Производитель.ИНН);
+    пИНН3:=TearStr(пКПП3,"/");
+    пПрКодЕГАИС:=Trim(зПрт.Производитель.КодТочкиЕГАИС);
+    пЛ:=зН.ОбъемЛитров;
+    
+    If пЛ=0 Then
+      If not ФлВизуальныйВызов Then
+        Message("Для номенклатуры "+зН+" ("+зН.Code+") не указан объем!","!");
+      EndIf;
+      Exit "";
+    EndIf;
+    пКреп:=зН.сертКрепость;
+    If пКреп=0 Then
+      If not ФлВизуальныйВызов Then
+        Message("Для номенклатуры "+зН+" ("+зН.Code+") не указана крепость!","!");
+      EndIf;
+      Exit "";
+    EndIf;
+    пЛ:="<pref:Capacity>"+Trim(FormatNumber(пЛ,0,"",4))+"</pref:Capacity>";
+    If ФлНеПак=1 Then
+      пЛ:="";
+    EndIf;
+    
+    
+    If Trim(зПрт.ЕГАИСКодПроизводителя)<>"" Then
+      //КодПрЕГАИС@ИНН/КПП
+      If Pos("@",зПрт.ЕГАИСКодПроизводителя)>0 Then
+        пКПП3:=Trim(зПрт.ЕГАИСКодПроизводителя);
+        пПрКодЕГАИС:=TearStr(пКПП3,"@");
+        пИНН3:=TearStr(пКПП3,"/");
+      Else
+        пПрКодЕГАИС:=Trim(зПрт.ЕГАИСКодПроизводителя);
+      EndIf;
+    EndIf;
+    
+    If зПрт.флИмпортнаяПродукция=0 Then
+      пПроизводитель:="<pref:Producer>"+?(пКПП3<>"","<oref:UL>","<oref:FL>")+"<oref:INN>"+пИНН3+"</oref:INN>"+?(пКПП3<>"","<oref:KPP>"+пКПП3+"</oref:KPP>")+"<oref:ClientRegId>"+пПрКодЕГАИС+"</oref:ClientRegId>"+_NEWLINE+
+          "<oref:FullName>"+EncodeXMLString(зПрт.Производитель.ПолнНаименование)+"</oref:FullName>"+
+          "<oref:ShortName>"+EncodeXMLString(Left(зПрт.Производитель.ПолнНаименование,64))+"</oref:ShortName>"+
+          "<oref:address><oref:Country>643</oref:Country><oref:RegionCode>"+Left(пИНН3,2)+"</oref:RegionCode><oref:description>"+EncodeXMLString(зПрт.Производитель.ФактАдрес)+"</oref:description></oref:address>"+?(пКПП3<>"","</oref:UL>","</oref:FL>")+"</pref:Producer>"+_NEWLINE;
+    ElseIf зПрт.флИмпортнаяПродукция=1 Then
+      //TODO: 643
+      пПроизводитель:="<pref:Producer><oref:FO><oref:ClientRegId>"+пПрКодЕГАИС+"</oref:ClientRegId>"+_NEWLINE+
+          "<oref:FullName>"+EncodeXMLString(зПрт.Производитель.ПолнНаименование)+"</oref:FullName>"+
+          "<oref:ShortName>"+EncodeXMLString(Left(зПрт.Производитель.ПолнНаименование,64))+"</oref:ShortName>"+
+          "<oref:address><oref:Country>643</oref:Country><oref:description>"+EncodeXMLString(зПрт.Производитель.ФактАдрес)+"</oref:description></oref:address></oref:FO></pref:Producer>"+_NEWLINE;
+    Else
+      //TODO: 643
+      пПроизводитель:="<pref:Producer><oref:TS><oref:ClientRegId>"+пПрКодЕГАИС+"</oref:ClientRegId>"+_NEWLINE+
+          "<oref:FullName>"+EncodeXMLString(зПрт.Производитель.ПолнНаименование)+"</oref:FullName>"+
+          "<oref:ShortName>"+EncodeXMLString(Left(зПрт.Производитель.ПолнНаименование,64))+"</oref:ShortName>"+ //<oref:TSNUM></oref:TSNUM>
+          "<oref:address><oref:Country>643</oref:Country><oref:description>"+EncodeXMLString(зПрт.Производитель.ФактАдрес)+"</oref:description></oref:address></oref:TS></pref:Producer>"+_NEWLINE;
+    EndIf;
+    
+    зАПКОД:=Trim(зН.ЕГАИСКодАП);
+    If Trim(зПрт.ЕГАИСКодАП)<>"" Then
+      зАПКОД:=Trim(зПрт.ЕГАИСКодАП);
+    EndIf;
+    If зАПКОД="" Then
+      If not ФлВизуальныйВызов Then
+        Message("Для партии "+зПрт+" для номенклатуры "+зН+" ("+зН.Code+") не указан код АП!","!");
+      EndIf;
+      Exit "";
+    EndIf;
+    
+    Exit "<pref:Type>АП</pref:Type>"+_NEWLINE+
+         "<pref:FullName>"+EncodeXMLString(зН.Name)+"</pref:FullName>"+_NEWLINE+
+         "<pref:AlcCode>"+Trim(зПрт.ЕГАИСКодНоменклатуры)+"</pref:AlcCode>"+пЛ+"<pref:AlcVolume>"+Trim(FormatNumber(пКреп,0,"",3))+"</pref:AlcVolume>"+_NEWLINE+
+         "<pref:ProductVCode>"+зАПКОД+"</pref:ProductVCode><pref:UnitType>"+?(ФлНеПак=0,"Packed","Unpacked")+"</pref:UnitType>"+_NEWLINE+
+         пПроизводитель;
+  EndFunction      
+
+  оЮЛ:=оМагазин.ЮрЛицо;
+  оРегИд:=оМагазин.КодТочкиЕГАИС;
+  ФлИзОбработки:=оПеремещения<>0;
+
+  Фл:=0;
+  aTab:=зДок.LineParts("Номенклатура");
+  aTab.Select();
+  While aTab.Next() Do
+    If _Or(aTab.Партия.Selected()=0,aTab.Номенклатура.флАлкогольнаяПродукция=0) Then
+      Message("В строке с номенклатурой "+aTab.Номенклатура+" ("+aTab.Номенклатура.Code+") не выбрана партия или позиция не является алкогольной продукцией!","!");
+      Фл:=1;
+    EndIf;
+    If _Or(aTab.Партия.флМарочныйУчет,Trim(aTab.Партия.ЕГАИСКодСправок)="") Then
+      Message("В строке с номенклатурой "+aTab.Номенклатура+" ("+aTab.Номенклатура.Code+") партия является марочной продукцией либо не сопоставлена с партией ЕГАИС!","!");
+      Фл:=1;
+    EndIf;
+  EndDo;
+  If Фл Then
+    If ФлИзОбработки Then
+      Box("В документе обнаружены ошибки! Пока ошибки не будут исправлены, документ отправить не получится!",Q_STOP);
+    EndIf;
+    Exit 0;
+  EndIf;
+
+  ФлБлок:=0;
+  If зДок.IsLocked()<>1 Then
+    аПольз:="";аКомп:="";аДата:="";
+    If not зДок.Lock(аПольз,аКомп,аДата) Then
+      Message("Документ "+зДок+" открыт на запись. В данный момент с ним работает пользователь "+аПольз+" (компьютер "+аКомп+")! Пожалуйста, закройте документ, чтобы выполнить операцию!","!");
+      Exit 0;
+    EndIf;
+    ФлБлок:=1;
+  EndIf;
+  Try
+    If ФлБлок Then
+      зДок.Reload();
+    EndIf;
+    aTab:=зДок.LineParts("Номенклатура");
+    
+    If зДок.КодОперации=Enum.коРегистр2ЕГАИС.ПеремещениеНаРегистр2 Then
+      Стр="<?xml version=""1.0"" encoding=""UTF-8""?>"+_NEWLINE+
+        "<ns:Documents Version=""1.0"""+_NEWLINE+
+        "xmlns:ns=""http://fsrar.ru/WEGAIS/WB_DOC_SINGLE_01"""+_NEWLINE+
+        "xmlns:xs=""http://www.w3.org/2001/XMLSchema"""+_NEWLINE+
+        "xmlns:c=""http://fsrar.ru/WEGAIS/Common"""+_NEWLINE+
+        "xmlns:pref=""http://fsrar.ru/WEGAIS/ProductRef_v2"""+_NEWLINE+
+        "xmlns:tts=""http://fsrar.ru/WEGAIS/TransferToShop"">"+_NEWLINE+
+        "<ns:Owner><ns:FSRAR_ID>"+оРегИд+"</ns:FSRAR_ID></ns:Owner><ns:Document><ns:TransferToShop><tts:Identity>"+зДок.DocNum+"_"+GetYear(зДок.DocDate)+"</tts:Identity>"+_NEWLINE+
+        "<tts:Header><tts:TransferNumber>"+зДок.DocNum+"_"+GetYear(зДок.DocDate)+"</tts:TransferNumber><tts:TransferDate>"+FormatDate(Date(),"YYYY-mm-dd")+"</tts:TransferDate></tts:Header>"+
+        "<tts:Content>"+_NEWLINE;
+      
+      aTab.Select();
+      While aTab.Next() Do
+        зПрт:=aTab.Партия;
+        аКоличество:=aTab.Количество;
+        If зПрт.флБезУпаковки=1 Then
+          аКоличество:=аКоличество*aTab.Номенклатура.ОбъемЛитров/10;
+        EndIf;
+        СтрСправкаБ:=Trim(зПрт.ЕГАИСКодСправок);
+        TearStr(СтрСправкаБ,"###");
+          
+        Стр:=Стр+"<tts:Position><tts:Identity>"+aTab.CurLine+"</tts:Identity><tts:ProductCode>"+зПрт.ЕГАИСКодНоменклатуры+"</tts:ProductCode>"+
+          "<tts:Quantity>"+аКоличество+"</tts:Quantity><tts:InformF2><pref:F2RegId>"+СтрСправкаБ+"</pref:F2RegId></tts:InformF2></tts:Position>"+_NEWLINE;
+      EndDo;
+      Стр:=Стр+"</tts:Content></ns:TransferToShop></ns:Document></ns:Documents>";
+        
+      СпОтвет:=List.Create();
+      If not глВыполнитьЗапросЕГАИССОжиданием(оМагазин,1,Стр,"opt/in/TransferToShop",5,СпОтвет) Then
+        Exit 0;
+      EndIf;
+      аКодОтвета:=СпОтвет.GetByName("Результат");
+      аКодОтвета:=UpperCase(Replace(аКодОтвета,"-",""));
+      
+      If глОбновитьСтатусЕГАИСВДокументе(аКодОтвета,0,зДок,оПеремещения) Then
+        If ФлИзОбработки Then
+          оПеремещения.Статус:="Документ отправлен на сервер";
+          оПеремещения.зДок:=зДок;
+        EndIf;
+      Else
+        Exit 0;
+      EndIf;
+    ElseIf зДок.КодОперации=Enum.коРегистр2ЕГАИС.ВозвратНаРегистр1 Then
+      Стр="<?xml version=""1.0"" encoding=""UTF-8""?>"+_NEWLINE+
+        "<ns:Documents Version=""1.0"""+_NEWLINE+
+        "xmlns:ns=""http://fsrar.ru/WEGAIS/WB_DOC_SINGLE_01"""+_NEWLINE+
+        "xmlns:xs=""http://www.w3.org/2001/XMLSchema"""+_NEWLINE+
+        "xmlns:c=""http://fsrar.ru/WEGAIS/Common"""+_NEWLINE+
+        "xmlns:pref=""http://fsrar.ru/WEGAIS/ProductRef_v2"""+_NEWLINE+
+        "xmlns:tfs=""http://fsrar.ru/WEGAIS/TransferFromShop"">"+_NEWLINE+
+        "<ns:Owner><ns:FSRAR_ID>"+оРегИд+"</ns:FSRAR_ID></ns:Owner><ns:Document><ns:TransferFromShop><tfs:Identity>"+зДок.DocNum+"_"+GetYear(зДок.DocDate)+"</tfs:Identity>"+_NEWLINE+
+        "<tfs:Header><tfs:TransferNumber>"+зДок.DocNum+"_"+GetYear(зДок.DocDate)+"</tfs:TransferNumber><tfs:TransferDate>"+FormatDate(Date(),"YYYY-mm-dd")+"</tfs:TransferDate></tfs:Header>"+
+        "<tfs:Content>"+_NEWLINE;
+      
+      aTab.Select();
+      While aTab.Next() Do
+        зПрт:=aTab.Партия;
+        аКоличество:=aTab.Количество;
+        If зПрт.флБезУпаковки=1 Then
+          аКоличество:=аКоличество*aTab.Номенклатура.ОбъемЛитров/10;
+        EndIf;
+        СтрСправкаБ:=Trim(зПрт.ЕГАИСКодСправок);
+        TearStr(СтрСправкаБ,"###");
+          
+        Стр:=Стр+"<tfs:Position><tfs:Identity>"+aTab.CurLine+"</tfs:Identity><tfs:ProductCode>"+зПрт.ЕГАИСКодНоменклатуры+"</tfs:ProductCode>"+
+          "<tfs:Quantity>"+аКоличество+"</tfs:Quantity><tfs:InformF2><pref:F2RegId>"+СтрСправкаБ+"</pref:F2RegId></tfs:InformF2></tfs:Position>"+_NEWLINE;
+      EndDo;
+      Стр:=Стр+"</tfs:Content></ns:TransferFromShop></ns:Document></ns:Documents>";
+        
+      СпОтвет:=List.Create();
+      If not глВыполнитьЗапросЕГАИССОжиданием(оМагазин,1,Стр,"opt/in/TransferFromShop",5,СпОтвет) Then
+        Exit 0;
+      EndIf;
+      аКодОтвета:=СпОтвет.GetByName("Результат");
+      аКодОтвета:=UpperCase(Replace(аКодОтвета,"-",""));
+      
+      If глОбновитьСтатусЕГАИСВДокументе(аКодОтвета,0,зДок,оПеремещения) Then
+        If ФлИзОбработки Then
+          оПеремещения.Статус:="Документ отправлен на сервер";
+          оПеремещения.зДок:=зДок;
+        EndIf;
+      Else
+        Exit 0;
+      EndIf;
+    ElseIf зДок.КодОперации=Enum.коРегистр2ЕГАИС.СписаниеСРегистра2 Then
+    
+      //TypeWriteOff: "Пересортица", "Недостача", "Уценка", "Порча", "Потери", "Проверки", "Арест", "Иные цели", "Реализация", "Производственные потери"
+      Стр="<?xml version=""1.0"" encoding=""UTF-8""?>"+_NEWLINE+
+        "<ns:Documents Version=""1.0"""+_NEWLINE+
+        "xmlns:xs=""http://www.w3.org/2001/XMLSchema"""+_NEWLINE+
+        "xmlns:ns=""http://fsrar.ru/WEGAIS/WB_DOC_SINGLE_01"""+_NEWLINE+
+        "xmlns:pref=""http://fsrar.ru/WEGAIS/ProductRef_v2"""+_NEWLINE+
+        "xmlns:oref=""http://fsrar.ru/WEGAIS/ClientRef_v2"""+_NEWLINE+
+        "xmlns:awr=""http://fsrar.ru/WEGAIS/ActWriteOffShop_v2"""+_NEWLINE+
+        "xmlns:ce=""http://fsrar.ru/WEGAIS/CommonEnum"">"+_NEWLINE+
+        "<ns:Owner><ns:FSRAR_ID>"+оРегИд+"</ns:FSRAR_ID></ns:Owner><ns:Document><ns:ActWriteOffShop_v2><awr:Identity>"+зДок.DocNum+"_"+GetYear(зДок.DocDate)+"</awr:Identity>"+_NEWLINE+
+        "<awr:Header><awr:ActNumber>"+зДок.DocNum+"_"+GetYear(зДок.DocDate)+"</awr:ActNumber><awr:ActDate>"+FormatDate(Date(),"YYYY-mm-dd")+"</awr:ActDate><awr:TypeWriteOff>Реализация</awr:TypeWriteOff></awr:Header>"+
+        "<awr:Content>"+_NEWLINE;
+      
+      aTab.Select();
+      While aTab.Next() Do
+        СтрПродукт:=_ПолучитьТегиСтроки(aTab.Партия);
+        If СтрПродукт="" Then
+          Exit 0;
+        EndIf;
+        зПрт:=aTab.Партия;
+        зН:=зПрт.Parent();
+        аКоличество:=aTab.Количество;
+        If зПрт.флБезУпаковки=1 Then
+          аКоличество:=аКоличество*зН.ОбъемЛитров/10;
+        EndIf;
+        
+        Стр:=Стр+"<awr:Position><awr:Identity>"+aTab.CurLine+"</awr:Identity><awr:Product>"+СтрПродукт+_NEWLINE+
+          "</awr:Product><awr:Quantity>"+аКоличество+"</awr:Quantity></awr:Position>";
+      EndDo;
+      Стр:=Стр+"</awr:Content></ns:ActWriteOffShop_v2></ns:Document></ns:Documents>";
+        
+      СпОтвет:=List.Create();
+      If not глВыполнитьЗапросЕГАИССОжиданием(оМагазин,1,Стр,"opt/in/ActWriteOffShop_v2",5,СпОтвет) Then
+        Exit 0;
+      EndIf;
+      аКодОтвета:=СпОтвет.GetByName("Результат");
+      аКодОтвета:=UpperCase(Replace(аКодОтвета,"-",""));
+      
+      If глОбновитьСтатусЕГАИСВДокументе(аКодОтвета,0,зДок,оПеремещения) Then
+        If ФлИзОбработки Then
+          оПеремещения.Статус:="Отправлен на сервер";
+          оПеремещения.зДок:=зДок;
+        EndIf;
+      Else
+        Exit 0;
+      EndIf;
+    
+    ElseIf зДок.КодОперации=Enum.коРегистр2ЕГАИС.ПересортНаРегистре2 Then
+      //Этот документ выгружается два раза
+      ФлОприходование:=Pos("-",зДок.УникальныйИдентификатор)>0;
+      
+      If ФлОприходование Then
+        //TypeChargeOn: "Пересортица", "Излишки", "Продукция, полученная до 01.01.2016", "Производство_Сливы" ?, 
+        СтрТип:="ainp";
+        СтрТипДокумента:="ActChargeOnShop_v2";
+        Стр="<?xml version=""1.0"" encoding=""UTF-8""?>"+_NEWLINE+
+          "<ns:Documents Version=""2.0"""+_NEWLINE+
+          "xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"""+_NEWLINE+
+          "xmlns:ns=""http://fsrar.ru/WEGAIS/WB_DOC_SINGLE_01"""+_NEWLINE+
+          "xmlns:pref=""http://fsrar.ru/WEGAIS/ProductRef_v2"""+_NEWLINE+
+          "xmlns:oref=""http://fsrar.ru/WEGAIS/ClientRef_v2"""+_NEWLINE+
+          "xmlns:ainp=""http://fsrar.ru/WEGAIS/ActChargeOnShop_v2"""+_NEWLINE+
+          "xmlns:ce=""http://fsrar.ru/WEGAIS/CommonEnum"">"+_NEWLINE+
+          "<ns:Owner><ns:FSRAR_ID>"+оРегИд+"</ns:FSRAR_ID></ns:Owner><ns:Document><ns:ActChargeOnShop_v2><ainp:Identity>"+зДок.DocNum+"_"+GetYear(зДок.DocDate)+"П2"+"</ainp:Identity>"+_NEWLINE+
+          "<ainp:Header><ainp:Number>"+зДок.DocNum+"_"+GetYear(зДок.DocDate)+"П2"+"</ainp:Number><ainp:ActDate>"+FormatDate(Date(),"YYYY-mm-dd")+"</ainp:ActDate><ainp:TypeChargeOn>Пересортица</ainp:TypeChargeOn>"+
+          "<ainp:ActWriteOff>"+Mid(зДок.УникальныйИдентификатор,2)+"</ainp:ActWriteOff></ainp:Header>"+
+          "<ainp:Content>"+_NEWLINE;
+      Else
+        //TypeWriteOff: "Пересортица", "Недостача", "Уценка", "Порча", "Потери", "Проверки", "Арест", "Иные цели", "Реализация", "Производственные потери"
+        СтрТип:="awr";
+        СтрТипДокумента:="ActWriteOffShop_v2";
+        Стр="<?xml version=""1.0"" encoding=""UTF-8""?>"+_NEWLINE+
+          "<ns:Documents Version=""1.0"""+_NEWLINE+
+          "xmlns:xs=""http://www.w3.org/2001/XMLSchema"""+_NEWLINE+
+          "xmlns:ns=""http://fsrar.ru/WEGAIS/WB_DOC_SINGLE_01"""+_NEWLINE+
+          "xmlns:pref=""http://fsrar.ru/WEGAIS/ProductRef_v2"""+_NEWLINE+
+          "xmlns:oref=""http://fsrar.ru/WEGAIS/ClientRef_v2"""+_NEWLINE+
+          "xmlns:awr=""http://fsrar.ru/WEGAIS/ActWriteOffShop_v2"""+_NEWLINE+
+          "xmlns:ce=""http://fsrar.ru/WEGAIS/CommonEnum"">"+_NEWLINE+
+          "<ns:Owner><ns:FSRAR_ID>"+оРегИд+"</ns:FSRAR_ID></ns:Owner><ns:Document><ns:ActWriteOffShop_v2><awr:Identity>"+зДок.DocNum+"_"+GetYear(зДок.DocDate)+"П1"+"</awr:Identity>"+_NEWLINE+
+          "<awr:Header><awr:ActNumber>"+зДок.DocNum+"_"+GetYear(зДок.DocDate)+"П1"+"</awr:ActNumber><awr:ActDate>"+FormatDate(Date(),"YYYY-mm-dd")+"</awr:ActDate><awr:TypeWriteOff>Пересортица</awr:TypeWriteOff></awr:Header>"+
+          "<awr:Content>"+_NEWLINE;
+      EndIf; 
+    
+      aTab.Select();
+      While aTab.Next() Do
+        зПрт:=?(ФлОприходование,aTab.ПартияПриход,aTab.Партия);
+        СтрПродукт:=_ПолучитьТегиСтроки(зПрт);
+        If СтрПродукт="" Then
+          Exit 0;
+        EndIf;
+        зН:=зПрт.Parent();
+        аКоличество:=aTab.Количество;
+        If зПрт.флБезУпаковки=1 Then
+          аКоличество:=аКоличество*зН.ОбъемЛитров/10;
+        EndIf;
+        
+        Стр:=Стр+"<"+СтрТип+":Position><"+СтрТип+":Identity>"+aTab.CurLine+"</"+СтрТип+":Identity><"+СтрТип+":Product>"+СтрПродукт+_NEWLINE+
+          "</"+СтрТип+":Product><"+СтрТип+":Quantity>"+аКоличество+"</"+СтрТип+":Quantity></"+СтрТип+":Position>";
+      EndDo;
+      Стр:=Стр+"</"+СтрТип+":Content></ns:"+СтрТипДокумента+"></ns:Document></ns:Documents>";
+      
+      
+      СпОтвет:=List.Create();
+      If not глВыполнитьЗапросЕГАИССОжиданием(оМагазин,1,Стр,"opt/in/"+СтрТипДокумента,5,СпОтвет) Then
+        Exit 0;
+      EndIf;
+      аКодОтвета:=СпОтвет.GetByName("Результат");
+      аКодОтвета:=UpperCase(Replace(аКодОтвета,"-",""));
+      
+      If глОбновитьСтатусЕГАИСВДокументе(аКодОтвета,0,зДок,оПеремещения) Then
+        If ФлИзОбработки Then
+          оПеремещения.Статус:="Отправлен на сервер";
+          оПеремещения.зДок:=зДок;
+        EndIf;
+      Else
+        Exit 0;
+      EndIf;
+    EndIf;
+  Finally
+    If ФлБлок Then
+      зДок.Unlock();
+    EndIf;
+  EndTry;  
+  Exit 1;
+EndFunction
+
+//ТабМарки: Марка,Партия,Цена
+Function глВыгрузитьСписаниеМарокВЕГАИС(оМагазин,СпНастройки,ByRef СтрОтвет,ФлВозврат=0) Export
+  Try
+    оЮЛ:=оМагазин.ЮрЛицо;
+    оРегИд:=оМагазин.КодТочкиЕГАИС;
+    If IsEmpty(оРегИд) Then
+      СтрОтвет:="Отсутвует привязка к серверу ЕГАИС в текущем магазине!";
+      Exit 0;
+    EndIf;
+    ТабМарки:=СпНастройки["ТабМарки"];
+    НомерККТ:=СпНастройки["НомерККТ"];
+    НомерСмены:=СпНастройки["НомерСмены"];
+    НомерДокумента:=СпНастройки["НомерДокумента"];
+    ФлНомерВерсии:=СпНастройки["НомерВерсии"];//1 или 3
+    Дата:=СпНастройки["Дата"];
+    пИНН:=оЮЛ.ИНН;
+    пИНН:=TearStr(пИНН,"/");
+    пКПП:=оМагазин.КПП;
+    If IsEmpty(пКПП) Then
+      СтрОтвет:="Для магазина не указан КПП!";
+      Exit 0;
+    EndIf;
+    пАдрес:=Left(оМагазин.ФактАдрес,128);
+    If IsEmpty(пАдрес) Then
+      СтрОтвет:="Для магазина не указан фактический адрес!";
+      Exit 0;
+    EndIf;
+    пИмяМагазина:=Left(оМагазин.НазваниеМагазина,128);
+    If IsEmpty(пИмяМагазина) Then
+      СтрОтвет:="Для магазина не указано название!";
+      Exit 0;
+    EndIf;
+  
+    If ФлНомерВерсии<>3 Then
+      //Аddress - "адрес обособленного подразделения по розничной лицензии", 128 симв. макс.
+      //Name - "наименование магазина. Длина: до 128 символов."
+      //Kassa - "заводской номер ККМ, символьная строка."
+      //Shift - "номер смены, целое число."
+      //Number - "номер чека, целое число."
+      //Datetime - "Дата, время чека. Формат: ДДММГГЧЧММ – день, месяц, год, часы, минуты, может содержать часовой пояс."
+      Стр="<?xml version=""1.0"" encoding=""UTF-8""?>"+_NEWLINE+
+        "<Cheque xmlns:xs=""http://www.w3.org/2001/XMLSchema"""+_NEWLINE+
+        "xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"""+_NEWLINE+
+        "inn="""+пИНН+""" kpp="""+пКПП+""""+_NEWLINE+
+        "address="""+EncodeXMLString(пАдрес)+""""+_NEWLINE+
+        "name="""+EncodeXMLString(пИмяМагазина)+""""+_NEWLINE+
+        "kassa="""+НомерККТ+""""+_NEWLINE+
+        "shift="""+НомерСмены+""""+_NEWLINE+
+        "number="""+НомерДокумента+""""+_NEWLINE+
+        "datetime="""+FormatDate(Дата,"ddmmyyhhtt")+""">"+_NEWLINE;
+    Else
+      //Identity: String.50
+      УникальныйНомер:=Left(FormatDate(Дата,"ddmmyyhhttss")+ФлВозврат+Random(10000)+НомерККТ,50);
+      Стр="<?xml version=""1.0"" encoding=""UTF-8""?>"+_NEWLINE+
+        "<ns:Documents xmlns:ck=""http://fsrar.ru/WEGAIS/ChequeV3"""+_NEWLINE+
+        "xmlns:ns=""http://fsrar.ru/WEGAIS/WB_DOC_SINGLE_01"""+_NEWLINE+
+        "xmlns:oref=""http://fsrar.ru/WEGAIS/ClientRef_v2"""+_NEWLINE+
+        "xmlns:pref=""http://fsrar.ru/WEGAIS/ProductRef_v2"""+_NEWLINE+
+        "xmlns:unqualified_element=""http://fsrar.ru/WEGAIS/CommonEnum"""+_NEWLINE+
+        "xmlns:xs=""http://www.w3.org/2001/XMLSchema"""+_NEWLINE+
+        "xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"">"+_NEWLINE+
+        "<ns:Owner><ns:FSRAR_ID>"+оРегИд+"</ns:FSRAR_ID></ns:Owner>"+_NEWLINE+
+        "<ns:Document><ns:ChequeV3><ck:Identity>"+УникальныйНомер+"</ck:Identity><ck:Header>"+_NEWLINE+
+        "<ck:Date>"+FormatDate(Дата,"YYYY-mm-dd""T""hh:tt:ss")+"</ck:Date>"+_NEWLINE+
+        "<ck:Kassa>"+НомерККТ+"</ck:Kassa>"+_NEWLINE+
+        "<ck:Shift>"+НомерСмены+"</ck:Shift>"+_NEWLINE+
+        "<ck:Number>"+НомерДокумента+"</ck:Number>"+_NEWLINE+
+        "<ck:Type>"+?(ФлВозврат,"Возврат","Продажа")+"</ck:Type>"+_NEWLINE+
+        "</ck:Header><ck:Content>"+_NEWLINE;
+    EndIf;  
+    
+        
+    ObjC:=ObjectCollector.Create();
+    ТШк:=Tab.Create("Номенклатура,Штрихкод");
+    ТабМарки.Select();
+    While ТабМарки.Next() Do
+      зН:=ObjC.Get(ТабМарки.Партия).Parent();
+      If ТШк.FindAndGoto(зН,,"Номенклатура",1)=0 Then
+        ТШк.AddLineSorted("Номенклатура","Номенклатура,Штрихкод",зН,глПолучитьШтрихкод(зН,1,,1));
+      EndIf;
+      пШК:=?(IsEmpty(ТШк.Штрихкод),""," ean="""+ТШк.Штрихкод+"""");
+      пОбъем:=?(зН.ОбъемЛитров=0,""," volume="""+FormatNumber(зН.ОбъемЛитров,0,"",4)+"""");
+      
+      If ФлНомерВерсии<>3 Then
+        AppendStringToBufferedString(Стр,"<Bottle price="""+FormatNumber(?(ФлВозврат=0,ТабМарки.Цена,-ТабМарки.Цена),0,"",2)+""" barcode="""+EncodeXMLString(ТабМарки.Марка)+""""+пОбъем+пШК+" />");
+      Else
+        AppendStringToBufferedString(Стр,"<ck:Bottle><ck:Barcode>"+EncodeXMLString(ТабМарки.Марка)+"</ck:Barcode><ck:EAN>0000000000000</ck:EAN><ck:Price>"+FormatNumber(ТабМарки.Цена,0,"",2)+"</ck:Price></ck:Bottle>");
+      EndIf;
+    EndDo;
+    ObjC:=0;
+    If ФлНомерВерсии<>3 Then
+      AppendStringToBufferedString(Стр,"</Cheque>");
+    Else
+      AppendStringToBufferedString(Стр,"</ck:Content></ns:ChequeV3></ns:Document></ns:Documents>");
+    EndIf;
+          
+    If Uppercase(оМагазин.АдресЕГАИС)="TEST" Then
+      //Тестовый ответ
+      Стр:="HTTP/1.1 200 "+_NEWLINE+"Vary: Origin"+_NEWLINE+"Vary: Access-Control-Request-Method"+_NEWLINE+"Vary: Access-Control-Request-Headers"+_NEWLINE+
+          "Content-Type: text/xml;charset=UTF-8"+_NEWLINE+"Date: Fri, 01 Jan 2016 00:00:00 GMT"+_NEWLINE+"Connection: close"+_NEWLINE+_NEWLINE+
+          "<?xml version=""1.0"" encoding=""UTF-8"" standalone=""no""?><A>"+
+          "<url>http://check.egais.ru?id=ffffffff-ffff-ffff-ffff-ffffffffffff&amp;dt=0000000000&amp;cn=000000000000</url>"+
+          "<sign>FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF</sign><ver>2</ver></A>";
+      СтрОтвет:=Стр;
+      СтрОтвет:=ReformatXML(СтрОтвет);
+      Exit 1;
+    EndIf;
+    
+    СпОтвет:=List.Create();
+    СпОтвет["ЭтоВозврат"]:=ФлВозврат;
+    If not глВыполнитьЗапросЕГАИССОжиданием(оМагазин,0,Стр,"xml"+?(ФлНомерВерсии=3,"?type=ChequeV3"),6,СпОтвет) Then
+      СтрОтвет:=СпОтвет["Ошибка"];
+      Exit 0;
+    EndIf;
+    
+    СтрОтвет:=СпОтвет.GetByName("Результат");
+    СтрОтвет:=ReformatXML(СтрОтвет);
+  Except
+    СтрОтвет:=PopError();
+    Exit 0;
+  EndTry;
+  Exit 1;
+EndFunction
+
+Function глОбновитьСтатусыСписанийЕГАИС(оМагазин,оСписания=0) Export
+  ФлВизуальныйВызов:=оСписания<>0;
+  ТУдалить:=Text.Create(1);
+  
+  СпОтвет:=List.Create();  
+  If not глВыполнитьЗапросЕГАИССОжиданием(оМагазин,ФлВизуальныйВызов,"","",7,СпОтвет) Then
+    Exit 0;
+  EndIf;
+  Стр:=СпОтвет.GetByName("Результат");
+  Тч:=Text.Create(1);
+  Тч.AddString(Стр);
+  
+  If Тч.Size()=0 Then
+    Exit;
+  EndIf;
+  
+  aListID2:=List.Create();
+  aListID3:=List.Create();
+  i:=0;
+  While i<Тч.Size() Do
+    i:=i+1;
+    Стр:=Тч.GetLine(i);
+    If Pos("=====================",Стр)<>1 Then
+      Continue;
+    EndIf;
+    i:=i+1;
+    Ид3:=Uppercase(Тч.GetLine(i));
+    i:=i+1;
+    Ид2:=Uppercase(Тч.GetLine(i));
+    If not IsEmpty(Ид3) Then
+      aListID3.Add(Ид3);
+    EndIf;  
+    If not IsEmpty(Ид2) Then
+      aListID2.Add(Ид2);
+    EndIf;  
+  EndDo;
+  If aListID2.Size()+aListID3.Size()=0 Then
+    Exit;
+  EndIf;
+  
+  НачДата:=Max('01.01.2016',DBVar.НачалоПериодаБазы);
+  ТЗ:="зСтатус:=Doc.РегистрацияТМЦ.@Status;Condition(зСтатус>1);зДата:=Doc.РегистрацияТМЦ.DocDate;Condition(зДата>=НачДата);
+  |зДок:=Doc.РегистрацияТМЦ;
+  |зИд2:=Doc.РегистрацияТМЦ.УникальныйИдентификатор2;
+  |зИд3:=Doc.РегистрацияТМЦ.УникальныйИдентификатор3;"+
+  ?((aListID2.Size()>0)And(aListID3.Size()>0),"Condition((Mid(зИд3,2) IN aListID3)or(зИд2 IN aListID2));",?(aListID2.Size()>0,"Condition(зИд2 IN aListID2);","Condition(Mid(зИд3,2) IN aListID3);"))+
+  "зМагазин:=Doc.РегистрацияТМЦ.Склад.Магазин;
+  |Condition(зМагазин=оМагазин);
+  |зЮЛ:=Doc.РегистрацияТМЦ.ЮрЛицо;
+  |Condition(зЮЛ=оМагазин.ЮрЛицо);
+  |Group зДок;";
+  
+  З:=Query.Create();
+  З.Execute(ТЗ,0);
+  ТбДокументы:=З.ResultTable;
+  ТбДокументы.Select();
+  While ТбДокументы.Next() Do
+    зДок:=ТбДокументы.зДок;
+    ТбДокументы.зИд3:=Mid(зДок.УникальныйИдентификатор3,2);
+  EndDo;
+  
+  
+  Try
+    i:=0;
+    While i<Тч.Size() Do
+      i:=i+1;
+      Стр:=Тч.GetLine(i);
+      If Pos("=====================",Стр)<>1 Then
+        Continue;
+      EndIf;
+      i:=i+1;
+      Ид3:=Тч.GetLine(i);
+      ВИд3:=UpperCase(Ид3);
+      i:=i+1;
+      Ид2:=Тч.GetLine(i);
+      ВИд2:=UpperCase(Ид2);
+      
+      //Загрузка текста ошибки
+      СтрТекст:="";
+      СтрТекст0:="";
+      While i<Тч.Size() Do
+        i:=i+1;
+        Стр:=Тч.GetLine(i);
+        If Pos("=====================",Стр)=1 Then
+          i:=i-1;
+          Break;
+        EndIf;
+        If _And(pos(_NEWLINE,Стр)=0,pos(chr(10),Стр)>0) Then
+          Стр:=Replace(Стр,Chr(10),_NEWLINE);
+        EndIf;
+        //Делим длинные строки для удобства пользователя
+        AppendStringToBufferedString(СтрТекст0,Стр+_NEWLINE);
+        While Стр<>"" Do
+          Стр2:=TearStr(Стр,_NEWLINE);
+          While Length(Стр2)>250 Do
+            AppendStringToBufferedString(СтрТекст,Left(Стр2,250)+_NEWLINE);
+            Стр2:=Mid(Стр2,251);
+          EndDo;
+          AppendStringToBufferedString(СтрТекст,Стр2+_NEWLINE);
+        EndDo;
+      EndDo;
+      
+      //Поиск по GUID
+      If _And(ВИд2<>"",ТбДокументы.FindAndGoto(ВИд2,,"зИд2")>0) Then
+        зДок:=ТбДокументы.зДок;
+        ФлТекущий:=?(ФлВизуальныйВызов,оСписания.FindAndGoto(зДок,,"зДок")>0,0);
+        локИд2:=UpperCase(Trim(зДок.УникальныйИдентификатор2));
+        локИд3:=UpperCase(Trim(зДок.УникальныйИдентификатор3));
+        локИд3:=Mid(локИд3,2);
+        
+        If ФлТекущий Then
+          оСписания.текстОшибка:=СтрТекст;
+          оСписания.тОшибка:="Доступно входящее сообщение";
+        EndIf;  
+        
+        If Pos("<Conclusion>Rejected</Conclusion>",СтрТекст0)>0 Then
+          If глОбновитьСтатусЕГАИСВДокументе("",0,зДок,оСписания) Then
+            If ФлТекущий Then
+              оСписания.тОшибка:="Ошибка сервера, нажмите для просмотра";
+              оСписания.Icon(оСписания.CurLine,"Иконка",глПолучитьНомерИконкиДокументаЕГАИС("",Trim(зДок.УникальныйИдентификатор3)));
+              If локИд3="" Then
+                оСписания.Статус:="";
+              EndIf;
+            EndIf;  
+            ТУдалить.AddString(Ид2);
+          EndIf;
+        ElseIf (Pos("<Conclusion>Accepted</Conclusion>",СтрТекст0)>0)And(Pos("<OperationResult>Rejected</OperationResult>",СтрТекст0)>0) Then
+          If глОбновитьСтатусЕГАИСВДокументе("",0,зДок,оСписания) Then
+            If ФлТекущий Then
+              оСписания.тОшибка:="Ошибка сервера, нажмите для просмотра";
+              оСписания.Icon(оСписания.CurLine,"Иконка",глПолучитьНомерИконкиДокументаЕГАИС("",Trim(зДок.УникальныйИдентификатор3)));
+              If локИд3="" Then
+                оСписания.Статус:="";
+              EndIf;
+            EndIf;  
+            ТУдалить.AddString(Ид2);
+          EndIf;
+        ElseIf (зДок.КодОперации=Enum.коРегистрацияТМЦ.СписаниеТМЦ)And(Pos("<Conclusion>Accepted</Conclusion>",СтрТекст0)>0)And
+                (Pos("<OperationResult>Accepted</OperationResult>",СтрТекст0)>0) Then
+          TearStr(СтрТекст0,"<RegID>");
+          СтрИД:=UpperCase(TearStr(СтрТекст0,"</RegID>"));
+          
+          If глОбновитьСтатусЕГАИСВДокументе("","="+СтрИД,зДок,оСписания) Then
+            If ФлТекущий Then
+              оСписания.Статус:="Документ принят";
+              оСписания.тОшибка:="Успешно";
+              оСписания.Icon(оСписания.CurLine,"Иконка",глПолучитьНомерИконкиДокументаЕГАИС("","="+СтрИД));
+            EndIf;  
+            ТУдалить.AddString(Ид2);
+          EndIf;
+        ElseIf (ФлВизуальныйВызов)And(Pos("<Conclusion>Accepted</Conclusion>",СтрТекст0)>0)And(Pos("<InformF1RegId>",СтрТекст0)>0)And
+            (Pos("<OperationResult>Accepted</OperationResult>",СтрТекст0)>0) Then
+              
+          ИмяФайла:="Temp\ЕГАИС\Оприходования\"+GetYear(зДок.DocDate)+зДок.DocNum+".bin"; 
+          If not File.DoesFileExist(ИмяФайла) Then
+            Message("У документа "+зДок+" отсутствует файл настроек!","!");
+            Continue;
+          EndIf;
+          
+          Таб2:=0;
+          Try
+            Таб2:=ObjectFromFile(ИмяФайла);
+          Except
+            Message("Документ "+зДок +": файл настроек поврежден! Попробуйте отредактировать внутренние свойства!","!");
+            Continue;
+          EndTry;
+              
+          If ФлТекущий Then
+            оСписания.тОшибка:="Ошибка при принятии документа";
+          EndIf;  
+          аДок:=зДок.Copy();
+          аПольз:="";аКомп:="";аДата:="";
+          If not аДок.Lock(аПольз,аКомп,аДата) Then
+            Message("Документ "+аДок+" открыт на запись. В данный момент с ним работает пользователь "+аПольз+" (компьютер "+аКомп+")! Пожалуйста, закройте документ, чтобы выполнить операцию!","!");
+            Exit;
+          EndIf;
+          Try
+            аДок.Reload();
+            TearStr(СтрТекст0,"<ActRegId>");
+            СтрИД:=UpperCase(TearStr(СтрТекст0,"</ActRegId>"));
+            
+            аТаб:=Tab.Create("Номенклатура,Партия");
+            bTab:=аДок.LoadStorage("ОстаткиТМЦ");
+            bTab.Select();
+            While bTab.Next() Do
+              аТаб.AddLine("Номенклатура,Партия",bTab.Номенклатура,bTab.Партия);
+            EndDo;
+            
+            Фл:=1;
+            TearStr(СтрТекст0,"<Content>");
+            While Pos("<Position>",СтрТекст0)>0 Do
+              TearStr(СтрТекст0,"<Position>");
+              Стр2:=TearStr(СтрТекст0,"</Position>");
+              If Стр2="" Then
+                Continue;
+              EndIf;
+              If (Pos("<Identity>",Стр2)>0)And(Pos("<InformF1RegId>",Стр2)>0)And(Pos("<F2RegId>",Стр2)>0) Then
+                Стр3:=Стр2;
+                TearStr(Стр3,"<Identity>");
+                Стр3:=Number(TearStr(Стр3,"</Identity>"));
+                If (Стр3<1)Or(Стр3>аТаб.Size()) Then
+                  Message("Входящая регистрация содержит ошибочную (2) позицию, документ не обновлен "+зДок+"!","!");
+                  Фл:=0;
+                  Break;
+                EndIf;
+                аТаб.CurLine:=Стр3;
+                аСтр:=Стр3;
+                
+                Индекс:=аТаб.Номенклатура.Code+"@"+аТаб.Партия.Code;
+                If Таб2.FindAndGoto(Индекс,,"Индекс")=0 Then
+                  Message("Отредактированы не все свойства оприходования!","!");
+                  Фл:=0;
+                  Break;
+                EndIf;
+                
+                If Trim(Таб2.КодЕГАИС)="" Then
+                  Message("В документе "+зДок+" в строке "+аСтр+" не заполнен код ЕГАИС партии в доп. свойствах!","!");
+                  Фл:=0;
+                  Break;
+                EndIf;
+                
+                If аТаб.Партия.Selected()=0 Then
+                  Message("В документе "+аДок+" в строке "+аСтр+" не выбрана партия ТМЦ!","!");
+                  Фл:=0;
+                  Break;
+                EndIf;
+                
+                Стр3:=Стр2;
+                TearStr(Стр3,"<InformF1RegId>");
+                Стр3:=Trim(TearStr(Стр3,"</InformF1RegId>"));
+                If Стр3="" Then
+                  Message("Входящая регистрация содержит ошибочную (3) позицию, документ не обновлен "+зДок+"!","!");
+                  Фл:=0;
+                  Break;
+                EndIf;
+                
+                Стр4:=Стр2;
+                TearStr(Стр4,"<F2RegId>");
+                Стр4:=Trim(TearStr(Стр4,"</F2RegId>"));
+                If Стр4="" Then
+                  Message("Входящая регистрация содержит ошибочную (4) позицию, документ не обновлен "+зДок+"!","!");
+                  Фл:=0;
+                  Break;
+                EndIf;
+                
+                ЕГАИСКодСправок:=Стр3+"###"+Стр4;
+                If (Trim(аТаб.Партия.ЕГАИСКодСправок)<>"")And(Trim(аТаб.Партия.ЕГАИСКодСправок)<>ЕГАИСКодСправок) Then
+                  Message("В документе "+аДок+" в строке "+аСтр+" в партии ТМЦ уже заполнены коды справок А и Б, используйте новую партию!","!");
+                  Фл:=0;
+                  Break;
+                EndIf;
+                If (Trim(аТаб.Партия.ЕГАИСКодНоменклатуры)<>"")And(Trim(аТаб.Партия.ЕГАИСКодНоменклатуры)<>Trim(Таб2.КодЕГАИС)) Then
+                  Message("В документе "+аДок+" в строке "+аСтр+" в партии ТМЦ уже заполнен другой код ЕГАИС ТМЦ, используйте новую партию!","!");
+                  Фл:=0;
+                  Break;
+                EndIf;
+                аПартия:=аТаб.Партия.Copy();
+                аПартия.ЕГАИСКодНоменклатуры:=Trim(Таб2.КодЕГАИС);
+                аПартия.ЕГАИСКодСправок:=ЕГАИСКодСправок;
+                аПартия.флИмпортнаяПродукция:=Number(Таб2.флИмпортнаяПродукция);
+                If not глЗаписать(аПартия) Then
+                  Фл:=0;
+                  Break;
+                EndIf;
+              Else
+                Message("Входящая регистрация содержит ошибочную позицию, документ не обновлен "+зДок+"!","!");
+                Фл:=0;
+                Break;
+              EndIf;
+            EndDo;
+            
+            If not Фл Then
+              Break;
+            EndIf;
+            
+            If глОбновитьСтатусЕГАИСВДокументе("","="+СтрИД,зДок,оСписания) Then
+              If ФлТекущий Then
+                оСписания.Статус:="Документ принят";
+                оСписания.тОшибка:="";
+                оСписания.зДок:=аДок;
+                оСписания.Icon(оСписания.CurLine,"Иконка",глПолучитьНомерИконкиДокументаЕГАИС("","="+СтрИД));
+              EndIf;  
+              ТУдалить.AddString(Ид2);
+            EndIf;
+          Finally
+            аДок.Unlock();
+          EndTry;
+        Else
+          оСписания.тОшибка:="Неопознанный ответ сервера, нажмите For просмотра";
+        EndIf;
+      EndIf;
+    EndDo;
+  Finally
+    If ТУдалить.Size()>0 Then
+      глВыполнитьЗапросЕГАИССОжиданием(оМагазин,ФлВизуальныйВызов,ТУдалить,"opt/in/",8);
+    EndIf;
+  EndTry;
+EndFunction
+
+
+
+Function глОбновитьСтатусыПеремещенийЕГАИС(оМагазин,оПеремещения=0) Export
+  ФлВизуальныйВызов:=оПеремещения<>0;
+  ТУдалить:=Text.Create(1);
+  
+  СпОтвет:=List.Create();  
+  If not глВыполнитьЗапросЕГАИССОжиданием(оМагазин,ФлВизуальныйВызов,"","",7,СпОтвет) Then
+    Exit 0;
+  EndIf;
+  Стр:=СпОтвет.GetByName("Результат");
+  Тч:=Text.Create(1);
+  Тч.AddString(Стр);
+  
+  If Тч.Size()=0 Then
+    Exit;
+  EndIf;
+  
+  aListID2:=List.Create();
+  aListID3:=List.Create();
+  i:=0;
+  While i<Тч.Size() Do
+    i:=i+1;
+    Стр:=Тч.GetLine(i);
+    If Pos("=====================",Стр)<>1 Then
+      Continue;
+    EndIf;
+    i:=i+1;
+    Ид3:=Uppercase(Тч.GetLine(i));
+    i:=i+1;
+    Ид2:=Uppercase(Тч.GetLine(i));
+    If not IsEmpty(Ид3) Then
+      aListID3.Add(Ид3);
+    EndIf;  
+    If not IsEmpty(Ид2) Then
+      aListID2.Add(Ид2);
+    EndIf;  
+  EndDo;
+  If aListID2.Size()+aListID3.Size()=0 Then
+    Exit;
+  EndIf;
+  
+  НачДата:=Max('01.01.2016',DBVar.НачалоПериодаБазы);
+  ТЗ:="зСтатус:=Doc.Регистр2ЕГАИС.@Status;Condition(зСтатус>1);зДата:=Doc.Регистр2ЕГАИС.DocDate;Condition(зДата>=НачДата);
+  |зДок:=Doc.Регистр2ЕГАИС;
+  |зИд2:=Doc.Регистр2ЕГАИС.УникальныйИдентификатор2;
+  |зИд3:=Doc.Регистр2ЕГАИС.УникальныйИдентификатор3;"+
+  ?((aListID2.Size()>0)And(aListID3.Size()>0),"Condition((Mid(зИд3,2) IN aListID3)or(зИд2 IN aListID2));",?(aListID2.Size()>0,"Condition(зИд2 IN aListID2);","Condition(Mid(зИд3,2) IN aListID3);"))+
+  "зМагазин:=Doc.Регистр2ЕГАИС.Магазин;
+  |Condition(зМагазин=оМагазин);
+  |зЮЛ:=Doc.Регистр2ЕГАИС.ЮрЛицо;
+  |Condition(зЮЛ=оМагазин.ЮрЛицо);
+  |Group зДок;";
+  
+  З:=Query.Create();
+  З.Execute(ТЗ,0);
+  ТбДокументы:=З.ResultTable;
+  ТбДокументы.Select();
+  While ТбДокументы.Next() Do
+    зДок:=ТбДокументы.зДок;
+    ТбДокументы.зИд3:=Mid(зДок.УникальныйИдентификатор3,2);
+  EndDo;
+  
+  Try
+    i:=0;
+    While i<Тч.Size() Do
+      i:=i+1;
+      Стр:=Тч.GetLine(i);
+      If Pos("=====================",Стр)<>1 Then
+        Continue;
+      EndIf;
+      i:=i+1;
+      Ид3:=Тч.GetLine(i);
+      ВИд3:=UpperCase(Ид3);
+      i:=i+1;
+      Ид2:=Тч.GetLine(i);
+      ВИд2:=UpperCase(Ид2);
+      
+      //Загрузка текста ошибки
+      СтрТекст:="";
+      СтрТекст0:="";
+      While i<Тч.Size() Do
+        i:=i+1;
+        Стр:=Тч.GetLine(i);
+        If Pos("=====================",Стр)=1 Then
+          i:=i-1;
+          Break;
+        EndIf;
+        If _And(pos(_NEWLINE,Стр)=0,pos(chr(10),Стр)>0) Then
+          Стр:=Replace(Стр,Chr(10),_NEWLINE);
+        EndIf;
+        //Делим длинные строки для удобства пользователя
+        AppendStringToBufferedString(СтрТекст0,Стр+_NEWLINE);
+        While Стр<>"" Do
+          Стр2:=TearStr(Стр,_NEWLINE);
+          While Length(Стр2)>250 Do
+            AppendStringToBufferedString(СтрТекст,Left(Стр2,250)+_NEWLINE);
+            Стр2:=Mid(Стр2,251);
+          EndDo;
+          AppendStringToBufferedString(СтрТекст,Стр2+_NEWLINE);
+        EndDo;
+      EndDo;
+      
+      //Поиск по GUID
+      If _And(ВИд2<>"",ТбДокументы.FindAndGoto(ВИд2,,"зИд2")>0) Then
+        зДок:=ТбДокументы.зДок;
+        ФлТекущий:=?(ФлВизуальныйВызов,оПеремещения.FindAndGoto(зДок,,"зДок")>0,0);
+        локИд2:=UpperCase(Trim(зДок.УникальныйИдентификатор2));
+        локИд3:=UpperCase(Trim(зДок.УникальныйИдентификатор3));
+        локИд3:=Mid(локИд3,2);
+        
+        If ФлТекущий Then
+          оПеремещения.текстОшибка:=СтрТекст;
+          оПеремещения.тОшибка:="Доступно входящее сообщение";
+        EndIf;  
+        
+        If Pos("<Conclusion>Rejected</Conclusion>",СтрТекст0)>0 Then
+          If глОбновитьСтатусЕГАИСВДокументе("",0,зДок,оПеремещения) Then
+            If ФлТекущий Then
+              оПеремещения.тОшибка:="Ошибка сервера, нажмите для просмотра";
+              оПеремещения.Icon(оПеремещения.CurLine,"Иконка",глПолучитьНомерИконкиДокументаЕГАИС("",Trim(зДок.УникальныйИдентификатор3)));
+              If локИд3="" Then
+                оПеремещения.Статус:="";
+              EndIf;
+            EndIf;  
+            ТУдалить.AddString(Ид2);
+          EndIf;
+        ElseIf (Pos("<Conclusion>Accepted</Conclusion>",СтрТекст0)>0)And(Pos("<OperationResult>Rejected</OperationResult>",СтрТекст0)>0) Then
+          If глОбновитьСтатусЕГАИСВДокументе("",?(ФлВизуальныйВызов,0,"#"),зДок,оПеремещения) Then
+            If ФлТекущий Then
+              оПеремещения.тОшибка:="Ошибка сервера, нажмите для просмотра";
+              оПеремещения.Icon(оПеремещения.CurLine,"Иконка",глПолучитьНомерИконкиДокументаЕГАИС("",Trim(зДок.УникальныйИдентификатор3)));
+              If локИд3="" Then
+                оПеремещения.Статус:="";
+              EndIf;
+            EndIf;  
+            ТУдалить.AddString(Ид2);
+          EndIf;
+        ElseIf (Pos("<Conclusion>Accepted</Conclusion>",СтрТекст0)>0)And(Pos("<OperationResult>Accepted</OperationResult>",СтрТекст0)>0) Then
+          TearStr(СтрТекст0,"<RegID>");
+          СтрИД:=UpperCase(TearStr(СтрТекст0,"</RegID>"));
+          
+          СтрИД2:="="+СтрИД;
+          СтрИД1:=0;
+          If _And(зДок.КодОперации=Enum.коРегистр2ЕГАИС.ПересортНаРегистре2,Pos("-",зДок.УникальныйИдентификатор)=0) Then
+            //Сохраняем в УникальныйИдентификатор
+            СтрИД2:=0;
+            СтрИД1:="="+СтрИД;
+          EndIf;
+          
+          If глОбновитьСтатусЕГАИСВДокументе("",СтрИД2,зДок,оПеремещения,СтрИД1) Then
+            If ФлТекущий Then
+              оПеремещения.Статус:=?(СтрИД2=0,"Не отправлен (оприходование)","Документ принят");
+              оПеремещения.тОшибка:="Успешно";
+              оПеремещения.Icon(оПеремещения.CurLine,"Иконка",глПолучитьНомерИконкиДокументаЕГАИС("","="+СтрИД));
+            EndIf;  
+            ТУдалить.AddString(Ид2);
+          EndIf;
+        ElseIf ФлТекущий Then
+          оПеремещения.тОшибка:="Неопознанный ответ сервера, нажмите для просмотра";
+        EndIf;
+      EndIf;
+    EndDo;
+  Finally
+    If ТУдалить.Size()>0 Then
+      глВыполнитьЗапросЕГАИССОжиданием(оМагазин,ФлВизуальныйВызов,ТУдалить,"opt/in/",8);
+    EndIf;
+  EndTry;
+EndFunction
+
+
+Function глОбновитьСтатусыПоступленийЕГАИС(оМагазин,оПоступления=0,оПеремещения=0) Export
+
+  Function ЗакрытьДокументПоступления(Т,локИд2,локИд3,зДок,СтрОписание,СтрЛог)
+    ФлВизуальныйВызов:=оПоступления<>0;
+    ФлТекущий:=?(ФлВизуальныйВызов,оПоступления.FindAndGoto(зДок,,"Локальный")>0,0);
+    Result:=0;
+    пДок:=зДок;
+    пДокР:=зДок;
+    пК:=зДок.Контрагент;
+    пКР:=пК;
+    
+    СпБлок:=List.Create();
+    аПольз:="";аКомп:="";аДата:="";
+    If зДок.IsLocked()<>1 Then
+      If not зДок.Lock(аПольз,аКомп,аДата) Then
+        If ФлВизуальныйВызов Then
+          Message("Документ "+зДок+" открыт на запись. В данный момент с ним работает пользователь "+аПольз+" (компьютер "+аКомп+")! Пожалуйста, закройте документ, чтобы выполнить операцию!","!");
+        EndIf;
+        Exit 0;
+      EndIf;
+      СпБлок.Add(зДок);
+    EndIf;  
+    
+    флОк:=0;
+    BeginTransaction();
+    Try
+      //Подтверждаем марки документа
+      ТМарки:=глМаркиЗагрузитьДокумент(зДок,1,1);
+      //ТМарки:"Партия,Ящик,Марка"
+      aList:=зДок.LoadLinkedDocuments(1);
+      For i:=1 To aList.Size() Do 
+        бДок:=aList.Get(i);
+        If _Or(бДок.DBName()<>"ВозвратПоставщику",бДок.Status()<2) Then
+          Continue;
+        EndIf;
+        //Отнимаем марки возврата
+        ТМарки2:=глМаркиЗагрузитьДокумент(зДок,,1);
+        ТМарки.Combine(ТМарки2,"Партия,Марка","SUB");
+      EndDo;
+      ТМарки.Select();
+      While ТМарки.Next() Do
+        aEl:=ТМарки.Элемент;
+        If aEl.флСостояние=0 Then
+          aEl.флСостояние:=1;
+          aEl.Save();
+        EndIf;
+      EndDo;
+      
+      зДок2:=0;
+      If not глСоздатьПеремещениеНаРегистр2ЕГАИС(зДок2,оМагазин,зДок) Then
+        Exit 0;
+      EndIf;
+      If not IsEmpty(зДок2) Then
+        If not глЗаписать(зДок2) Then
+          Exit 0;
+        EndIf;
+        If not глОбработать(зДок2,1) Then
+          Exit 0;
+        EndIf;
+        If ФлВизуальныйВызов Then
+          If ФлТекущий Then
+            оПоступления.Регистр2:="Не отправлен";
+            Form.оВхПоступления.InvokeEvent("OnInitLine","IndexFrom,IndexTo",оПоступления.CurLine,оПоступления.CurLine);
+          EndIf;
+          оПеремещения.AddLine("ДокТип,зДок,Статус,тОшибка","на регистр 2",зДок2,"Не отправлен","");
+          оПеремещения.Icon(оПеремещения.CurLine,"Иконка",глПолучитьНомерИконкиДокументаЕГАИС("",""));
+        EndIf;
+        //TODO: Установка для отправки перемещения непосредственно здесь?
+      EndIf;
+      
+      If глОбновитьСтатусЕГАИСВДокументе("","="+локИд3,зДок,оПоступления) Then
+        Logs.Write(СтрЛог+": "+зДок+", ID: "+локИд3+?(локИд2<>"",", GUID: "+локИд2),зДок,"ЕГАИС",0);
+        If ФлВизуальныйВызов Then
+          If ФлТекущий Then
+            оПоступления.зСтатус:=СтрОписание;
+          EndIf;  
+          пСтатус:=СтрОписание;
+          Т.CopyByX("v2",1);
+        EndIf;
+      Else
+        Exit 0;
+      EndIf;
+      флОк:=1;
+    Finally
+      If флОк Then
+        CommitTransaction();
+      Else
+        RollbackTransaction();
+      EndIf;
+      If СпБлок.Size()>0 Then
+        MassUnlock(СпБлок);
+      EndIf;  
+    EndTry;
+    Exit 1;
+  EndFunction  
+          
+  ФлВизуальныйВызов:=оПоступления<>0;
+  оЮЛ:=оМагазин.ЮрЛицо;
+  ТУдалить:=Text.Create(1);
+  
+  СпОтвет:=List.Create();  
+  If not глВыполнитьЗапросЕГАИССОжиданием(оМагазин,ФлВизуальныйВызов,"","",7,СпОтвет) Then
+    Exit 0;
+  EndIf;
+  Стр:=СпОтвет.GetByName("Результат");
+  Тч:=Text.Create(1);
+  Тч.AddString(Стр);
+
+  If Тч.Size()=0 Then
+    Exit;
+  EndIf;
+  
+  aListID2:=List.Create();
+  aListID3:=List.Create();
+  i:=0;
+  While i<Тч.Size() Do
+    i:=i+1;
+    Стр:=Тч.GetLine(i);
+    If Pos("=====================",Стр)<>1 Then
+      Continue;
+    EndIf;
+    i:=i+1;
+    Ид3:=Uppercase(Тч.GetLine(i));
+    i:=i+1;
+    Ид2:=Uppercase(Тч.GetLine(i));
+    If not IsEmpty(Ид3) Then
+      aListID3.Add(Ид3);
+    EndIf;  
+    If not IsEmpty(Ид2) Then
+      aListID2.Add(Ид2);
+    EndIf;  
+  EndDo;
+  If aListID2.Size()+aListID3.Size()=0 Then
+    Exit;
+  EndIf;
+  
+  НачДата:=Max('01.01.2016',DBVar.НачалоПериодаБазы);
+  ТЗ:="зСтатус:=Doc.ПоступлениеТМЦ.@Status;Condition(зСтатус>1);зДата:=Doc.ПоступлениеТМЦ.DocDate;Condition(зДата>=НачДата);
+  |зДок:=Doc.ПоступлениеТМЦ;
+  |зИд2:=Doc.ПоступлениеТМЦ.УникальныйИдентификатор2;
+  |зИд3:=Doc.ПоступлениеТМЦ.УникальныйИдентификатор3;"+
+  ?((aListID2.Size()>0)And(aListID3.Size()>0),"Condition((Mid(зИд3,2) IN aListID3)or(зИд2 IN aListID2));",?(aListID2.Size()>0,"Condition(зИд2 IN aListID2);","Condition(Mid(зИд3,2) IN aListID3);"))+
+  "зЮЛ:=Doc.ПоступлениеТМЦ.ЮрЛицо;
+  |Condition(зЮЛ=оЮЛ);
+  |Group зДок;";
+  
+  З:=Query.Create();
+  З.Execute(ТЗ,0);
+  ТбДокументы:=З.ResultTable;
+  ТбДокументы.Select();
+  While ТбДокументы.Next() Do
+    зДок:=ТбДокументы.зДок;
+    ТбДокументы.зИд3:=Mid(зДок.УникальныйИдентификатор3,2);
+  EndDo;
+  
+  Т:=0;
+  If ФлВизуальныйВызов Then
+    Т:=Table.Create();
+    Т.SetSourceName("ОтчетПоОбновлению");
+    оЗагол:="Отчет по обновлениям поступлений";
+    оСвойства:=глСвойстваПечатиПростые();
+    Т.CopyByX("v1",1);
+  EndIf;
+  
+  ФлСтроки:=0;
+  ФлЗакрытые:=0;
+  Try
+    i:=0;
+    While i<Тч.Size() Do
+      i:=i+1;
+      Стр:=Тч.GetLine(i);
+      If Pos("=====================",Стр)<>1 Then
+        Continue;
+      EndIf;
+      i:=i+1;
+      Ид3:=Тч.GetLine(i);
+      ВИд3:=UpperCase(Ид3);
+      i:=i+1;
+      Ид2:=Тч.GetLine(i);
+      ВИд2:=UpperCase(Ид2);
+      
+      //Загрузка текста ошибки
+      СтрТекст:="";
+      СтрТекст0:="";
+      While i<Тч.Size() Do
+        i:=i+1;
+        Стр:=Тч.GetLine(i);
+        If Pos("=====================",Стр)=1 Then
+          i:=i-1;
+          Break;
+        EndIf;
+        If _And(pos(_NEWLINE,Стр)=0,pos(chr(10),Стр)>0) Then
+          Стр:=Replace(Стр,Chr(10),_NEWLINE);
+        EndIf;
+        AppendStringToBufferedString(СтрТекст0,Стр+_NEWLINE);
+        //Делим длинные строки для удобства пользователя, защита от результата с остатками...
+        If Length(СтрТекст)<250000 Then
+          While Стр<>"" Do
+            Стр2:=TearStr(Стр,_NEWLINE);
+            If (Length(Стр2)<250000)And(Length(СтрТекст)<250000) Then
+              While Length(Стр2)>250 Do
+                AppendStringToBufferedString(СтрТекст,Left(Стр2,250)+_NEWLINE);
+                Стр2:=Mid(Стр2,251);
+              EndDo;
+            EndIf;  
+            AppendStringToBufferedString(СтрТекст,Стр2+_NEWLINE);
+          EndDo;
+        Else
+          AppendStringToBufferedString(СтрТекст,Стр+_NEWLINE);
+        EndIf;  
+      EndDo;
+      
+      //Поиск по GUID
+      ФлОтветПринят:=0;
+      If _And(ВИд2<>"",ТбДокументы.FindAndGoto(ВИд2,,"зИд2")>0) Then
+        зДок:=ТбДокументы.зДок;
+        пДок:=зДок;
+        пДокР:=зДок;
+        пК:=зДок.Контрагент;
+        пКР:=пК;
+        ФлТекущий:=?(ФлВизуальныйВызов,оПоступления.FindAndGoto(зДок,,"Локальный")>0,0);
+      
+        локИд2:=UpperCase(Trim(зДок.УникальныйИдентификатор2));
+        локИд3:=UpperCase(Trim(зДок.УникальныйИдентификатор3));
+        ФлАкт:=Left(локИд3,1)="%";
+        ФлАкт2:=Left(локИд3,1)="+";
+        ФлАктОтказа:=Left(локИд3,1)="*";
+        ФлАктОтказа2:=Left(локИд3,1)="-";
+        локИд3:=Mid(локИд3,2);
+        
+        If ФлТекущий Then
+          оПоступления.ТекстОтвета:=СтрТекст;
+          оПоступления.зСтатус:="Неизвестный ответ";
+        EndIf;  
+        
+        If локИд2<>ВИд2 Then
+          If ФлВизуальныйВызов Then
+            пСтатус:="Внутренняя ошибка при обновлении поступления (1), пожалуйста обратитесь к разработчику!";
+            ФлСтроки:=1;
+            Т.CopyByX("v4",1);
+          EndIf;
+          Continue;
+        EndIf;
+        
+        If (ФлАктОтказа)or(ФлАктОтказа2) Then
+          //Ожидается их обработка ниже
+          //Message("Ситуация-5. Обратитесь к администратору!","!");          
+        ElseIf (Pos("<Conclusion>Accepted</Conclusion>",СтрТекст0)>0)And(Pos("<OperationResult>Accepted</OperationResult>",СтрТекст0)>0)And(not ФлАкт) Then
+          ФлОтветПринят:=1;
+          If ЗакрытьДокументПоступления(Т,локИд2,локИд3,зДок,"Акт принят, документ закрыт","Документ принят") Then
+            //"###": Удаление локИд3 в документах без replyID
+            ТУдалить.AddString(локИд2);
+            ТУдалить.AddString(локИд3);
+            ТУдалить.AddString("###"+локИд3);
+            ФлЗакрытые:=1;
+          EndIf;          
+        ElseIf (Pos("<Conclusion>Accepted</Conclusion>",СтрТекст0)>0)And(ФлАкт) Then
+          ФлОтветПринят:=1;
+          If глОбновитьСтатусЕГАИСВДокументе("","+"+локИд3,зДок,оПоступления) Then
+            Logs.Write("Акт расхождения отправлен: "+зДок+", ID: "+локИд3+", GUID: "+локИд2,зДок,"ЕГАИС",0);
+            If ФлВизуальныйВызов Then
+              If ФлТекущий Then
+                оПоступления.зСтатус:="Сервер принял акт";
+              EndIf;  
+              пСтатус:="Сервер принял акт";
+              Т.CopyByX("v2",1);
+            EndIf;
+            ТУдалить.AddString(Ид2);
+          EndIf;
+        ElseIf (Pos("<Conclusion>Rejected</Conclusion>",СтрТекст0)>0)And(ФлАкт) Then
+          ФлОтветПринят:=1;
+          If глОбновитьСтатусЕГАИСВДокументе("","",зДок,оПоступления) Then
+            Logs.Write("Акт расхождения отвергнут: "+зДок+", ID: "+локИд3+", GUID: "+локИд2,зДок,"ЕГАИС",0);
+            If ФлВизуальныйВызов Then
+              If ФлТекущий Then
+                оПоступления.зСтатус:="Сервер отказал";
+              EndIf;  
+              пСтатус:="Сервер отказал";
+              Т.CopyByX("v4",1);
+            EndIf;
+            ТУдалить.AddString(локИд2);
+          EndIf;
+        ElseIf (Pos("<Conclusion>Rejected</Conclusion>",СтрТекст0)>0)And(Left(зДок.УникальныйИдентификатор3,1)="!")And(not ФлАкт) Then
+          ФлОтветПринят:=1;
+          If глОбновитьСтатусЕГАИСВДокументе("","",зДок,оПоступления) Then
+            Logs.Write("Акт принятия отвергнут: "+зДок+", ID: "+локИд3+", GUID: "+локИд2,зДок,"ЕГАИС",0);
+            If ФлВизуальныйВызов Then
+              If ФлТекущий Then
+                оПоступления.зСтатус:="Сервер отказал";
+              EndIf;  
+              пСтатус:="Сервер отказал";
+              Т.CopyByX("v4",1);
+            EndIf;
+            ТУдалить.AddString(локИд2);
+          EndIf;
+        EndIf;
+        If ФлТекущий Then
+          зДок:=оПоступления.Локальный;
+          оПоступления.Icon(оПоступления.CurLine,"Иконка",глПолучитьНомерИконкиДокументаЕГАИС(Trim(зДок.УникальныйИдентификатор2),Trim(зДок.УникальныйИдентификатор3)));
+        EndIf;  
+      EndIf;
+      
+      If _And(ВИд3<>"",not ФлОтветПринят,ТбДокументы.FindAndGoto(ВИд3,,"зИд3")>0) Then
+        зДок:=ТбДокументы.зДок;
+        пДок:=зДок;
+        пДокР:=зДок;
+        пК:=зДок.Контрагент;
+        пКР:=пК;
+        ФлТекущий:=?(ФлВизуальныйВызов,оПоступления.FindAndGoto(зДок,,"Локальный")>0,0);
+      
+        локИд2:=UpperCase(Trim(зДок.УникальныйИдентификатор2));
+        локИд3:=UpperCase(Trim(зДок.УникальныйИдентификатор3));
+        ФлОжидаетОтказа:=Left(локИд3,1)="!";
+        ФлАкт:=Left(локИд3,1)="%";
+        ФлАкт2:=Left(локИд3,1)="+";
+        ФлАктОтказа:=Left(локИд3,1)="*";
+        ФлАктОтказа2:=Left(локИд3,1)="-";
+        локИд3:=Mid(локИд3,2);
+      
+        If ФлТекущий Then
+          оПоступления.ТекстОтвета:=СтрТекст;
+          оПоступления.зСтатус:="Неизвестный ответ";
+        EndIf;  
+        
+        If (ФлАкт2)And(Pos("<IsConfirm>Rejected</IsConfirm>",СтрТекст0)>0) Then
+          If глОбновитьСтатусЕГАИСВДокументе("","#"+локИд3,зДок,оПоступления) Then
+            Logs.Write("Поставщик отказался от акта расхождения: "+зДок+", ID: "+локИд3+", GUID: "+локИд2,зДок,"ЕГАИС",0);
+            If ФлВизуальныйВызов Then
+              If ФлТекущий Then
+                оПоступления.зСтатус:="Акт отвергнут поставщиком";
+              EndIf;  
+              пСтатус:="Акт отвергнут поставщиком";
+              Т.CopyByX("v4",1);
+            EndIf;
+            //"###": Удаление локИд3 в документах без replyID
+            ТУдалить.AddString(локИд3);
+            ТУдалить.AddString("###"+локИд3);
+          EndIf;
+        ElseIf (ФлАкт2)And(Pos("<IsConfirm>Accepted</IsConfirm>",СтрТекст0)>0) Then
+          If ЗакрытьДокументПоступления(Т,локИд2,локИд3,зДок,"Акт принят поставщиком","Поставщик принял акт расхождения") Then
+            ТУдалить.AddString(локИд3);
+            ТУдалить.AddString("###"+локИд3);
+            ФлЗакрытые:=1;
+          EndIf;
+        ElseIf (ФлАктОтказа2)And(_Or(Pos("<OperationResult>Accepted</OperationResult>",СтрТекст0)>0,Pos("<IsConfirm>Accepted</IsConfirm>",СтрТекст0)>0)) Then
+          If глОбновитьСтатусЕГАИСВДокументе("","",зДок,оПоступления) Then
+            Logs.Write("Поставщик принял акт отказа от отклонения документа: "+зДок+", ID: "+локИд3+", GUID: "+локИд2,зДок,"ЕГАИС",0);
+            If ФлВизуальныйВызов Then
+              If ФлТекущий Then
+                оПоступления.зСтатус:="Запросите документ заново";
+              EndIf;  
+              пСтатус:="Акт отказа от отклонения принят поставщиком. Запросите заново входящий документ "+локИд3;
+              Т.CopyByX("v2",1);
+            EndIf;
+            //"###": Удаление локИд3 в документах без replyID
+            ТУдалить.AddString(локИд3);
+            ТУдалить.AddString("###"+локИд3);
+            ТУдалить.AddString("$$$"+локИд3);
+          EndIf;
+        ElseIf (ФлАктОтказа2)And(_Or(Pos("<OperationResult>Rejected</OperationResult>",СтрТекст0)>0,Pos("<IsConfirm>Rejected</IsConfirm>",СтрТекст0)>0)) Then
+          If глОбновитьСтатусЕГАИСВДокументе("","#"+локИд3,зДок,оПоступления) Then
+            Logs.Write("Поставщик отказался от акта отказа от отклонения документа: "+зДок+", ID: "+локИд3+", GUID: "+локИд2,зДок,"ЕГАИС",0);
+            If ФлВизуальныйВызов Then
+              If ФлТекущий Then
+                оПоступления.зСтатус:="Документ отклонен";
+              EndIf;  
+              пСтатус:="Акт отказа от принятия отклонен поставщиком. Документ возвращен в исходное состоение (отклонен)";
+              Т.CopyByX("v4",1);
+            EndIf;
+            //"###": Удаление локИд3 в документах без replyID
+            ТУдалить.AddString(локИд3);
+            ТУдалить.AddString("###"+локИд3);
+            ТУдалить.AddString("$$$"+локИд3);
+          EndIf;
+        ElseIf (ФлАктОтказа)And(_Or(Pos("<OperationResult>Accepted</OperationResult>",СтрТекст0)>0,Pos("<IsConfirm>Accepted</IsConfirm>",СтрТекст0)>0)) Then
+          If глОбновитьСтатусЕГАИСВДокументе("","",зДок,оПоступления) Then
+            Logs.Write("Поставщик принял акт отказа от принятия документа: "+зДок+", ID: "+локИд3+", GUID: "+локИд2,зДок,"ЕГАИС",0);
+            If ФлВизуальныйВызов Then
+              If ФлТекущий Then
+                оПоступления.зСтатус:="Запросите документ заново";
+              EndIf;  
+              пСтатус:="Акт отказа от принятия принят поставщиком. Запросите заново входящий документ "+локИд3;
+              Т.CopyByX("v2",1);
+            EndIf;
+            //"###": Удаление локИд3 в документах без replyID
+            ТУдалить.AddString(локИд3);
+            ТУдалить.AddString("###"+локИд3);
+            ТУдалить.AddString("$$$"+локИд3);
+          EndIf;
+        ElseIf (ФлАктОтказа)And(_Or(Pos("<OperationResult>Rejected</OperationResult>",СтрТекст0)>0,Pos("<IsConfirm>Rejected</IsConfirm>",СтрТекст0)>0)) Then
+          If глОбновитьСтатусЕГАИСВДокументе("","="+локИд3,зДок,оПоступления) Then
+            Logs.Write("Поставщик отказался от акта отказа от принятия документа: "+зДок+", ID: "+локИд3+", GUID: "+локИд2,зДок,"ЕГАИС",0);
+            If ФлВизуальныйВызов Then
+              If ФлТекущий Then
+                оПоступления.зСтатус:="Обработан";
+              EndIf;  
+              пСтатус:="Акт отказа от принятия отклонен поставщиком. Документ возвращен в исходное состоение (закрыт)";
+              Т.CopyByX("v4",1);
+            EndIf;
+            //"###": Удаление локИд3 в документах без replyID
+            ТУдалить.AddString(локИд3);
+            ТУдалить.AddString("###"+локИд3);
+            ТУдалить.AddString("$$$"+локИд3);
+          EndIf;
+        ElseIf (ФлОжидаетОтказа)And(Pos("<Conclusion>Accepted</Conclusion>",СтрТекст0)>0)And(Pos("<OperationName>UnConfirm</OperationName>",СтрТекст0)>0)And(Pos("<OperationResult>Accepted</OperationResult>",СтрТекст0)>0) Then
+          If глОбновитьСтатусЕГАИСВДокументе("","#"+локИд3,зДок,оПоступления) Then
+            Logs.Write("Документ отклонен: "+зДок+", ID: "+локИд3+", GUID: "+локИд2,зДок,"ЕГАИС",0);
+            If ФлВизуальныйВызов Then
+              If ФлТекущий Then
+                оПоступления.зСтатус:="Документ отклонен";
+              EndIf;  
+              пСтатус:="Документ отклонен";
+              Т.CopyByX("v4",1);
+            EndIf;
+            //"###": Удаление локИд3 в документах без replyID
+            ТУдалить.AddString(локИд3);
+            ТУдалить.AddString("###"+локИд3);
+          EndIf;
+        EndIf;
+        
+        If ФлТекущий Then
+          зДок:=оПоступления.Локальный;
+          оПоступления.Icon(оПоступления.CurLine,"Иконка",глПолучитьНомерИконкиДокументаЕГАИС(Trim(зДок.УникальныйИдентификатор2),Trim(зДок.УникальныйИдентификатор3)));
+        EndIf;  
+      ElseIf ФлВизуальныйВызов Then
+        Message("Пропустили документ с UID: "+ВИд3+" (вероятнее всего, реализация)","I");
+      EndIf;
+    EndDo;
+  Finally
+    ФлСтроки:=ФлСтроки or (ТУдалить.Size()>0);
+    If ТУдалить.Size()>0 Then
+      If not глВыполнитьЗапросЕГАИССОжиданием(оМагазин,ФлВизуальныйВызов,ТУдалить,"opt/in/",8) Then
+        Exit;
+      EndIf;
+    EndIf;
+  EndTry;
+  
+  If ФлВизуальныйВызов Then
+    If ФлЗакрытые Then
+      Box("Обновление выполнено успешно, некоторые поступления были закрыты!",Q_INFORMATION);
+    EndIf;
+    If ФлСтроки Then
+      глПечатнаяФормаОтчета(Т,0,оЗагол);
+    EndIf;  
+  EndIf;
+EndFunction
+
+
+Function ПринятиеКвитанцийЕГАИС(аМг);//0 -- флаг "ОстановитьСервисныйПоток" активен
+  If DBIsStringMutexLocked("ЕГАИСАктивен_"+аМг.Code)>0 Then
+    Exit 1;
+  EndIf;
+  
+  Try
+    глОбновитьСтатусыПоступленийЕГАИС(аМг);
+    If DBIsStringMutexLocked("ОстановитьСервисныйПоток")>0 Then
+      Exit 0;
+    EndIf;
+  Except
+    Message("Ошибка фонового обновления поступлений ЕГАИС: "+PopError(),"!");
+  EndTry;
+  
+  Try
+    глОбновитьСтатусыПеремещенийЕГАИС(аМг);
+    If DBIsStringMutexLocked("ОстановитьСервисныйПоток")>0 Then
+      Exit 0;
+    EndIf;
+  Except
+    Message("Ошибка фонового обновления перемещений ЕГАИС: "+PopError(),"!");
+  EndTry;
+  
+  Try
+    глОбновитьСтатусыСписанийЕГАИС(аМг);
+    If DBIsStringMutexLocked("ОстановитьСервисныйПоток")>0 Then
+      Exit 0;
+    EndIf;
+  Except
+    Message("Ошибка фонового обновления списаний ЕГАИС: "+PopError(),"!");
+  EndTry;
+  
+  Exit 1;
+EndFunction;
+
+
+Function глВыполнениеВыгрузокЕГАИС(Счетчик) Export
+  If Счетчик%600=300 Then //раз в минуту (в середине периода)
+    //Принятие ответов на отправленные документы ЕГАИС, раз в минуту
+    aEl:=Ref.рознМагазины;
+    aEl.Select("~(@Status=0)And(@IsFolder=0)And(КодТочкиЕГАИС<>"""")");
+    While aEl.Next() Do
+      If aEl.АдресЕГАИС<>"" Then
+        If not ПринятиеКвитанцийЕГАИС(aEl) Then
+          Exit;
+        EndIf;
+      EndIf;
+    EndDo;
+  EndIf;
+  If Счетчик%3000=700 Then //раз в 5 минут (в начале периода)
+    аДата2:=Date();
+    аДата:=BegOfDay(аДата2)-365;
+    аДата2:=AddMinute(аДата2,-15);//Только документы ранее 15 минут
+    aList:=List.Create(Enum.коРегистр2ЕГАИС.СписаниеСРегистра2,Enum.коРегистр2ЕГАИС.ПересортНаРегистре2);
+    aEl:=Doc.Регистр2ЕГАИС;
+    aEl.SelectEx(3,,"~(DocDate>аДата)And((DocDate<аДата2))And(КодОперации IN aList)And(@Status>1)And(УникальныйИдентификатор2="""")And(Left(УникальныйИдентификатор3,1)="""")");
+    While aEl.Next() Do
+      bEl:=aEl.Copy();
+      If bEl.Lock() Then
+        Try
+          bEl.Reload();
+          If _Or(bEl.Status()<2,bEl.УникальныйИдентификатор2<>"",bEl.УникальныйИдентификатор3<>"",bEl.Магазин.Selected()=0) Then //bEl.ДокОснование.Selected()=0
+            Continue;
+          EndIf;
+          глВыгрузитьДокументПеремещенияВЕГАИС(bEl.Магазин,bEl);
+          If DBIsStringMutexLocked("ОстановитьСервисныйПоток")>0 Then
+            Exit;
+          EndIf;
+        Finally
+          aEl.Unlock();
+        EndTry;
+      EndIf;
+    EndDo;
+  EndIf;
+  Exit 0;
+EndFunction
+
+Function глФункцияСервисногоПотока() Export
+  //Семафоры: СервисныйПоток -- семафор потока ЕГАИС и пр. на одном из клиентов
+  //          ОстановитьСервисныйПоток -- пока этот семафор активен, потоки ЕГАИС должны освободить основной семафор и ждать
+  While 1 Do
+    //Внешний цикл -- ожидание
+    Sleep(1000);
+    If DBIsStringMutexLocked("ОстановитьСервисныйПоток")>0 Then
+      Continue;
+    EndIf;
+    //Выборы?
+    If not DBLockStringMutex("СервисныйПоток") Then
+      Continue;
+    EndIf;
+    Счетчик:=0;
+    спЗадания:=0;
+    While 1 Do
+      //Внутренний цикл -- работа
+      If DBIsStringMutexLocked("ОстановитьСервисныйПоток")>0 Then
+        DBUnlockStringMutex("СервисныйПоток");
+        Continue 2;
+      EndIf;
+      
+      Счетчик:=Счетчик+1;
+      глВыполнениеЗаданийИВыгрузокЕГАИС(спЗадания,Счетчик);
+      
+      Sleep(100);
+    EndDo;
+  EndDo;
+EndFunction
+
+
+//Данная функция работает с пакетами, хранящимися во внешней папке.
+//При получении, загружает пакет из внешней папки, если он найден, возвращает 1.
+//При отправке, ничего не делает, возвращает 0.
+//При удалении удаляет пакет, если он есть во внешней папке и возвращает 0.
+Function РаботаСВнешнейПапкой(оРегИд,Ссылка,ByRef Стр,спЗапрос,ТипОперации="")
+  If IsEmpty(оРегИд) Then
+    Exit 0;
+  EndIf;
+  Папка:="Temp\ЕГАИС\Пакеты\"+оРегИд+"\";
+  //Ссылка: "http://192.168.1.30:80/opt/out/ReplyPartner/13"
+  If pos("//",Ссылка)>0 Then
+    TearStr(Ссылка,"//");
+  EndIf;
+  TearStr(Ссылка,"/");
+  Ссылка:=Папка+Replace(Ссылка,"/","_");//"opt_out_ReplyPartner_13"
+  
+  If ТипОперации="" Then
+    If Стр<>"" Then
+      ТипОперации:="POST";
+    Else
+      ТипОперации:="GET";
+    EndIf;
+  EndIf;
+  If ТипОперации="DELETE" Then
+    File.DeleteFile(Ссылка);
+    File.DeleteFile(Ссылка+".url");
+  ElseIf ТипОперации="GET" Then
+    If File.DoesFileExist(Ссылка) Then
+      Try
+        Стр:=FileToString(Ссылка,1200);
+        Exit 1;
+      Except
+      EndTry;
+    EndIf;
+  EndIf;
+  Exit 0;
+EndFunction
+
+//Запоминается сам файл пакета (без расширения)
+//и ссылка в виде <url...<url> в файле с тем же именем, но с расширением .url
+Function ЗапомнитьВоВнешнейПапке(оРегИд,Ссылка,Стр)
+  If IsEmpty(оРегИд) Then
+    Exit;
+  EndIf;
+  //Переменные модуля недоступны, если функция выполняется в отдельном потоке
+  ПоследнийСписокСсылокССервера:=глПолучитьИзМодуля("ПоследнийСписокСсылокССервера");
+  If IsEmpty(ПоследнийСписокСсылокССервера) Then
+    Exit;
+  EndIf;
+  //Ссылка: "opt/out/ReplyPartner/13"
+  //Список ссылок:
+  //                               i
+  //<url>http://192.168.5.200:8080/opt/out/RequestRepealWB/3084</url>
+  //                                                                           i
+  //<url replyId="15ea5980-6253-41de-93fa-d736e460a59f">http://192.168.1.30:80/opt/out/ReplyPartner/13</url>
+  i:=Pos(Uppercase(Ссылка+"</url>"),Uppercase(ПоследнийСписокСсылокССервера));
+  if i=0 Then
+    Exit;
+  EndIf;
+  j:=RightPos("<url",ПоследнийСписокСсылокССервера,i);
+  if j=0 Then
+    Exit;
+  EndIf;
+  ЧастьСсылки:=Mid(ПоследнийСписокСсылокССервера,j,i-j+length(Ссылка)+6);
+  //ЧастьСсылки: оригинальная строка с тегами <url></url>
+  Путь:="Temp\ЕГАИС\Пакеты\"+оРегИд+"\";
+  If File.CreateDirectory(Путь) Then
+    Ссылка:=Путь+Replace(Ссылка,"/","_");//"opt_out_ReplyPartner_13"
+    StringToFile(Стр,Ссылка,1200,0);
+    StringToFile(ЧастьСсылки,Ссылка+".url",1200,0);
+  EndIf;
+EndFunction
+
+Function ПодставитьПакетыВСписокПакетов(оРегИд,Стр)
+  If IsEmpty(оРегИд) Then
+    Exit Стр;
+  EndIf;
+  Путь:="Temp\ЕГАИС\Пакеты\"+оРегИд+"\";
+  //Добавляем ссылки из папки в строку перед тегом "<ver>"
+  aList:=File.LoadFiles(Путь+"*.url",1);
+  Стр2:="";
+  For i:=1 To aList.Size() Do
+    аБуф:=aList[i];
+    Стр3:=аБуф.GetStringW(0,аБуф.Size() Div 2);
+    //TODO: Uppercase?
+    If Pos(Стр3,Стр)>0 Then
+      Continue;
+    EndIf;
+    If Стр3<>"" Then
+      Стр2:=?(Стр2="","",Стр2+_NEWLINE)+Стр3;
+    EndIf;
+  EndDo;
+  If Стр2<>"" Then
+    Стр:=Replace(Стр,"<ver>",Стр2+"<ver>");
+  EndIf;
+  Exit Стр;
+EndFunction
+
+Function глОчиститьСтарыеПакетыЕГАИС(оРегИд,ФлФорсированно=0) Export
+  If IsEmpty(оРегИд) Then
+    Exit;
+  EndIf;
+  If not ФлФорсированно Then
+    Стр:=RestoreGlobalTempString("ОчиститьСтарыеПакеты:"+оРегИд);
+    If _Or(Стр="",GetPeriod(Date(Стр),Date(),4)>7200) Then //2 часа
+      StoreGlobalTempString("ОчиститьСтарыеПакеты:"+оРегИд,FormatDate(Date(),"dd.mm.YYYY hh:tt:ss"));
+    Else
+      Exit;
+    EndIf;  
+  EndIf;
+  
+  //WayBillAct*, FORM2REGINFO, WayBill*, Ticket, RequestRepealWB -- хранятся 30 дней
+  bList:=List.Create("WAYBILLACT","FORM2REGINFO","WAYBILL","TICKET","REQUESTREPEAL");
+  //Все остальные хранятся 2 дня
+  
+  Путь:="Temp\ЕГАИС\Пакеты\"+оРегИд+"\";
+  aList:=File.LoadFileNames(Путь+"*.*");
+  For i:=1 To aList.Size() Do
+    Стр:=Uppercase(aList.GetName(i));
+    Хранить:=2;
+    For j:=1 to bList.Size() Do
+      If Pos(bList[j],Стр)>0 Then
+        Хранить:=30;
+        Break;
+      EndIf;
+    EndDo;
+  
+    Стр:=aList[i];
+    Стр:=TearStr(Стр,Chr(1));
+    ВремяСоздания:=0;
+    If File.GetFileTimes(Стр,,,ВремяСоздания) Then
+      If GetPeriod(ВремяСоздания,Date(),1)>Хранить Then
+        File.DeleteFile(Стр);
+      EndIf;
+    EndIf;
+  EndDo;
+EndFunction
+
+Function ВыполнитьОбменССервером(Ссылка,ByRef Стр,спЗапрос,ФлЗапомнитьВоВнешнейПапке,ТипОперации="")
+  If РаботаСВнешнейПапкой(спЗапрос["оРегИд"],Ссылка,Стр,спЗапрос,ТипОперации) Then
+    Exit 1;
+  EndIf;
+
+  If pos("//",Ссылка)>0 Then
+    TearStr(Ссылка,"//");
+  EndIf;  
+  Сервер:=TearStr(Ссылка,"/");
+  Try
+    aTCP:=0;
+    For i:=1 To 5 Do
+      Прокси:=Trim(спЗапрос["Прокси"]);
+      If Прокси<>"" Then
+        //<ProxyType>@<ProxyIP>@<User>@<Password>
+        aTCP:=IPConnection.Create();
+        ПроксиТип:=TearStr(Прокси,"@");
+        ПроксиАдр:=TearStr(Прокси,"@");
+        ПроксиПольз:=TearStr(Прокси,"@");
+        aTCP.UseProxy(ПроксиАдр,ПроксиТип,ПроксиПольз,Прокси);
+        aTCP.Connect(Сервер);
+      Else
+        aTCP:=IPConnection.Connect(Сервер);
+      EndIf;
+      if aTCP.IsConnected Then
+        Break;
+      EndIf;
+    EndDo;
+    If _Or(isEmpty(aTCP),not aTCP.isConnected()) Then
+      спЗапрос.SetByName("Ошибка","Невозможно соединиться с сервером "+Сервер+"!");
+      Exit 0;
+    EndIf;
+    aTCP.Timeout(600000);
+    aTCP.HTTPClear();
+    If ТипОперации<>"" Then
+      aTCP.HTTPSetOperation(ТипОперации+" /"+Ссылка+" HTTP/1.0");
+    ElseIf Стр<>"" Then
+      aTCP.HTTPSetOperation("POST /"+Ссылка+" HTTP/1.1");
+    Else
+      aTCP.HTTPSetOperation("GET /"+Ссылка+" HTTP/1.0");
+    EndIf;
+    aTCP.HTTPSetHeaderField("Host",Сервер);
+    aTCP.HTTPSetHeaderField("User-Agent","Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
+    aTCP.HTTPSetHeaderField("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+    aTCP.HTTPSetHeaderField("Accept-Language","en");
+    aTCP.HTTPSetHeaderField("Connection","Close");
+    
+    If Стр<>"" Then
+      Стр:="Content-Disposition: form-data; name=""xml_file""; filename=""request.xml"""+_NEWLINE+
+        "Content-Type: text/xml; charset=utf-8"+_NEWLINE+_NEWLINE+UnicodeToUTF8(Стр);
+      //Граница
+      стрГраница:="---------------------------"+Random(65536)+Random(65536)+Random(65536);
+      While pos(стрГраница,Стр)>0 Do
+        стрГраница:="---------------------------"+Random(65536)+Random(65536)+Random(65536);
+      EndDo;
+      aTCP.HTTPSetHeaderField("Content-Type","multipart/form-data; boundary="+стрГраница);
+      Стр:="--"+стрГраница+_NEWLINE+Стр+_NEWLINE+"--"+стрГраница+"--"+_NEWLINE+_NEWLINE;
+      aTCP.HTTPSetHeaderField("Content-Length",Length(Стр));
+      aTCP.HTTPSetBody(Стр);
+    EndIf;
+    If aTCP.HTTPSendAndReceive Then
+      aTCP.HTTPDecodeChunked();
+      Стр:=aTCP.HTTPHeaderAndBodyAsString;
+    Else
+      спЗапрос["Ошибка"]:="Ошибка при отправке пакета!";
+      Exit 0;
+    EndIf;
+    If pos(";charset=utf-8",Стр)>0 Then
+      Стр:=UTF8ToUnicode(Стр);
+    ElseIf pos(";charset=UTF-8",Стр)>0 Then
+      Стр:=UTF8ToUnicode(Стр);
+    EndIf;
+    Стр1:=aTCP.HTTPGetOperation();
+    TearStr(Стр1," ");
+    Стр1:=TearStr(Стр1," ");
+    If Стр1<>"200" Then
+      спЗапрос["Ошибка"]:="Ошибка сервера!"+_NEWLINE+Стр;
+      If ФлЗапомнитьВоВнешнейПапке=2 Then
+        Путь:="Temp\ЕГАИС\Розница\ЗапросыФиксацииМарок\";
+        If File.CreateDirectory(Путь) Then
+          If ФлЗапомнитьВоВнешнейПапке=2 Then
+            StringToFile(Стр,Путь+"failure_"+FormatDate(Date(),"YYYYmmddhhttss")+".txt",1200,0);
+          Else
+            StringToFile(Стр,Путь+"returnfailure_"+FormatDate(Date(),"YYYYmmddhhttss")+".txt",1200,0);
+          EndIf;
+        EndIf;
+      EndIf;
+      Exit 0;
+    EndIf;
+    If ФлЗапомнитьВоВнешнейПапке=1 Then
+      ЗапомнитьВоВнешнейПапке(спЗапрос["оРегИд"],Ссылка,Стр);
+    ElseIf (ФлЗапомнитьВоВнешнейПапке=2)or(ФлЗапомнитьВоВнешнейПапке=3) Then
+      Путь:="Temp\ЕГАИС\Розница\ЗапросыФиксацииМарок\";
+      If File.CreateDirectory(Путь) Then
+        If ФлЗапомнитьВоВнешнейПапке=2 Then
+          StringToFile(Стр,Путь+"lastsuccess.txt",1200,0);
+        Else
+          StringToFile(Стр,Путь+"returnsuccess_"+FormatDate(Date(),"YYYYmmddhhttss")+".txt",1200,0);
+        EndIf;
+      EndIf;
+    ElseIf Uppercase(Ссылка)="OPT/OUT" Then
+      //Дополняем список пакетов содежимым папки "Пакеты"
+      Стр:=ПодставитьПакетыВСписокПакетов(спЗапрос["оРегИд"],Стр);
+      //Переменные модуля недоступны, если функция выполняется в отдельном потоке
+      глСохранитьВМодуле("ПоследнийСписокСсылокССервера",Стр);
+    EndIf;
+  Except
+    спЗапрос["Ошибка"]:=PopError();
+    Exit 0;
+  EndTry;  
+  Exit 1;
+EndFunction
+
+//ТипЗапроса:
+//2 -- Запрос с ожиданием ответа
+//3 -- Очистить ящик
+//4 -- Запрос по поступлениям
+//5 -- Запрос без ожидания ответа
+//6 -- Простой запрос розница
+//7 -- Получение статусов документов
+//8 -- Удаление квитанций и входящих документов
+//9 -- Удалить URL по списку в тексте
+//14 -- Удалить все данные
+//
+//Для типа 2 можно выполнить несколько запросов последовательно (любая ошибка прервет цепочку)
+//    Данные для первого запроса получаются из спЗапрос,
+//    Для последующих запросов должна быть заполнен список спЗапрос["спЦепочкаЗапросов"], каждый элемент списка -- параметры запроса
+Function глФункцияОдногоЗапросаЕГАИС(спЗапрос,флВизуальный) Export
+
+  Function _УдалитьПуть(Сервер,Стр)
+    //http://192.168.1.30:80/opt/out/ReplyPartner/13
+    TearStr(Стр,"opt/out/");
+    Стр:=Сервер+"/"+Стр;
+    If (глПользователь.общиеАдминистратор)And(флВизуальный) Then
+      Message("Удаляем: "+Стр);
+    EndIf;  
+    Exit ВыполнитьОбменССервером(Стр,"",спЗапрос,0,"DELETE");
+  EndFunction
+
+  Function _ПолучитьИдентификаторПростой(Сервер,Стр,Тип)
+    //http://192.168.1.30:80/opt/out/ReplyPartner/13
+    TearStr(Стр,"opt/out/");
+    Стр:=Сервер+"/"+Стр;
+    СтрРез:="";
+    If not ВыполнитьОбменССервером(Стр,СтрРез,спЗапрос,1) Then
+      Exit "";
+    EndIf;
+    СтрРез:=ReformatXML(СтрРез);
+    TearStr(СтрРез,"<"+Тип+">");
+    Стр:=TearStr(СтрРез,"</"+Тип+">");
+    If pos("TTN-",Стр)=1 Then
+      Exit Стр;
+    EndIf;
+    Exit "";
+  EndFunction
+  
+  Function _ПолучитьСтраницу(Сервер,Стр,ByRef СтрСсылка="")
+    //http://192.168.1.30:80/opt/out/ReplyPartner/13
+    TearStr(Стр,"opt/out/");
+    СтрСсылка:=Сервер+"/"+Стр;
+    СтрРез:="";
+    If not ВыполнитьОбменССервером(СтрСсылка,СтрРез,спЗапрос,1) Then
+      Exit "";
+    EndIf;
+    Exit ReformatXML(СтрРез);
+  EndFunction
+  
+  Function _ПолучитьИдентификаторСправки(СтрРез)
+    //Identity tag is optional
+    Result:="";
+    Стр3:=СтрРез;
+    Стр3:=TearStr(Стр3,"<Content>");
+    If Pos("<Identity>",Стр3)>0 Then
+      TearStr(Стр3,"<Identity>");
+      Result:=TearStr(Стр3,"<");
+      If Result="" Then
+        Exit;//error
+      EndIf;
+    EndIf;
+    //+AB (<wbr:WBNUMBER>)
+    Стр3:=СтрРез;
+    If pos("<WBNUMBER>",Стр3)=0 Then
+      Result:="";
+      Exit;
+    EndIf;
+    TearStr(Стр3,"<WBNUMBER>");
+    Result:=Result+"###"+TearStr(Стр3,"<");
+    //+AB date
+    Стр3:=СтрРез;
+    If pos("<WBDate>",Стр3)=0 Then
+      Result:="";
+      Exit;
+    EndIf;
+    TearStr(Стр3,"<WBDate>");
+    Result:=Result+"###"+TearStr(Стр3,"<");
+    //+'_'+<oref:ClientRegId>
+    Стр3:=СтрРез;
+    //<*:ClientRegId
+    TearStr(Стр3,"<Shipper>");
+    If pos("<ClientRegId>",Стр3)=0 Then
+      Result:="";
+      Exit;
+    EndIf;
+    TearStr(Стр3,"<ClientRegId>");
+    Result:=Result+"###"+TearStr(Стр3,"<");
+  EndFunction
+  
+  Function _ПолучитьИдентификаторWayBill(СтрРез)
+    //Identity tag is optional
+    Стр3:=СтрРез;
+    Стр3:=TearStr(Стр3,"<Content>");
+    If Pos("<Identity>",Стр3)>0 Then
+      TearStr(Стр3,"<Identity>");
+      Result:=TearStr(Стр3,"<");
+      If Result="" Then
+        Exit;//error
+      EndIf;
+    EndIf;
+    //+TTN (<wb:NUMBER>)
+    Стр3:=СтрРез;
+    If pos("<NUMBER>",Стр3)=0 Then
+      Result:="";
+      Exit;
+    EndIf;
+    TearStr(Стр3,"<NUMBER>");
+    Result:=Result+"###"+TearStr(Стр3,"<");
+    //+TTN date
+    Стр3:=СтрРез;
+    If pos("<Date>",Стр3)=0 Then
+      Result:="";
+      Exit;
+    EndIf;
+    TearStr(Стр3,"<Date>");
+    Result:=Result+"###"+TearStr(Стр3,"<");
+    //+ClientRegId
+    Стр3:=СтрРез;
+    //<*:ClientRegId -- WARNING get this after :Shipper> otherwise it can be the wrong regID
+    TearStr(Стр3,"<Shipper>");
+    If pos("<ClientRegId>",Стр3)=0 Then
+      Result:="";
+      Exit;
+    EndIf;
+    TearStr(Стр3,"<ClientRegId>");
+    Result:=Result+"###"+TearStr(Стр3,"<");
+  EndFunction
+  
+  Function _НайтиОтвет(Ответы,Ид1,Ид2="")
+    Ответы.Select();
+    While Ответы.Next() Do
+      If (Ответы.Идентификатор=Ид1)Or((Ид2<>"")And(Ответы.Идентификатор=Ид2)) Then
+        Exit Ответы.CurLine;
+      EndIf;
+      If (Ответы.НакИД=Ид1)Or((Ид2<>"")And(Ответы.НакИД=Ид2)) Then
+        Exit Ответы.CurLine;
+      EndIf;
+      If (Ответы.ТранИД=Ид1)Or((Ид2<>"")And(Ответы.ТранИД=Ид2)) Then
+        Exit Ответы.CurLine;
+      EndIf;
+    EndDo;
+    Ответы.AddLine("Идентификатор,НакИД,ТранИД,Ответ,флНесколькоТранИД",Ид1,"","","",0);
+  EndFunction
+  
+  Try
+    Стр:=спЗапрос.GetByName("Текст");
+    оЮЛ:=спЗапрос.GetByName("ЮрЛицо");//Требуется некоторым запросам
+    оМагазин:=спЗапрос.GetByName("Магазин");//Требуется некоторым запросам
+    ТипЗапроса:=спЗапрос.GetByName("ТипЗапроса");
+    Ссылка:=спЗапрос.GetByName("Ссылка"); //+192.168.5.200:8080/opt/in/QueryAP_v2
+    спПараметры:=спЗапрос.GetByName("Функция");
+    спПараметры:=?(TypeStr(спПараметры)="LIST",спПараметры,List.Create());
+    
+    If (ТипЗапроса=2)or(ТипЗапроса=5) Then //Простой запрос с ожиданием ответа
+      спЦепочкаЗапросов:=спПараметры["спЦепочкаЗапросов"];
+      НомерЗапроса:=0;
+      While 1 Do
+        НомерЗапроса:=НомерЗапроса+1;
+        ФлПоследнийЗапрос:=_Or(ТипЗапроса<>2,IsEmpty(спЦепочкаЗапросов),спЦепочкаЗапросов.Size()=0);
+        If not ВыполнитьОбменССервером(Ссылка,Стр,спЗапрос,0) Then
+          Exit 0;
+        EndIf;
+        //Ожидаем ответ, должен прийти один пакет
+        //<?xml version="1.0" encoding="UTF-8" standalone="no"?><A><url>5d03218c-4b8a-4c46-9bb9-4536d7581769</url>...
+        Стр:=ReformatXML(Стр);
+        Стр0:=Стр;
+        TearStr(Стр,"<url>");
+        стрИД:=TearStr(Стр,"</url>");
+        If стрИД="" Then
+          спЗапрос["Ошибка"]:="Неизвестный ответ сервера!"+_NEWLINE+Стр0;
+          Exit 0;
+        EndIf;
+        If ТипЗапроса=5 Then //Всегда визуальный
+          спПараметры.SetByName("ЮрЛицо",оЮЛ);
+          спПараметры.SetByName("Магазин",оМагазин);
+          спПараметры.SetByName("Результат",стрИД);
+          спПараметры.SetByName("РезультатВозвращен",1);
+          спПараметры.SetByName("Пакет",Стр0);
+          Exit 1;
+        EndIf;
+        спПараметры.SetByName("ИдентификаторОтвета",стрИД);
+        Сервер:=TearStr(Ссылка,"/")+"/opt/out";
+        аЦикл:=0;
+        аНом:=Max(Number(спПараметры.GetByName("КоличествоКвитанций")),1);
+        стрУсловие:=Trim(спПараметры.GetByName("УсловиеВхождения"));
+        стрНомерНакладной:=Trim(спПараметры.GetByName("НомерНакладной"));
+        стрУсловие2:=Trim(спПараметры.GetByName("УсловиеУспеха"));
+        If стрНомерНакладной<>"" Then
+          стрИД:=Replace(Lowercase(стрИД),"-","");//15ea5980625341de93fad736e460a59f
+        EndIf;
+        
+        While 1 Do
+          Sleep(1000);
+          аЦикл:=аЦикл+1;
+          If флВизуальный Then
+            Form.StatusText(""+спЗапрос.GetByName("ИмяЗапроса")+", "+аЦикл+" с.");
+          EndIf;
+          спЗапрос.SetByName("Ожидание",аЦикл);
+          If спЗапрос.GetByName("Прервать")=1 Then
+            спЗапрос.SetByName("Ошибка","Запрос был прерван по требованию пользователя!");
+            Exit 0;
+          EndIf;
+          
+          Стр:="";
+          If not ВыполнитьОбменССервером(Сервер,Стр,спЗапрос,0) Then
+            Exit 0;
+          EndIf;
+          Стр:=ReformatXML(Стр);
+          if _And(стрНомерНакладной="",Pos(""""+стрИД+"""",Стр)=0) Then
+            Continue;
+          EndIf;
+          //<url replyId="15ea5980-6253-41de-93fa-d736e460a59f">http://192.168.1.30:80/opt/out/ReplyPartner/13</url>      
+          aList:=List.Create();
+          While _Or(_And(стрНомерНакладной="",Pos(""""+стрИД+"""",Стр)>0),_And(стрНомерНакладной<>"",Стр<>"")) Do
+            If стрНомерНакладной<>"" Then
+              TearStr(Стр,"<url");
+              Стр1:=Lowercase(TearStr(Стр,">"));//replyid="15ea5980-6253-41de-93fa-d736e460a59f"
+              TearStr(Стр1,"replyid=""");
+              Стр1:=Replace(TearStr(Стр1,""""),"-","");//15ea5980625341de93fad736e460a59f
+              Стр20:=TearStr(Стр,"<");//http://192.168.1.30:80/opt/out/ReplyPartner/13
+              If Стр1<>стрИД Then
+                //Используем информацию внутри Ticket
+                If Pos("/TICKET/",Uppercase(Стр20))=0 Then
+                  Continue;
+                EndIf;
+                Стр3:=_ПолучитьИдентификаторПростой(Сервер,Стр20,"RegID");
+                If Стр3<>стрНомерНакладной Then
+                  Continue;
+                EndIf;
+              EndIf;
+            Else
+              TearStr(Стр,""""+стрИД+"""");
+              Стр2:=TearStr(Стр,_NEWLINE);
+              TearStr(Стр2,">");
+              Стр20:=TearStr(Стр2,"<");
+            EndIf;
+            If Стр20="" Then
+              спЗапрос["Ошибка"]:="Неизвестный ответ сервера (2)!";
+              Exit 0;
+            EndIf;
+            If pos("//",Стр20)>0 Then
+              TearStr(Стр20,"//");
+            EndIf;
+            TearStr(Стр20,"/");
+            Ссылка:=спЗапрос.GetByName("Ссылка"); //192.168.5.200:8080/opt/in/QueryAP_v2
+            Ссылка:=TearStr(Ссылка,"/");
+            Стр20:=Ссылка+"/"+Стр20;
+            aList.Add(Стр20);
+          EndDo;  
+          If aList.Size()<аНом Then
+            Continue;
+          EndIf;
+          //Получение
+          Стр:="";
+          For i:=1 To aList.Size() Do
+            Стр2:="";
+            If not ВыполнитьОбменССервером(aList.Get(i),Стр2,спЗапрос,1) Then
+              Exit 0;
+            EndIf;
+            Стр:=Стр+?(Стр<>"","====================="+_NEWLINE)+Стр2;
+          EndDo;
+          //Все ли квитанции пришли?
+          Стр0:=ReformatXML(Стр);
+          If стрУсловие<>"" Then
+            Try
+              If not Eval(стрУсловие) Then
+                Sleep(1000);//additional sec
+                Continue;
+              EndIf;
+            Except
+              спЗапрос["Ошибка"]:="Ошибка при вычислении выражения: "+стрУсловие+_NEWLINE+PopError();
+              Exit 0;
+            EndTry;
+          EndIf;
+          //Удаление
+          For i:=1 To aList.Size() Do
+            ВыполнитьОбменССервером(aList.Get(i),"",спЗапрос,0,"DELETE");
+          EndDo;  
+          If стрУсловие2<>"" Then
+            Try
+              If not Eval(стрУсловие2) Then
+                спЗапрос["Ошибка"]:=Trim(спПараметры.GetByName("ТекстПриОшибке"))+_NEWLINE+"Текст ответа: "+_NEWLINE+Стр0;
+                Exit 0;
+              EndIf;
+            Except
+              спЗапрос["Ошибка"]:="Ошибка при вычислении выражения: "+стрУсловие2+_NEWLINE+PopError();
+              Exit 0;
+            EndTry;
+          EndIf;
+          If not isEmpty(спПараметры.GetByName("ВыполнитьПослеПолученияРезультата")) Then
+            Exec(спПараметры.GetByName("ВыполнитьПослеПолученияРезультата"));
+            If Trim(спЗапрос.GetByName("Ошибка"))<>"" Then
+              Exit 0;
+            EndIf;
+          EndIf;
+          If ФлПоследнийЗапрос Then
+            If флВизуальный Then
+              спПараметры.SetByName("ЮрЛицо",оЮЛ);
+              спПараметры.SetByName("Магазин",оМагазин);
+              спПараметры.SetByName("Результат",Стр);
+              спПараметры.SetByName("РезультатВозвращен",1);
+            Else
+              спЗапрос.SetByName("РезультатВозвращен",1);
+              спЗапрос.SetByName("Результат",Стр);
+            EndIf;
+            Exit 1;
+          EndIf;
+          Break;
+        EndDo;
+        
+        спЗапрос2:=спЦепочкаЗапросов[1];
+        Стр:=спЗапрос2.GetByName("Текст");
+        Ссылка:=спЗапрос2.GetByName("Ссылка"); //192.168.5.200:8080/opt/in/QueryAP_v2
+        спПараметры2:=спЗапрос2.GetByName("Функция");
+        спПараметры:=?(TypeStr(спПараметры2)="LIST",спПараметры2,спПараметры);
+        спЦепочкаЗапросов.Remove(1);
+        
+      EndDo;//по нескольким запросам
+    ElseIf ТипЗапроса=6 Then //Простой запрос розница
+      Путь:="Temp\ЕГАИС\Розница\ЗапросыФиксацииМарок\";
+      ФлВозврат:=_And(TypeStr(спПараметры)="LIST",спПараметры["ЭтоВозврат"]=1);
+      If File.CreateDirectory(Путь) Then
+        If ФлВозврат Then
+          StringToFile(Стр,Путь+"lastreturnrequest.txt",1200,0);
+        Else
+          StringToFile(Стр,Путь+"lastrequest.txt",1200,0);
+        EndIf;
+      EndIf;
+    
+      If not ВыполнитьОбменССервером(Ссылка,Стр,спЗапрос,?(ФлВозврат,3,2)) Then
+        Exit 0;
+      EndIf;
+      спПараметры.SetByName("РезультатВозвращен",1);
+      спПараметры.SetByName("Результат",Стр);
+      Exit 1;
+    ElseIf ТипЗапроса=8 Then //Удаление квитанций и входящих документов
+      //Стр: <Doc1>+_NEWLINE+<Doc2>...
+      //<Doc?>: ###TTN-0374842499 -- удаление входящего документа WAYBILL_* & FORM2REGINFO & TTNHISTORYF2REG
+      //<Doc?>: TTN-0374842499 -- удаление квитанции(й), внутри которой имеется нужный номер TTN: WAYBILLACT_* & WAYBILLTICKET_* & TICKET
+      //<Doc?>: 15ea5980625341de93fad736e460a59f -- удаление квитанции(й) по replyId
+      //<Doc?>: $$$TTN-0374842499 -- удаление запроса на отклонение REQUESTREPEALWB & CONFIRMREPEALWB
+      If TypeStr(Стр)="TEXT" Then
+        Стр:=Стр.ToString();
+      EndIf;
+      If IsEmpty(Стр) Then
+        Exit 1;
+      EndIf;
+      Стр:=Uppercase(Стр);
+      Сервер:=TearStr(Ссылка,"/")+"/opt/out";
+      Стр0:="";
+      If not ВыполнитьОбменССервером(Сервер,Стр0,спЗапрос,0) Then
+        Exit 0;
+      EndIf;
+      Стр0:=ReformatXML(Стр0);
+      
+      If Pos("###",Стр)>0 Then
+        //Удаление входящих, необходимо удалять код за кодом, в ЕГАИС невозможно удобно и правильно разобрать входящие документы 
+        Стр_:="";
+        While Стр<>"" Do
+          Стр2_:=TearStr(Стр,_NEWLINE);
+          if Pos("###",Стр2_)=0 Then
+            Стр_:=Стр_+_NEWLINE+Стр2_;
+            Continue;
+          EndIf;
+          TearStr(Стр2_,"###");
+          //TTN-0374842499;
+          //Нахождение идентификатора, также удаление TTNHISTORYF2REG
+          стрИдентификатор:="";
+          стрСсылка:="";
+          Стр0_:=Стр0;
+          While Стр0<>"" Do
+            TearStr(Стр0,"<url>");
+            Стр20:=TearStr(Стр0,"</url>");
+            Стр2:=Uppercase(Стр20);
+            If Pos("/TTNHISTORYF2REG",Стр2)>0 Then
+              Стр3:=_ПолучитьИдентификаторПростой(Сервер,Стр20,"WBRegId");
+              If Стр3<>Стр2_ Then
+                Continue;
+              EndIf;
+              _УдалитьПуть(Сервер,Стр20);
+              Continue;
+            ElseIf Pos("/FORM2REGINFO",Стр2)>0 Then
+              Стр3:=_ПолучитьСтраницу(Сервер,Стр20);
+              If pos("<WBRegId>"+Стр2_+"</WBRegId>",Стр3)=0 Then
+                Continue;
+              EndIf;
+              стрИдентификатор:=_ПолучитьИдентификаторСправки(Стр3);
+              стрСсылка:=Стр20;
+            EndIf;          
+          EndDo;
+          Стр0:=Стр0_;
+          If стрИдентификатор="" Then
+            Continue;
+          EndIf;
+          //Нахождение WAYBILL с таким же идентификатором
+          Стр0_:=Стр0;
+          While Стр0<>"" Do
+            TearStr(Стр0,"<url>");
+            Стр20:=TearStr(Стр0,"</url>");
+            Стр2:=Uppercase(Стр20);
+            
+            If Pos("/WAYBILL_",Стр2)>0 Then
+              Стр3:=_ПолучитьСтраницу(Сервер,Стр20);
+              Стр3:=_ПолучитьИдентификаторWayBill(Стр3);
+              If Стр3<>стрИдентификатор Then
+                Continue;
+              EndIf;
+              _УдалитьПуть(Сервер,Стр20);
+              _УдалитьПуть(Сервер,стрСсылка);
+              Break;
+            EndIf;
+          EndDo;
+          Стр0:=Стр0_;
+        EndDo;
+        If Стр_="" Then
+          Exit 1;
+        EndIf;
+        Стр:=Стр_;
+      EndIf;
+      Стр:=_NEWLINE+Стр+_NEWLINE;
+      
+      флОтклонение:=Pos("$$$",Стр)>0;
+      флСодержимое:=Pos(_NEWLINE+"TTN-",Стр)>0;
+      While Стр0<>"" Do
+        //<url replyId="15ea5980-6253-41de-93fa-d736e460a59f">http://192.168.1.30:80/opt/out/ReplyPartner/13</url>    
+        TearStr(Стр0,"<url");
+        Стр1:=Uppercase(TearStr(Стр0,">"));//REPLYID="15ea5980-6253-41de-93fa-d736e460a59f"
+        TearStr(Стр1,"REPLYID=""");
+        Стр1:=Replace(TearStr(Стр1,""""),"-","");//15ea5980625341de93fad736e460a59f
+        Стр20:=TearStr(Стр0,"<");//http://192.168.1.30:80/opt/out/ReplyPartner/13
+        Стр2:=Uppercase(Стр20);
+        
+        If флОтклонение Then
+          If Pos("/REQUESTREPEALWB",Стр2)+Pos("/CONFIRMREPEALWB",Стр2)>0 Then
+            Стр3:=_ПолучитьИдентификаторПростой(Сервер,Стр20,"WBRegId");
+            If Pos(_NEWLINE+"$$$"+Стр3+_NEWLINE,Стр)=0 Then
+              Continue;
+            EndIf;
+            _УдалитьПуть(Сервер,Стр20);
+            Continue;
+          EndIF;
+        EndIf;
+        
+        ФлУдалить:=0;
+        If Стр1="" Then
+          If not флСодержимое Then
+            Continue;
+          EndIf;
+          If _Or(Pos("/WAYBILLACT",Стр2)>0,Pos("/WAYBILLTICKET",Стр2)>0) Then
+            Стр3:=_ПолучитьИдентификаторПростой(Сервер,Стр20,"WBRegId");
+            If Pos(_NEWLINE+Стр3+_NEWLINE,Стр)>0 Then
+              ФлУдалить:=1;
+            EndIf;
+          EndIf;
+        Else
+          If Pos(_NEWLINE+Стр1+_NEWLINE,Стр)>0 Then
+            ФлУдалить:=1;
+          ElseIf _And(флСодержимое,Pos("/TICKET/",Стр2)>0) Then
+            Стр3:=_ПолучитьИдентификаторПростой(Сервер,Стр20,"RegID");
+            If Pos(_NEWLINE+Стр3+_NEWLINE,Стр)>0 Then
+              ФлУдалить:=1;
+            EndIf;
+          EndIf;
+        EndIf;
+        If ФлУдалить Then
+          _УдалитьПуть(Сервер,Стр20);
+        EndIf;  
+      EndDo;
+      Exit 1;
+    ElseIf ТипЗапроса=7 Then //Получение статусов документов
+      Сервер:=TearStr(Ссылка,"/")+"/opt/out";
+      Стр:="";
+      If not ВыполнитьОбменССервером(Сервер,Стр,спЗапрос,0) Then
+        Exit 0;
+      EndIf;
+      Стр:=ReformatXML(Стр);
+      Ответы:=Tab.Create("Идентификатор,НакИД,ТранИД,Ответ,флНесколькоТранИД");
+      
+      While Стр<>"" Do
+        TearStr(Стр,"<url");
+        Стр1:=TearStr(Стр,">");
+        Стр2:=Стр;
+        If флВизуальный Then
+          Form.StatusText("Загрузка "+TearStr(Стр2,"<")+"...");
+        EndIf;
+        
+        If Стр1="" Then
+          //Стр: http://192.168.1.30:8080/opt/out/WayBillAct/2824</url>...
+          Стр1:=Стр;
+          Стр1:=Uppercase(TearStr(Стр1,"<"));
+          If pos("/WAYBILLACT",Стр1)+pos("/WAYBILLTICKET",Стр1)+pos("/REQUESTREPEALWB",Стр1)+pos("/CONFIRMREPEALWB",Стр1)>0 Then
+            Стр1:=TearStr(Стр,"<");
+            СтрСсылка:="";
+            Стр2:=_ПолучитьСтраницу(Сервер,Стр1,СтрСсылка);
+            If Стр2="" Then
+              спЗапрос["Ошибка"]:="Невозможно загрузить файл: "+СтрСсылка;
+              Exit 0;
+            EndIf;
+            //<WBRegId>TTN-0000185274</WBRegId>
+            If pos("<WBRegId>",Стр2)>0 Then
+              Стр1:=Стр2;
+              TearStr(Стр1,"<WBRegId>");
+              Стр1:=TearStr(Стр1,"</WBRegId>");
+            Else
+              Continue;
+            EndIf;
+  
+            _НайтиОтвет(Ответы,Стр1);
+            If Ответы.Идентификатор<>Стр1 Then
+              Ответы.Идентификатор:=Стр1;
+            EndIf;
+            Ответы.НакИД:=Стр1;
+            If Ответы.Ответ<>"" Then
+              AppendStringToBufferedString(Ответы.Ответ,"------------------------------"+_NEWLINE);
+            EndIf;
+            AppendStringToBufferedString(Ответы.Ответ,СтрСсылка+_NEWLINE+Стр2+_NEWLINE);
+          EndIf;
+          Continue;
+        EndIf;
+        
+        //Стр1: ' replyId="106fe839-7185-47fe-9015-42b7b82f5b24"'
+        //Стр:  'http://192.168.1.30:8080/opt/out/Ticket/2788</url>'
+        TearStr(Стр1,"replyId=""");
+        Стр1:=TearStr(Стр1,"""");
+        If Стр1="" Then
+          Continue;
+        EndIf;
+        
+        ТранИД:=UpperCase(Replace(Стр1,"-",""));
+        Стр1:=TearStr(Стр,"<");
+        СтрСсылка:="";
+        Стр2:=_ПолучитьСтраницу(Сервер,Стр1,СтрСсылка);
+        If Стр2="" Then
+          спЗапрос["Ошибка"]:="Невозможно загрузить файл: "+СтрСсылка;
+          Exit 0;
+        EndIf;
+        
+        //<RegID>TTN-0000198965</RegID>
+        НакИД:="";
+        If pos("<RegID>",Стр2)>0 Then
+          Стр1:=Стр2;
+          TearStr(Стр1,"<RegID>");
+          НакИД:=TearStr(Стр1,"</");
+          If pos("TTN-",НакИД)<>1 Then
+            НакИД:="";
+          EndIf;
+        EndIf;
+  
+        _НайтиОтвет(Ответы,ТранИД,НакИД);
+        If НакИД<>"" Then
+          Ответы.НакИД:=НакИД;
+        EndIf;
+        If (Ответы.ТранИД<>ТранИД)And(Ответы.ТранИД<>"")And(ТранИД<>"") Then
+          Ответы.флНесколькоТранИД:=1;
+        EndIf;
+        Ответы.ТранИД:=ТранИД;
+        //If (Ответы.Идентификатор<>ТранИД)And(Ответы.Идентификатор<>НакИД)And(НакИД<>"") Then
+        //  Ответы.Идентификатор:=НакИД;
+        //EndIf;
+        If Ответы.Идентификатор<>Ответы.ТранИД Then
+          Ответы.Идентификатор:=Ответы.ТранИД;
+        EndIf;
+        If Ответы.Ответ<>"" Then
+          AppendStringToBufferedString(Ответы.Ответ,"------------------------------"+_NEWLINE);
+        EndIf;
+        AppendStringToBufferedString(Ответы.Ответ,СтрСсылка+_NEWLINE+Стр2+_NEWLINE);
+      EndDo;
+      
+      //Возможны ситуации, когда ЕГАИС присылает более одного ответа для одной цепочки документа.
+      //
+      //Ниже даны возможные случаи, когда одна цепочка делится на две и более и ее необходимо объединить:
+      //
+      //Пример 1: Одна цепочка содержит Идентификатор с ТранИД "B" (с НакИД "A" внутри)
+      //          Вторая содержит Идентификатор только с НакИД "A" (при этом ТранИД "B" отсутствует)
+      //
+      //Пример 2: Одна цепочка содержит Идентификатор с ТранИД "B" (при этом НакИД отсутствует)
+      //          Вторая содержит Идентификатор только с НакИД "A" (с ТранИД "B" внутри)
+      //
+      //Пример 3: Одна цепочка содержит Идентификатор с ТранИД "B" (с НакИД "A" внутри)
+      //          Вторая содержит Идентификатор только с ТранИД "C" (с НакИД "A" внутри)
+      //
+      //Также важно: при объединении, необходимо предпочитать ТранИД, а не НакИД
+      //             так как система возможно еще не знает НакИД (новая накладная)
+  
+      //Случай 2:
+      For i:=1 to Ответы.Size() Do
+        If _Or(Ответы["Идентификатор",i]="",Ответы["ТранИД",i]="",Ответы["НакИД",i]="") Then
+          Continue;
+        EndIf;
+        For j:=1 to Ответы.Size() Do
+          If (i=j)Or(Ответы["Идентификатор",j]="") Then
+            Continue;
+          EndIf;
+          If Ответы["ТранИД",i]=Ответы["ТранИД",j] Then
+            Ответы.CurLine:=i;
+            If Ответы.Ответ<>"" Then
+              AppendStringToBufferedString(Ответы.Ответ,"------------------------------"+_NEWLINE);
+            EndIf;
+            AppendStringToBufferedString(Ответы.Ответ,Ответы["Ответ",j]+_NEWLINE);
+          
+            If Ответы["Идентификатор",j]=Ответы["ТранИД",j] Then
+              Ответы["Идентификатор",i]:=Ответы["ТранИД",j];
+              If (Ответы["ТранИД",j]<>Ответы["ТранИД",i])And(Ответы["ТранИД",j]<>"")And(Ответы["ТранИД",i]<>"") Then
+                Ответы["флНесколькоТранИД",i]:=1;
+              EndIf;
+            EndIf;
+            Ответы["Ответ",j]:="";
+            Ответы["Идентификатор",j]:="";
+          EndIf;
+        EndDo;
+      EndDo;
+  
+      //Случай 1:
+      For i:=1 to Ответы.Size() Do
+        If _Or(Ответы["Идентификатор",i]="",Ответы["ТранИД",i]="",Ответы["НакИД",i]="") Then
+          Continue;
+        EndIf;
+        For j:=1 to Ответы.Size() Do
+          If (i=j)Or(Ответы["Идентификатор",j]="") Then
+            Continue;
+          EndIf;
+          If Ответы["НакИД",i]=Ответы["НакИД",j] Then
+            Ответы.CurLine:=i;
+            If Ответы.Ответ<>"" Then
+              AppendStringToBufferedString(Ответы.Ответ,"------------------------------"+_NEWLINE);
+            EndIf;
+            AppendStringToBufferedString(Ответы.Ответ,Ответы["Ответ",j]+_NEWLINE);
+            
+            If Ответы["Идентификатор",j]=Ответы["ТранИД",j] Then
+              Ответы["Идентификатор",i]:=Ответы["ТранИД",j];
+              If (Ответы["ТранИД",j]<>Ответы["ТранИД",i])And(Ответы["ТранИД",j]<>"")And(Ответы["ТранИД",i]<>"") Then
+                Ответы["флНесколькоТранИД",i]:=1;
+              EndIf;
+            EndIf;
+            Ответы["Ответ",j]:="";
+            Ответы["Идентификатор",j]:="";
+          EndIf;
+        EndDo;
+      EndDo;
+  
+      СтрРез:="";
+      For i:=1 to Ответы.Size() Do
+        Ответы.CurLine:=i;
+        if Ответы.Идентификатор="" Then
+          Continue;
+        EndIf;
+        AppendStringToBufferedString(СтрРез,"=============================="+_NEWLINE+
+          Ответы.НакИД+_NEWLINE+
+          ?(Ответы.флНесколькоТранИД,"",Ответы.ТранИД)+_NEWLINE+
+          Ответы.Ответ+_NEWLINE);
+      EndDo;
+      
+      спПараметры.SetByName("Результат",СтрРез);
+      спПараметры.SetByName("РезультатВозвращен",1);
+      Exit 1;
+    ElseIf ТипЗапроса=4 Then //Запрос по поступлениям
+      Сервер:=TearStr(Ссылка,"/")+"/opt/out";
+      Стр:="";
+      If not ВыполнитьОбменССервером(Сервер,Стр,спЗапрос,0) Then
+        Exit 0;
+      EndIf;
+      TДок:=Tab.Create("Идентификатор,Накладная,Справка,НакладнаяСтр,СправкаСтр");
+      Стр:=ReformatXML(Стр);
+      While Стр<>"" Do
+        TearStr(Стр,"<url>");
+        Стр1:=TearStr(Стр,"</url>");
+        Стр2:=Uppercase(Стр1);//http://192.168.5.201:8080/opt/out/WayBill_v3/769047
+        If _And(Pos("/FORM2REGINFO/",Стр2)=0,Pos("/WAYBILL_",Стр2)=0) Then
+          Continue;
+        EndIf;
+        флНакладная:=Pos("/WAYBILL_",Стр2)>0;
+        Стр3:=_ПолучитьСтраницу(Сервер,Стр1);
+        If Стр3="" Then
+          Continue;
+        EndIf;
+        стрИдентификатор:=?(флНакладная,_ПолучитьИдентификаторWayBill(Стр3),_ПолучитьИдентификаторСправки(Стр3));
+        If (стрИдентификатор="")And(флВизуальный) Then
+          Message("Документ "+Стр2+" не имеет корректного идентификатора!","!");
+          Continue;
+        EndIf;
+        If TДок.FindAndGoto(стрИдентификатор,,"Идентификатор")=0 Then
+          TДок.AddLine("Идентификатор,Накладная,Справка,НакладнаяСтр,СправкаСтр",стрИдентификатор,"","","","");
+        EndIf;
+        If флНакладная Then
+          TДок.Накладная:=?(TДок.Накладная="","",TДок.Накладная+Chr(1))+Стр1;
+          TДок.НакладнаяСтр:=?(TДок.НакладнаяСтр="","",TДок.НакладнаяСтр+_NEWLINE)+Стр3;
+        Else
+          TДок.Справка:=?(TДок.Справка="","",TДок.Справка+Chr(1))+Стр1;
+          TДок.СправкаСтр:=?(TДок.СправкаСтр="","",TДок.СправкаСтр+_NEWLINE)+Стр3;
+        EndIf;
+      EndDo;
+      СтрРез:="";
+      TДок.Select();
+      While TДок.Next() Do
+        If ((TДок.НакладнаяСтр="")Or(TДок.СправкаСтр=""))And(флВизуальный) Then
+          Message("Идентификатор "+TДок.Идентификатор+" пропущен, так как не все документы найдены! Обратитесь к администратору!","!");
+          Message("Ссылка: "+?(TДок.Накладная="",TДок.Справка,TДок.Накладная),"!");
+          Continue;
+        EndIf;
+        AppendStringToBufferedString(СтрРез,"=============================="+_NEWLINE+TДок.Накладная+_NEWLINE+TДок.Справка+_NEWLINE+
+          TДок.НакладнаяСтр+_NEWLINE+"------------------------------"+_NEWLINE+TДок.СправкаСтр);
+      EndDo;  
+      спПараметры.SetByName("Результат",СтрРез);
+      спПараметры.SetByName("РезультатВозвращен",1);
+      
+      Exit 1;
+    ElseIf ТипЗапроса=3 Then //Очистка ящика
+      Сервер:=TearStr(Ссылка,"/")+"/opt/out";
+      Стр:="";
+      If not ВыполнитьОбменССервером(Сервер,Стр,спЗапрос,0) Then
+        Exit 0;
+      EndIf;
+      Стр:=ReformatXML(Стр);
+      While Стр<>"" Do
+        TearStr(Стр,"<url");
+        Стр1:=TearStr(Стр,"</url>");
+        Стр2:=Uppercase(Стр1);
+        TearStr(Стр2,"/OPT/OUT/");
+        Стр2:="/"+Trim(TearStr(Стр2,"/"))+"/";
+        i:=Pos("_V",Стр2);
+        If (i>1)And(Pos(Стр2[i+2],"0123456789")>0) Then
+          Стр2:=TearStr(Стр2,"_V")+"/";
+        EndIf;
+        If Pos(Стр2,"/REPLYPARTNER/REPLYAP/REPLYRESTS/REPLYCLIENT/TTNHISTORYF2REG/")=0 Then
+          Continue;
+        EndIf;
+        _УдалитьПуть(Сервер,Стр1);
+      EndDo;
+      глОчиститьСтарыеПакетыЕГАИС(спЗапрос["оРегИд"],1);
+      Exit 1;
+    ElseIf ТипЗапроса=14 Then //Удаление всех URL ящика
+      Сервер:=TearStr(Ссылка,"/")+"/opt/out";
+      Стр:="";
+      If not ВыполнитьОбменССервером(Сервер,Стр,спЗапрос,0) Then
+        Exit 0;
+      EndIf;
+      Стр:=ReformatXML(Стр);
+      While Стр<>"" Do
+        TearStr(Стр,"<url>");
+        Стр1:=TearStr(Стр,"</url>");
+        _УдалитьПуть(Сервер,Стр1);
+      EndDo;
+      Exit 1;
+    ElseIf ТипЗапроса=9 Then //Удаление URL
+      Т:=Стр;
+      For i:=1 To Т.Size() Do
+        Стр:=Trim(Т.GetLine(i));
+        If Стр<>"" Then
+          If (глПользователь.общиеАдминистратор)And(флВизуальный) Then
+            Message("Удаляем: "+Стр);
+          EndIf;
+          ВыполнитьОбменССервером(Стр,"",спЗапрос,0,"DELETE");
+        EndIf;
+      EndDo;
+      Exit 1;
+    Else
+      спЗапрос["Ошибка"]:="Тип запроса ("+ТипЗапроса+") не поддерживается!";
+    EndIf;
+  Except
+    спЗапрос["Ошибка"]:="Внутренняя ошибка при выполнении запроса: "+PopError()+"!";
+  EndTry;
+  Exit 0;
+EndFunction
+
+//ТипЗапроса: 1 -- GET
+//            2 -- POST с ожиданием ответа
+//            3 -- Очистить ящик от запросов
+//            4 -- Запрос по поступлениям
+//            5 -- POST без ожидания ответа (отдает в стрФункция GUID запроса, стрФункция должна быть списком)
+//            7 -- Получение статусов документов
+//            8 -- Удаление квитанций и входящих документов
+//            9 -- Удалить URL по списку в тексте
+//            14 -- Удалить все данные
+Function глВыполнитьЗапросЕГАИССОжиданием(оМагазин,ФлВизуальный,ТекстЗапроса,СсылкаЗапроса,ТипЗапроса=0,стрФункция="") Export
+  оСервер:=оМагазин.АдресЕГАИС;
+  Прокси:="";
+  оСервер:=глРазделитьАдресИПрокси(оСервер,Прокси);
+
+  If оСервер="" Then
+    If ФлВизуальный Then
+      Message("Для магазина "+оМагазин+" не указан адрес сервера (должен быть в форме 192.168.1.1:8080! Обратитесь к администратору!","!");
+    EndIf;
+    Exit 0;
+  EndIf;
+  
+  If ТипЗапроса<2 Then
+    ТипЗапроса:=?(ТипЗапроса=0,1,2);
+  EndIf;
+  
+  спЗапрос:=List.Create();
+  SetMultiThreaded(спЗапрос);
+  спЗапрос.SetByName("Текст",ТекстЗапроса);
+  спЗапрос.SetByName("ТипЗапроса",ТипЗапроса);
+  спЗапрос.SetByName("Магазин",оМагазин);
+  спЗапрос.SetByName("Ссылка",оСервер+"/"+СсылкаЗапроса);
+  спЗапрос.SetByName("Прокси",Прокси);
+  спЗапрос.SetByName("Функция",стрФункция);
+  спЗапрос.SetByName("оРегИд",оМагазин.КодТочкиЕГАИС);
+  If not глФункцияОдногоЗапросаЕГАИС(спЗапрос,ФлВизуальный) Then
+    If TypeStr(стрФункция)="LIST" Then
+      стрФункция["Ошибка"]:=спЗапрос["Ошибка"];
+    EndIf;
+    If ФлВизуальный And(_Or(TypeStr(стрФункция)<>"LIST",стрФункция["ФлНеВыводитьНаЭкран"]<>1)) Then
+      Тч:=Text.Create(1);
+      Тч.AddString(спЗапрос.GetByName("Ошибка"));
+      Тч.Show("Ошибка запроса!",,1);
+    EndIf;
+    Exit 0;
+  EndIf;
+  Exit 1;
+EndFunction
+
+  
+
+
+
+
+
+
+
+
+Function глМаркиЗаблокироватьСписок(Сп,флИсключение=0) Export
+  аОбъект:=0;аПольз:="";аКомп:="";аДата:="";
+  If not MassLockWithWait(Сп,0,1,2000,аОбъект,аПольз,аКомп,аДата) Then
+    If DBTypeStr(аОбъект)="DOC" Then
+      Стр:="Документ "+аОбъект+" заблокирован пользователем "+аПольз+" (компьютер "+аКомп+")! Для того, чтобы выполнить эту операцию, необходимо закрыть указанный документ!";
+    Else
+      Стр:="Партия с кодом ЕГАИС "+аОбъект+" заблокирована пользователем "+аПольз+" (компьютер "+аКомп+")! Для того, чтобы выполнить эту операцию, необходимо дождаться окончания блокировки!";
+    EndIf;
+    If флИсключение Then
+      Raise Стр;
+    ElseIf Form.ToolMode=10 Then
+      Box(Стр,Q_STOP);
+    Else
+      Message(Стр,"!");
+    EndIf;
+    Exit 0;
+  EndIf;  
+  Exit 1;
+EndFunction
+
+
+
+//Возвращает 0, если марок не найдено
+//Загружает все марки, даже удаленные и возвращенные поставщику
+Function глМаркиЗагрузитьДокумент(зДок,ФлЭлементы=0,ФлПустаяТаблица=0) Export
+  ФлСУдаленными:=(зДок.DBName()="ПоступлениеТМЦ")Or(_And(зДок.DBName()="РегистрацияТМЦ",зДок.КодОперации=Enum.коРегистрацияТМЦ.ОприходованиеТМЦ));
+  If ФлСУдаленными Then
+    aList:=Ref.тмцМаркировкаПозиций.Load(0,"Документ,@IsFolder",зДок,0);
+  Else
+    aList:=Ref.тмцМаркировкаПозиций.Load(0,"~(Документ=зДок)And(@Status=0)And(@IsFolder=0)");
+  EndIf;
+  If aList.Size()=0 Then
+    If ФлПустаяТаблица Then
+      ТРез:=Tab.Create("Партия,Марка,Ящик"+?(ФлЭлементы=1,",Элемент"));
+      Exit ТРез;
+    Else
+      Exit 0;
+    EndIf;
+  EndIf;
+
+  ObjC:=ObjectCollector.Create();//Важно для больших поступлений, иначе будет много элементов партий
+  ТРез:=Tab.Create("Партия,Марка,Ящик"+?(ФлЭлементы=1,",Элемент"));
+  For i:=1 To aList.Size() Do
+    aEl:=aList[i];
+    If not ФлЭлементы Then
+      ТРез.AddLine("Партия,Марка,Ящик",ObjC.Get(aEl.Parent()),aEl.КодМарки,ObjC.Get(aEl.Folder()).КодМарки);
+    Else
+      ТРез.AddLine("Партия,Марка,Ящик,Элемент",ObjC.Get(aEl.Parent()),aEl.КодМарки,ObjC.Get(aEl.Folder()).КодМарки,aEl);
+    EndIf;
+  EndDo;
+  ТРез.Sort("Партия,Ящик,Марка");
+  Exit ТРез;
+EndFunction
+
+
+//Внимание: Документ в ТМарки должен быть уже заблокирован
+//ФлПриСозданииЧека: 1 (реализация) -- не только добавляет марки в реализацию, но и списывает марки
+Function глМаркиЗарегистрироватьДокумент(зДок,ТМарки,Режим=0,ТолькоПартия="",ФлПриСозданииЧека=0) Export
+  //Режим:  0,3 -- проверка марок в оригинальной партии (реализация, списание ТМЦ, возвраты), 3 вызывается при пробитии чека
+  //        1 -- приход марок (оприходования, поступления) -- начальное заполнение до ответа ЕГАИС
+  //        2 -- временное сохранение документа реализации без проверки
+  //ТМарки: "Партия,Ящик,Марка"
+  //ТолькоПартия -- оптимизация, если нужно сохранить только определенную партию, а не всю таблицу
+
+  Function _НайтиЯщик(КодЯщика,аПартия)
+    аЭл:=Ref.тмцМаркировкаПозиций;
+    If not аЭл.Find("~(@Parent=аПартия)And(@IsFolder=1)And(КодМарки=КодЯщика)") Then
+      аЭл.New(1);
+      аЭл.Parent(аПартия);
+      аЭл.Документ:=зДок;
+      аЭл.КодМарки:=КодЯщика;
+      аЭл.флСостояние:=?(Режим=1,0,?(Режим<>2,2,3));
+      аЭл.Save();
+    EndIf;
+    Exit аЭл;
+  EndFunction
+
+  If _Or(isEmpty(ТМарки),ТМарки.Size()=0) Then
+    Exit 1;
+  EndIf;
+  
+  If ТолькоПартия<>"" Then
+    СпПартии:=List.Create(ТолькоПартия);
+  Else
+    СпПартии:=List.Create();
+    ТМарки.CopyTo(СпПартии,,,"Партия");
+    СпПартии.Group();
+  EndIf;
+  If зДок.isLocked()<>1 Then
+    СпПартии.Add(зДок);
+  EndIf;
+  If not глМаркиЗаблокироватьСписок(СпПартии) Then
+    Exit 0;
+  EndIf;
+
+  Result:=0;
+  флОк:=0;
+  ФлТранзакция:=0;
+  If not IsTransactionActive() Then
+    BeginTransaction();
+    ФлТранзакция:=1;
+  EndIf;
+  Try
+    спМарки:=List.Create();
+    ТМарки.CopyTo(спМарки,,,"Марка");
+    спМарки.Group();
+    //Проверять ли марки?
+    Магазин:=зДок.Склад.Магазин;
+    If _And((Режим=0)Or(Режим=3),not Магазин.флНеПроверятьНаличиеМарочногоТовара) Then
+      ФлВозвратДоЕГАИС:=_And(зДок.DBName()="ВозвратПоставщику",зДок.ДокОснование.DBName()="ПоступлениеТМЦ",Left(зДок.ДокОснование.УникальныйИдентификатор3,1)<>"=");
+      аТемп:=TempDB.Create("Партия:DB,Марка:STRING.200,Фл:INT");
+      аТемп.Upload(ТМарки,"Партия,Марка");
+      //Пометим марки, которые присутствовали в поступлении
+      бТемп:=TempDB.Create("зЭл:Ref.тмцМаркировкаПозиций,Марка:STRING.200");
+      бТемп.LoadFrom("Ref.тмцМаркировкаПозиций","@ELEMENT->зЭл,КодМарки->Марка","(флСостояние="+?(ФлВозвратДоЕГАИС,0,1)+")And(@Parent IN СпПартии)And(КодМарки IN спМарки)And(@IsFolder=0)");//Все текущие марки поступлений
+      аТемп.Update(бТемп,":Марка=Марка,1->Фл","(зЭл.@Parent=Партия)And(:Марка=Марка)");
+      Ном:=аТемп.Size("Фл<>1");
+      If Ном>0 Then
+        //Вывод информации по тому, какие из марок отсутствуют
+        Ном:=Min(25,Ном);
+        аТемп.Select(,"Фл<>1");
+        While _And(Ном>0,аТемп.Next()) Do
+          Ном:=Ном-1;
+          Message(аТемп.Марка,"!");
+        EndDo;
+        
+        If (Режим=3)Or(not глПользователь.общиеАдминистратор) Then
+          Box("Списываемые (или возвращаемые) марки отсутствуют в поступлении (первые несколько отсутствующих марок показаны в логе)! Проверьте корректность указания партий!",Q_STOP);
+          Exit 0;
+        Else
+          If AskQuestion("Списываемые (или возвращаемые) марки отсутствуют в поступлении (первые несколько отсутствующих марок показаны в логе)! Вы уверены, что марки выбраны корректно?",Q_WARNING+Q_YESNO)<>R_YES Then
+            Exit 0;
+          EndIf;
+        EndIf;  
+      EndIf;
+    EndIf;
+    
+    If _Or(not ФлПриСозданииЧека,СпПартии.Size()<ТМарки.Size()) Then
+      ФлПоступление:=зДок.DBName()="ПоступлениеТМЦ";
+      аТемп:=TempDB.Create("Партия:DB,Марка:STRING.200,Ящик:STRING.200,Фл:INT");
+      аТемп.Upload(ТМарки,"Партия,Марка,Ящик");
+      //Удалить все марки, закрепленные за документом и партией, не входящие в спМарки
+      If ТолькоПартия<>"" Then
+        сп2:=List.Create(ТолькоПартия);
+      Else
+        сп2:=List.Create();
+        ТМарки.CopyTo(сп2,,,"Партия");
+        сп2.Group();
+      EndIf;
+      бТемп:=TempDB.Create("зЭл:Ref.тмцМаркировкаПозиций,Фл:INT,Марка:STRING.200,ТекЯщик:STRING.200");
+      If ФлПоступление Then
+        бТемп.LoadFrom("Ref.тмцМаркировкаПозиций","@ELEMENT->зЭл,КодМарки->Марка","(IsType(Документ,Doc.ПоступлениеТМЦ))And(@Parent IN сп2)And(@IsFolder=0)");//Все текущие марки поступлений
+      Else
+        бТемп.LoadFrom("Ref.тмцМаркировкаПозиций","@ELEMENT->зЭл,КодМарки->Марка","(Документ=зДок)And(@Parent IN сп2)And(@IsFolder=0)");//Все текущие марки документа
+      EndIf;
+      бТемп.Update(аТемп,":Марка=Марка,1->Фл","(зЭл.@Parent=Партия)And(:Марка=Марка)");//And(зЭл.Документ=зДок)And(зЭл.@Status=0)
+      бТемп.Update(,"1->Фл","зЭл.@Status=1");
+      бТемп.Select(,"Фл=0");
+      While бТемп.Next() Do
+        бТемп.зЭл.Mark(1);
+      EndDo;
+      бТемп.Remove("Фл=0");
+      
+      //Для существующих марок, проверить ящики, если необходимо, изменить
+      бТемп.Update(аТемп,":Марка=Марка,2->Фл,Ящик->ТекЯщик","(зЭл.@Parent=Партия)And(:Марка=Марка)And(зЭл.@Folder.КодМарки<>Ящик)");//And(зЭл.Документ=зДок)And(зЭл.@Status=0)
+      бТемп.Select(,"Фл=2");
+      While бТемп.Next() Do
+        зЭл:=бТемп.зЭл;
+        элЯщик:=_НайтиЯщик(бТемп.ТекЯщик,зЭл.Parent());
+        зЭл.Folder(элЯщик);
+        зЭл.Save();
+      EndDo;
+      
+      If ФлПоступление Then
+        //Для марок поступлений, имеющих неверный документ основания, изменить документ на текущий
+        бТемп.Select(,"зЭл.Документ<>зДок");
+        While бТемп.Next() Do
+          зЭл:=бТемп.зЭл;
+          зЭл.Документ:=зДок;
+          зЭл.Save();
+        EndDo;
+      EndIf;
+    
+      //Удаленные марки сделать обычными
+      бТемп.Select(,"зЭл.@Status=1");
+      While бТемп.Next() Do
+        бТемп.зЭл.Mark(0);
+      EndDo;
+    
+      //Новые марки
+      спЯщики:=List.Create();
+      аТемп.Update(бТемп,":Марка=Марка,1->Фл","(зЭл.@Parent=:Партия)And(Марка=:Марка)");
+      аТемп.Select(,"Фл<>1");
+      Чл:=аТемп.Size("Фл<>1");
+      аНум:=0;
+      While аТемп.Next() Do
+        аНум:=аНум+1;
+        If аНум%20=0 Then
+          Form.StatusText("Добавление марок: "+аНум+" из "+Чл);
+        EndIf;
+        элЯщик:=0;
+        If Trim(аТемп.Ящик)<>"" Then
+          i:=спЯщики.FindByName(аТемп.Ящик,,1,0);
+          If i=0 Then
+            элЯщик:=_НайтиЯщик(аТемп.Ящик,аТемп.Партия);
+            спЯщики.SetByName(аТемп.Ящик,элЯщик,1,0);
+          Else
+            элЯщик:=спЯщики[i];
+          EndIf;
+        EndIf;
+        зЭл:=Ref.тмцМаркировкаПозиций;
+        зЭл.New();
+        зЭл.Parent(аТемп.Партия);
+        зЭл.Документ:=зДок;
+        зЭл.флСостояние:=?(Режим=1,0,?(Режим<>2,2,3));
+        зЭл.КодМарки:=аТемп.Марка;
+        If элЯщик<>0 Then
+          зЭл.Folder(элЯщик);
+        EndIf;
+        зЭл.Save();
+      EndDo;
+    Else
+      //ТМарки.Group("Партия,Марка,Ящик");
+      спЯщики:=List.Create();
+      ТМарки.Select();
+      Чл:=ТМарки.Size();
+      аНум:=0;
+      While ТМарки.Next() Do
+        аНум:=аНум+1;
+        If аНум%20=0 Then
+          Form.StatusText("Добавление марок: "+аНум+" из "+Чл);
+        EndIf;
+        элЯщик:=0;
+        If Trim(ТМарки.Ящик)<>"" Then
+          i:=спЯщики.FindByName(ТМарки.Ящик,,1,0);
+          If i=0 Then
+            элЯщик:=_НайтиЯщик(ТМарки.Ящик,ТМарки.Партия);
+            спЯщики.SetByName(ТМарки.Ящик,элЯщик,1,0);
+          Else
+            элЯщик:=спЯщики[i];
+          EndIf;
+        EndIf;
+        зЭл:=Ref.тмцМаркировкаПозиций;
+        зЭл.New();
+        зЭл.Parent(ТМарки.Партия);
+        зЭл.Документ:=зДок;
+        зЭл.флСостояние:=?(Режим=1,0,?(Режим<>2,2,3));
+        зЭл.КодМарки:=ТМарки.Марка;
+        If элЯщик<>0 Then
+          зЭл.Folder(элЯщик);
+        EndIf;
+        зЭл.Save();
+      EndDo;
+      зЭл:=Ref.тмцМаркировкаПозиций;//"Списать" марки
+      зЭл.MassMark(?(зДок.DBName()="ВозвратОтПокупателя",0,1),"~(КодМарки IN спМарки)And(флСостояние=1)");
+    EndIf;
+    
+    флОк:=1;
+  Finally
+    If ФлТранзакция Then
+      If флОк Then
+        CommitTransaction();
+      Else
+        RollbackTransaction();
+      EndIf;    
+    EndIf;
+    MassUnlock(СпПартии);
+  EndTry;
+  Exit 1;
+EndFunction
+
+Function глСоздатьКонсолидированноеСписаниеСРегистра2ЕГАИС(Магазин,формИндикатор=0,ByRef СтрОшибка) Export
+  //Используются розничные документы Реализация и Возврат
+  спБлокировки:=List.Create();
+  ФлПустыеПартии:=0;
+  ФлТранзакция:=0;
+  ФлОк:=0;
+  Try
+    НачДата:=BegOfDay(Date());
+    КонДата:=НачДата+14;
+    НачДата:=НачДата-14;
+    КоРеал:=Enum.коРеализация.РеализацияРозничная;
+    КоВозв:=Enum.коВозвратОтПокупателя.ВозвратРозничный;
+    СтрОбработан:="*";
+    ТЗ:="(зСтатус:=Doc.Реализация.@Status;Condition(зСтатус>1);
+    |зДень:=Doc.Реализация.DocDate;Condition((зДень>=НачДата)And(зДень<КонДата));
+    |зАлк:=Doc.Реализация.Номенклатура.Номенклатура.флАлкогольнаяПродукция;
+    |Condition(зАлк=1);
+    |зУИ:=Doc.Реализация.УникальныйИдентификатор;
+    |Condition(зУИ<>СтрОбработан);  
+    |зКО:=Doc.Реализация.КодОперации;
+    |Condition(зКО=КоРеал);
+    |зМагазин:=Doc.Реализация.Магазин;
+    |Condition(зМагазин=Магазин);
+    |Документ:=Doc.Реализация;
+    |Group Документ;) UNION ALL 
+    |(зСтатус:=Doc.ВозвратОтПокупателя.@Status;Condition(зСтатус>1);
+    |зДень:=Doc.ВозвратОтПокупателя.DocDate;Condition((зДень>=НачДата)And(зДень<КонДата));
+    |зАлк:=Doc.ВозвратОтПокупателя.Номенклатура.Номенклатура.флАлкогольнаяПродукция;
+    |Condition(зАлк=1);
+    |зУИ:=Doc.ВозвратОтПокупателя.УникальныйИдентификатор;
+    |Condition(зУИ<>СтрОбработан);  
+    |зКО:=Doc.ВозвратОтПокупателя.КодОперации;
+    |Condition(зКО=КоВозв);
+    |зМагазин:=Doc.ВозвратОтПокупателя.Магазин;
+    |Condition(зМагазин=Магазин);
+    |Документ:=Doc.ВозвратОтПокупателя;
+    |Group Документ;)";
+    З:=Query.Create();
+    aTab:=З.Execute(ТЗ,0);
+    
+    BeginTransaction();
+    ФлТранзакция:=1;
+    
+    Таб:=Tab.Create("Номенклатура,Партия,Количество");
+    aTab.Select();
+    While aTab.Next() Do
+      If _And(not IsEmpty(формИндикатор),aTab.CurLine % 5=0) Then
+        формИндикатор.Caption:=""+aTab.CurLine+"/"+aTab.Size();
+      EndIf;
+      зДок:=aTab.Документ.Copy();
+      
+      аПольз:="";аМаш:="";аВремя:="";
+      If not зДок.Lock(аПольз,аМаш,аВремя) Then
+        Raise "Документ "+зДок+" заблокирован пользователем "+аПольз+" (компьютер "+аМаш+") в "+FormatDate(аВремя,"D MMM YYYY в hh:tt:ss");
+      EndIf;
+      спБлокировки.Add(зДок);
+      
+      зДок.Reload();
+      зДок.УникальныйИдентификатор:=СтрОбработан;
+      зДок.Save();
+      ФлМножитель:=?(зДок.DBName()="ВозвратОтПокупателя",-1,1);
+      bTab:=зДок.LoadStorage("ОстаткиТМЦ");
+      MassLoadObjects(bTab,"Номенклатура,Партия");
+      bTab.Select();
+      While bTab.Next() Do
+        зН:=bTab.Номенклатура;
+        зП:=bTab.Партия;
+        If _And(зН.флАлкогольнаяПродукция=1,зП.Selected()=0) Then
+          ФлПустыеПартии:=1;
+          Message("В документе "+зДок+" для позиции "+зН+" не указана партия!","!");
+        EndIf;
+        If _Or(зН.флАлкогольнаяПродукция=0,зП.Selected()=0,зП.флМарочныйУчет=1) Then
+          Continue;
+        EndIf;
+        Таб.AddLine("Номенклатура,Партия,Количество",зН,зП,ФлМножитель*bTab.Количество);
+      EndDo;
+    EndDo;
+    Таб.Group("Номенклатура,Партия","Количество");
+    If ФлПустыеПартии Then
+      Raise "Документ списания с регистра 2 не может быть сформирован, так как в некоторых документах продажи не выбраны партии! Список документов ищите в логе программы!";
+    EndIf;
+    
+    If not IsEmpty(формИндикатор) Then
+      формИндикатор.Caption:="Обработка...";
+    EndIf;
+    //Создаем документ списания с регистра 2
+    bDoc:=Doc.Регистр2ЕГАИС;
+    bDoc.New();
+    bDoc.DocDate:=Date();
+    bDoc.Автор:=глПользователь;
+    bDoc.ЮрЛицо:=Магазин.ЮрЛицо;
+    bDoc.Магазин:=Магазин;
+    глУстановитьНовыйНомер(bDoc);
+    //bDoc.ДокОснование:=aDoc;
+    bDoc.КодОперации:=Enum.коРегистр2ЕГАИС.СписаниеСРегистра2;
+    bTab:=bDoc.LineParts("Номенклатура");
+    Таб.Select();
+    While Таб.Next() Do
+      If Таб.Количество>0 Then
+        bTab.AddLine("Номенклатура,Партия,Количество",Таб.Номенклатура,Таб.Партия,Таб.Количество);
+      ElseIf Таб.Количество<0 Then
+        Logs.Write("Закрытие смены, позиция "+Таб.Номенклатура+", партия "+Таб.Количество+" в количестве "+(-Таб.Количество)+" не может быть возвращена на регистр 2!",,"НАРУШЕНИЯ");
+        СтрОшибка:="Из-за наличия возвратов на реализации прошлых дат, которые невозможно отразить в ЕГАИС, некоторое количество товара на регистре 2 будет утеряно! Рекомендуется обратиться к администратору!";
+      EndIf;
+    EndDo;
+    If bTab.Size()>0 Then
+      bDoc.Save(0,1);//блокировка необходима, чтобы скрытый поток не отправил документ до того, как мы закончим обработку
+      If not глОбработать(bDoc,1) Then
+        СтрОшибка:="Невозможно обработать документ списания с регистра 2 ЕГАИС!";
+        Exit 0;
+      EndIf;
+    EndIf;
+    
+    CommitTransaction();
+    ФлОк:=1;
+    If not IsEmpty(формИндикатор) Then
+      формИндикатор.Caption:="Выполнено";
+    EndIf;
+    
+  Finally
+    Стр:=PopError();
+    If not IsEmpty(Стр) Then
+      СтрОшибка:=Стр;
+    EndIf;
+    SuppressException();
+  
+    If not ФлОк Then
+      If ФлТранзакция Then
+        RollbackTransaction();
+      EndIf;
+    EndIf;
+    MassUnlock(спБлокировки);
+  EndTry
+  Exit ФлОк;
+EndFunction
+
+
+Function OnSystemStart()
+  //Запуск отдельной задачи-потока обмена с ЕГАИС
+  If (DBVar.ЗапускатьЗадачуЕГАИСВВизуальномКлиенте=1)And(ProgramMode()=1) Then
+    глСервисныйПоток:=Mutex.ExecuteFunctionInSeparateThread("глФункцияСервисногоПотока",0);
+  EndIf;  
+EndFunction
+
+
+глСервисныйПоток:=0;

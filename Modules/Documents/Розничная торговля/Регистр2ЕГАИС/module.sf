@@ -1,0 +1,163 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function Видимость()
+  aEl:=Form.Object;
+  MainTab:=Form.MainTab.Value;
+  If Left(aEl.УникальныйИдентификатор3,1)="=" Then
+    Form.кнЕГАИС.FontColor:=_CLR_WINDOWTEXT;
+    Form.кнЕГАИС.FontStyle:=0;
+    Form.кнЕГАИС.Glyph:=1;
+  ElseIf aEl.УникальныйИдентификатор2<>"" Then
+    Form.кнЕГАИС.FontColor:=_CLR_HIGHLIGHT;
+    Form.кнЕГАИС.FontStyle:=1;
+    Form.кнЕГАИС.Glyph:=75;
+  Else
+    Form.кнЕГАИС.FontColor:=_CLR_RED;
+    Form.кнЕГАИС.FontStyle:=1;
+    Form.кнЕГАИС.Glyph:=75;
+  EndIf;
+  
+  If aEl.КодОперации=Enum.коРегистр2ЕГАИС.ПересортНаРегистре2 Then
+    MainTab.Column("НоменклатураПриход").isVisible:=1;
+    MainTab.Column("ПартияПриход").isVisible:=1;
+    MainTab.Column("КодНоменклатуры").isVisible:=0;
+    MainTab.Column("Номенклатура").Caption:="Номенклатура (расход)";
+    MainTab.Column("Партия").Caption:="Партия (расход)";
+  Else
+    MainTab.Column("НоменклатураПриход").isVisible:=0;
+    MainTab.Column("ПартияПриход").isVisible:=0;
+    MainTab.Column("КодНоменклатуры").isVisible:=1;
+    MainTab.Column("Номенклатура").Caption:="Номенклатура";
+    MainTab.Column("Партия").Caption:="Партия";
+  EndIf;
+EndFunction
+
+Function OnCreateFromObject()
+  //Ввод на основании
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  ФлБезЗаполнения:=0;
+  If aEl.ДокОснование.DBName()="ПоступлениеТМЦ" Then
+    aEl.Магазин:=aEl.ДокОснование.Магазин;
+    aEl.ЮрЛицо:=aEl.ДокОснование.ЮрЛицо;
+    If not глВыбратьВидОперацииВДокументе(aEl,0) Then
+      Form.Close(0);
+      Exit;
+    EndIf;
+  
+    aTab:=Tab.Create("Партия,Количество");
+    bTab:=aEl.ДокОснование.LineParts("Номенклатура");
+    bTab.Select();
+    While bTab.Next() Do
+      If _Or(bTab.Номенклатура.флАлкогольнаяПродукция=0,bTab.Партия.Selected()=0,bTab.Партия.флМарочныйУчет=1) Then
+        Continue;
+      EndIf;
+      aTab.AddLine("Партия,Количество",bTab.Партия,bTab.Количество);
+    EndDo;
+    
+    If aEl.КодОперации=Enum.коРегистр2ЕГАИС.ПеремещениеНаРегистр2 Then
+      aList:=aEl.ДокОснование.LoadLinkedDocuments(1);
+      For i:=1 To aList.Size() Do 
+        bEl:=aList.Get(i);
+        If _Or(bEl.DBName()<>"Регистр2ЕГАИС",bEl.Status()=1,bEl.КодОперации<>Enum.коРегистр2ЕГАИС.ПеремещениеНаРегистр2) Then
+          If _Or(bEl.DBName()<>"ВозвратПоставщику",bEl.Status()<2) Then
+            Continue;
+          EndIf;
+        EndIf;
+        bTab:=bEl.LineParts("Номенклатура");
+        bTab.Select();
+        While bTab.Next() Do
+          If _Or(bTab.Номенклатура.флАлкогольнаяПродукция=0,bTab.Партия.Selected()=0,bTab.Партия.флМарочныйУчет=1) Then
+            Continue;
+          EndIf;
+          aTab.AddLine("Партия,Количество",bTab.Партия,-bTab.Количество);
+        EndDo;
+      EndDo;
+    EndIf;
+    
+    bTab:=aEl.LineParts("Номенклатура");
+    bTab.Lock();
+    try
+      aTab.Group("Партия","Количество");
+      aTab.Select();
+      While aTab.Next() Do
+        If Round(aTab.Количество,6)>0 Then
+          bTab.AddLine("Номенклатура,Партия,Количество",aTab.Партия.Parent(),aTab.Партия,aTab.Количество);
+        EndIf;
+      EndDo;
+    Finally
+      aTab.Unlock();
+    EndTry;
+    If aTab.Size()=0 Then
+      Box("Нет строк с немарочной алкогольной продукцией, либо все строки уже были перемещены в других документах!",Q_INFORMATION);
+    EndIf;
+    ФлБезЗаполнения:=1;
+  EndIf;
+  If not ФлБезЗаполнения Then
+    if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+      Form.Close(0);
+      Exit;
+    EndIf;
+  EndIf;
+EndFunction
+
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  
+  If aEl.Магазин.Selected()=0 Then
+    Box("Необходимо выбрать магазин, прежде чем записывать или обрабатывать документ!",Q_STOP);
+    Exit 0;
+  EndIf;  
+    
+  Фл:=1;
+  aTab:=aEl.LineParts("Номенклатура");
+  aTab.Select();
+  While aTab.Next() Do
+    If aTab.Номенклатура.Selected()+aTab.Партия.Selected()<2 Then
+      Message("В строке "+aTab.CurLine+" не выбрана номенклатура или партия!","!");
+      Фл:=0;
+    ElseIf _Or(aTab.Номенклатура.флАлкогольнаяПродукция=0,aTab.Партия.флМарочныйУчет=1) Then
+      Message("В строке "+aTab.CurLine+" выбрана неверная номенклатура или партия!","!");
+      Фл:=0;
+    EndIf;
+    If aEl.КодОперации=Enum.коРегистр2ЕГАИС.ПересортНаРегистре2 Then
+      If aTab.НоменклатураПриход.Selected()+aTab.ПартияПриход.Selected()<2 Then
+        Message("В строке "+aTab.CurLine+" не выбрана номенклатура или партия прихода!","!");
+        Фл:=0;
+      ElseIf _Or(aTab.НоменклатураПриход.флАлкогольнаяПродукция=0,aTab.ПартияПриход.флМарочныйУчет=1) Then
+        Message("В строке "+aTab.CurLine+" выбрана неверная номенклатура или партия прихода!","!");
+        Фл:=0;
+      ElseIf aTab.Номенклатура.ЕГАИСКодАП<>aTab.НоменклатураПриход.ЕГАИСКодАП Then
+        Message("В строке "+aTab.CurLine+" у списываемой и оприходуемой номенклатуры разные коды АП, подобная операция не разрешена в ЕГАИС!","!");
+        Фл:=0;
+      EndIf;
+    EndIf;
+  EndDo;
+  If not Фл Then
+    Exit 0;
+  EndIf;
+
+  Exit 1;
+EndFunction
+
+
+Function OnBeforeChangeOperationCode(ByRef Стр)
+  aEl:=Form.Object;
+  If (aEl.Status()>0)And(not глРаботаетРобот) Then
+    Box("Изменение типа операции для документов такого вида запрещено! Создайте новый документ!",Q_STOP);
+    Exit 0;
+  EndIf;
+  If aEl.Status()>1 Then
+    Box("Нельзя менять тип операции в обработанном документе этого вида!",Q_STOP);
+    Exit 0;
+  EndIf;
+  If aEl.УникальныйИдентификатор3<>"" Then
+    Box("Нельзя менять тип операции, если документ был выгружен в ЕГАИС!",Q_STOP);
+    Exit 0;
+  EndIf;
+  Exit 1;
+EndFunction

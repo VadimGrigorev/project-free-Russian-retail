@@ -1,0 +1,151 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+//Размерность этикетки 1.88 / 1
+Var Ориентация Export;
+Var ПолеСлева Export;
+Var ТипПринтера Export;//0 -- для печати этикеток (каждая этикетка печатается отдельно), 1 -- обычный лазерный (печатается 4 этикетки x 10 этикеток в форме портрета)
+Var Таб Export;
+Var пШК Export;
+Var Т Export;
+Var Копий Export;
+
+Function OnFinishCopyObject(Name,Index)
+  If (Name="пЭтикетка")And(Trim(пШК)<>"") Then
+    Try
+      iX:=0;iY:=0;
+      Generate1DBarcode("EAN",iX,iY,Trim(пШК),"BR:1,F:Consolas|8,SCALE:5,BRT:0");
+      iY:=iX*(Т.Objects(Index).Height/Т.Objects(Index).Width);
+      Картинка:=Generate1DBarcode("EAN",iX,iY,Trim(пШК),"BR:1,F:Consolas|8,SCALE:5,BRT:0,BPP:32");
+      Т.Objects(Index).Picture.Assign(Картинка);
+    Except
+    EndTry;
+  EndIf;
+EndFunction
+
+Function Печать(aEl)
+  Т:=Table.Create();
+  ФлТип:=0;
+  
+  If Number(ТипПринтера)=0 Then
+    Фл:=0;
+    Таб.Select();
+    While Таб.Next() Do
+      If Фл>0 Then
+        Т.PageBreaks.Add();
+      EndIf;
+      Фл:=1;
+      
+      пТМЦ:=?((Таб.Коэфф=0)Or(Таб.Коэфф=1),"","("+Таб.Коэфф+" шт.) ")+Таб.Номенклатура.Name;
+      пШК:=Таб.ШтрихКод;
+      Т.CopyByX("h2|v2",1);
+    EndDo;
+  Else
+    ФлТип:=1;
+    нКол:=1;
+    нСтр:=1;
+    Таб.Select();
+    While Таб.Next() Do
+      пТМЦ:=?((Таб.Коэфф=0)Or(Таб.Коэфф=1),"","("+Таб.Коэфф+" шт.) ")+Таб.Номенклатура.Name;
+      пШК:=Таб.ШтрихКод;
+      
+      For а:=1 to Копий Do
+
+        If нКол=1 Then
+          Т.CopyByX("h1|v1",1);
+          нКол:=2;
+        ElseIf нКол<5 Then
+          нКол:=нКол+1;
+          Т.CopyByX("h1|v1");
+        ElseIf нСтр<10 Then
+          нКол:=2;
+          нСтр:=нСтр+1;
+          Т.CopyByX("h1|v1",1);
+        Else
+          нКол:=2;
+          нСтр:=1;
+          Т.PageBreaks.Add();
+          Т.CopyByX("h1|v1",1);
+        EndIf;
+      EndDo;  
+    EndDo;
+  EndIf;
+
+  Т.Printing.Orientation:=0;
+  Т.Printing.ScaleMode:=3;
+  If Number(ТипПринтера)=0 Then
+    Т.Printing.Fields.Left:=ПолеСлева;
+    Т.Printing.Fields.Right:=0;
+    Т.Printing.Fields.Up:=0;
+    Т.Printing.Fields.Down:=0;
+    Т.Printing.Titles.Up.Size:=0;
+    Т.Printing.Titles.Down.Size:=0;
+    Т.Printing.Copies:=Max(Копий,1);
+    Т.Printing.PageOptions:=_PRN_PAGE_CENTERX+_PRN_PAGE_CENTERY;
+  Else
+    Т.Printing.Orientation:=0;
+  EndIf;
+  глПечатнаяФорма(Т,Param,"Этикетка",0,"",1);
+EndFunction
+
+Function OnOpen()
+  Result:=0;
+  If IsEmpty(Param)=0 Then
+    aEl:=Param.GetByName("Object");
+    ТипПринтера:=Number(Param.GetByName("Опции"));
+    Копий:=Number(Param.GetByName("КоличествоКопий"));
+    
+    If Pos("DB.REF.",TypeStr(aEl))=1 Then
+      Таб:=Tab.Create("Номенклатура,ШтрихКод");
+      Таб.AddColumn("Коэфф",,"Number");
+      Таб.NewLine();
+      Таб.Номенклатура:=aEl;
+      
+      If (ТипПринтера=1)And(Копий<2) Then
+        Копий:=40;
+      EndIf;
+      
+      СпШт:=List.Create();
+      СпКф:=List.Create();
+      б:=Ref.тмцШтрихкоды;
+      б.Select("@Parent,@Status",aEl,0);
+      While б.Next() Do
+        Стр:=Trim(б.Name);
+        If Стр="" Then
+          Continue;
+        EndIf;
+        СпШт.Add(Стр,""+Стр+?(б.Коэффициент<>1,", коэфф:="+б.Коэффициент,""));
+        СпКф.Add(б.Коэффициент);
+      EndDo;
+      If СпШт.Size()=0 Then
+        Exit;
+      EndIf;
+      If СпШт.Size()>1 Then
+        Зн:=0;Поз:=СпШт.Select(Зн,0,"Выберите нужный штрихкод:");
+        If Поз=0 Then
+          Exit;
+        EndIf;
+        Таб.ШтрихКод:=Зн;
+        Таб.Коэфф:=СпКф.Get(Поз);
+      Else
+        Таб.ШтрихКод:=Стр;
+        Таб.Коэфф:=СпКф.Get(1);
+      EndIf;
+      
+      ПолеСлева:=0;//7;
+    ElseIf TypeStr(aEl)<>"TAB" Then
+      Exit;
+    Else
+      Таб:=aEl;
+      Ориентация:=Param.GetByName("Ориентация");
+      ТипПринтера:=Param.GetByName("ТипПринтера");
+      ПолеСлева:=Number(Param.GetByName("ПолеСлева"));
+    EndIf;    
+    
+    Печать(aEl);
+  EndIf;
+EndFunction
+
+

@@ -1,0 +1,283 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var ТЦеныЗакупок Export;
+
+Function ИсправитьГалкуУчетаПриСписании(ФлФорс=0)
+  aEl:=Form.Object;
+  If (aEl.Selected()<0)Or(ФлФорс) Then
+    If (aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюИСписаниеОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.СписаниеОС) Then
+      aEl.УчитыватьВНалоговомУчете:=0;
+    EndIf;
+  EndIf;
+EndFunction
+
+Function ИмяФормыПоКодуОперации()
+  aEl:=Form.Object;
+  Result:="Form";
+  If (aEl.КодОперации=Enum.коРегистрацияОС.СписаниеОСКомиссия)Or(aEl.КодОперации=Enum.коРегистрацияОС.СписаниеОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюИСписаниеОС)
+      Or(aEl.КодОперации=Enum.коРегистрацияОС.РеализацияОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюОС) Then
+    Result:="FormOff";
+  ElseIf aEl.КодОперации=Enum.коРегистрацияОС.ИнвентаризацияОС Then
+    Result:="FormInv";
+  ElseIf aEl.КодОперации=Enum.коРегистрацияОС.ПеремещениеОС Then
+    Result:="FormTran";
+  EndIf;
+EndFunction
+
+Function ОбновитьЦеныЗакупокВТаблице()
+  aEl:=Form.Object;
+  If (Form.Mode<>3)And(aEl.Status()<2) Then
+    Exit;
+  EndIf;
+  aTab:=aEl.LineParts("Номенклатура");
+  aTab.Select();
+  While aTab.Next() Do
+    If _And(aTab.ЦенаБезСкидки>0,aTab.Номенклатура.Selected()<>0) Then
+      Continue;
+    EndIf;
+    зЦ:=глПолучитьОсновнуюЦену(aTab.Номенклатура,aEl.Склад,aEl.DocDate,1,ТЦеныЗакупок);
+    If зЦ>0 Then
+      aTab.ЦенаБезСкидки:=зЦ;
+    EndIf;
+  EndDo;
+EndFunction
+
+
+Function Видимость()
+  aEl:=Form.Object;
+  MainTab:=Form.MainTab.Value;
+  If ИмяФормыПоКодуОперации="Form" Then
+    ФлПроводка:=aEl.ТипПроводки.Selected()<>0;
+    ФлСчета:=?(aEl.КодОперации=Enum.коРегистрацияОС.ПоступлениеОС,1-ФлПроводка,0);  
+    If (aEl.КодОперации=Enum.коРегистрацияОС.ПоступлениеОСКомиссия)Or(Number(DBVar.РазрешитьЗатратыПоНачислению)=0) Then
+      Form.оЗакладки.Pages.Page("Затраты").isInvisible:=1;
+    Else
+      Form.оЗакладки.Pages.Page("Затраты").isInvisible:=0;
+    EndIf;
+    MainTab.Column("Счет").isVisible:=ФлСчета;
+    MainTab.Column("Субконто1").isVisible:=ФлСчета;
+    MainTab.Column("Субконто2").isVisible:=ФлСчета;
+    MainTab.Column("Субконто3").isVisible:=ФлСчета;
+    If aEl.КодОперации=Enum.коРегистрацияОС.ПоступлениеОС Then
+      Form.кнЦены.IsDisabled:=0;
+      MainTab.Column("ЦенаБезСкидки").isVisible:=1;
+      ОбновитьЦеныЗакупокВТаблице();
+    Else
+      Form.кнЦены.IsDisabled:=1;
+      MainTab.Column("ЦенаБезСкидки").isVisible:=0;
+    EndIf;
+    If aEl.флПересчетРозничныхЦенВыполнен Then
+      Form.кнЦены.FontColor:=_CLR_BTNFACE;
+      Form.кнЦены.FontStyle:=0;
+      Form.кнЦены.Glyph:=1;
+    EndIf;
+  ElseIf ИмяФормыПоКодуОперации="FormOff" Then
+    ФлПроводка:=aEl.ТипПроводки.Selected()<>0;
+    ФлСчета:=?((aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюИСписаниеОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.РеализацияОС)Or
+        (aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.СписаниеОС),1-ФлПроводка,0);
+    ФлСклад:=?((aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюИСписаниеОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.РеализацияОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюОС),1,0);    
+    
+    Form.тТ2.isInvisible:=1-ФлСклад;
+    Form.Склад.isInvisible:=1-ФлСклад;
+    MainTab.Column("Счет").isVisible:=ФлСчета;
+    MainTab.Column("Субконто1").isVisible:=ФлСчета;
+    MainTab.Column("Субконто2").isVisible:=ФлСчета;
+    MainTab.Column("Субконто3").isVisible:=ФлСчета;
+  ElseIf ИмяФормыПоКодуОперации="FormTran" Then
+  ElseIf ИмяФормыПоКодуОперации="FormInv" Then
+  EndIf;
+EndFunction
+
+Function OnAfterCustomBuhChanged()
+  Видимость();
+EndFunction
+
+
+Function МассовоеИзменениеСчетов()
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("Номенклатура");
+  aTab.Lock();
+  Try
+    aTab.Select();
+    While aTab.Next() Do
+      ВКод:=TearStr(Str(aTab.Счет.Code),".");
+      If (aEl.КодОперации=Enum.коРегистрацияОС.ПоступлениеОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.РеализацияОС) Then
+        If (ВКод<>"10")And(ВКод<>"08")And(ВКод<>"") Then
+          aTab.Счет:=глНайтиСчет("10.1");
+          aTab.Субконто1:=aTab.Номенклатура;
+          aTab.Субконто2:=aEl.Склад;
+          aTab.Субконто3:=GetNothing();
+        EndIf;
+      ElseIf (aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюИСписаниеОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюОС) Then
+        If (ВКод<>"44")And(ВКод<>"01")And(ВКод<>"") Then
+          aTab.Счет:=глНайтиСчет("44.1."+?(aEl.Склад.флОблагаетсяЕНВД=1,"2","1"));
+          aTab.Субконто1:=GetNothing();
+          aTab.Субконто2:=GetNothing();
+          aTab.Субконто3:=GetNothing();
+        EndIf;
+      EndIf;
+    EndDo;
+  Finally
+    aTab.Unlock();
+  EndTry;  
+EndFunction
+
+Function ПриИзмененииТМЦ(ФлТекСтрока=0)
+  aEl:=Form.Object;
+  MainTab:=Form.MainTab.Value;
+  If not ФлТекСтрока Then
+    MainTab.CurLine:=MainTab.SelectedLine;
+  EndIf;  
+  aTab:=aEl.LineParts("Номенклатура");
+
+  If (aEl.КодОперации=Enum.коРегистрацияОС.ПоступлениеОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.РеализацияОС) Then
+    MainTab.Счет:=глНайтиСчет("10.1");
+    MainTab.Субконто1:=MainTab.Номенклатура;
+    MainTab.Субконто2:=aEl.Склад;
+    MainTab.Субконто3:=GetNothing();
+  ElseIf (aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюИСписаниеОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.СписаниеОС) Then
+    MainTab.Счет:=глНайтиСчет("44.1."+?(aEl.Склад.флОблагаетсяЕНВД=1,"2","1"));
+    MainTab.Субконто1:=GetNothing();
+    MainTab.Субконто2:=GetNothing();
+    MainTab.Субконто3:=GetNothing();
+  EndIf;
+  
+  If (MainTab.Номенклатура.Selected()<>0)And(MainTab.Счет.Code="10.1") Then
+    If MainTab.Номенклатура.СчетХраненияОС.Selected()<>0 Then
+      MainTab.Счет:=MainTab.Номенклатура.СчетХраненияОС;
+      глПроверитьКорректностьЗаполненияСубконтоСтрочнаяЧасть(MainTab.Счет);
+    Else
+      Сч:=aEl.ЮрЛицо.GetValue("СчетХраненияОС",aEl.DocDate);
+      If Сч.Selected()<>0 Then
+        MainTab.Счет:=Сч;
+        глПроверитьКорректностьЗаполненияСубконтоСтрочнаяЧасть(MainTab.Счет);
+      EndIf;
+    EndIf;
+  EndIf;  
+EndFunction
+
+Function OnBeforeChangeOperationCode(ByRef Стр)
+  Стр:="ПоступлениеОС,ВводВЭксплуатациюОС,ВводВЭксплуатациюИСписаниеОС,СписаниеОС,-,РеализацияОС,-,ИнвентаризацияОС,ПеремещениеОС,-,ПоступлениеОСКомиссия,СписаниеОСКомиссия";
+  Exit 1;
+EndFunction
+
+Function OnAfterChangeOperationCode()
+  пИмя:=ИмяФормыПоКодуОперации();
+  If Uppercase(пИмя)<>Uppercase(RemoveExt(GetFileName(Form.GetFormFileName()))) then
+    Form.SwitchToForm(пИмя);
+  EndIf;
+  ИсправитьГалкуУчетаПриСписании(1);
+  МассовоеИзменениеСчетов();
+  Видимость();
+  глОтложенныйНДСОбновитьЗаголовок(Form.Object);
+EndFunction
+
+Function ПредупреждениеПоСчетам(Счет);
+  aEl:=Form.Object;
+  ВКод:=TearStr(Str(Счет.Code),".");
+  If aEl.КодОперации=Enum.коРегистрацияОС.ПоступлениеОС Then
+    If (ВКод<>"10")And(ВКод<>"08")And(ВКод<>"") Then
+      Box("Для поступления ОС обычно используются счета 10 или 08. Проверьте, пожалуйста!",Q_WARNING);
+    EndIf;
+  ElseIf (aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюИСписаниеОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.СписаниеОС) Then
+    If (ВКод<>"44")And(ВКод<>"01")And(ВКод<>"") Then
+      Box("Для ввода в эксплуатацию (списания) ОС обычно используются счета 44 или 01, а кредитовые счета программа подбирает из документа-основания (поступления ОС). Проверьте, пожалуйста!",Q_WARNING);
+    EndIf;
+  ElseIf aEl.КодОперации=Enum.коРегистрацияОС.РеализацияОС Then
+    If (ВКод<>"10")And(ВКод<>"08")And(ВКод<>"") Then
+      Box("Для реализации ОС обычно используются счета 10 или 08. Проверьте, пожалуйста!",Q_WARNING);
+    EndIf;
+  EndIf;
+EndFunction
+
+Function OnOpen(FormName)
+  aEl:=Form.Object;
+  If aEl.Selected()<0 Then
+    If aEl.КодОперации.Selected()=0 Then
+      aEl.КодОперации:=Enum.коРегистрацияОС.ПоступлениеОС;
+    EndIf;  
+  EndIf;
+  FormName:=ИмяФормыПоКодуОперации();
+EndFunction
+
+Function OnCreateFromObject()
+  //Ввод на основании
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  If not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+    Form.Close(0);
+    Exit;
+  EndIf;
+EndFunction
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  
+  If aEl.КодОперации<>Enum.коРегистрацияОС.ИнвентаризацияОС Then
+    aTab:=aEl.LineParts("Номенклатура");
+    aTab.Select();
+    While aTab.Next() Do
+      If aTab.Количество=0 Then
+        Message("Количество не должно быть нулевым (строка "+aTab.CurLine+")","!");
+        Exit 0;
+      EndIf;
+    EndDo;
+  EndIf;
+  
+  If (aEl.КодОперации=Enum.коРегистрацияОС.ПоступлениеОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.ПоступлениеОСКомиссия) Then
+    If not глПроверитьДокументПриходаНаОтрицательныеОстатки(aEl) Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  If _And(not isEmpty(aEl.ОтложитьНДСНаПериод),BegOfMonth(aEl.ОтложитьНДСНаПериод)<=BegOfMonth(aEl.DocDate)) Then
+    Box("В документе неверно указана дата отложенного НДС!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  If (aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюИСписаниеОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюОС) Then
+    Фл:=0;
+    If aEl.ДокОснование.Selected()<>0 Then
+      If aEl.ДокОснование.DBName()="РегистрацияОС" Then
+        If aEl.ДокОснование.КодОперации=Enum.коРегистрацияОС.ПоступлениеОС Then
+          Фл:=1;
+        EndIf;
+      EndIf;
+    EndIf;
+    If not Фл Then
+      Box("Списания ОС обычно вводятся на основании поступлений ОС чтобы программа смогла правильно подобрать кредитовый бухгалтерский счет!",Q_WARNING);
+    EndIf;
+  EndIf;
+  
+  If (aEl.КодОперации=Enum.коРегистрацияОС.ВводВЭксплуатациюОС)Or(aEl.КодОперации=Enum.коРегистрацияОС.СписаниеОС) Then
+    If aEl.ПодотчетноеЛицо.Selected()=0 Then
+      Box("Необходимо выбрать материально ответственное лицо, за которым закреплены данные ОС!",Q_STOP);
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If _And(aEl.КодОперации=Enum.коРегистрацияОС.ПоступлениеОС,DBVar.РазрешитьЗатратыПоНачислению=1) Then
+    If (aEl.ЦентрЗатрат.Selected()=0)Or(aEl.СтатьяЗатрат.Selected()=0) Then
+      Box("Не выбран центр затрат или статья затрат!",Q_STOP);
+      Exit 0;
+    EndIf;
+    If aEl.СтатьяЗатрат.GetValue("ТипЗатраты",aEl.DocDate)=0 Then
+      Box("На данную статью запрещается выписывать такие документы (статья только для затрат по оплате)! Пожалуйста, проверьте, что вы не ошиблись при указании статьи!",Q_STOP);
+      Exit 0;
+    EndIf;
+  Else
+    aEl.ЦентрЗатрат:=0;
+    aEl.СтатьяЗатрат:=0;
+  EndIf;
+  
+  If aEl.ТипПроводки.Selected()<>0 Then
+    If Trim(aEl.СубконтоТипаПроводки)="" Then
+      If not глРедактироватьСубконтоТипаПроводки(aEl,1) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  Exit 1;
+EndFunction

@@ -1,0 +1,81 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function НазначитьТип()
+  Function НазначитьТипРекв(оСуб,ВС)
+    If Trim(ВС.ТипЗначенияЛокальный)="" Then
+      оСуб.SetType("Ref.бухЗначенияСубконто");
+      If _And(not isEmpty(оСуб.Value),оСуб.Value.Parent()<>ВС) Then
+        оСуб.Value:=0;
+      EndIf;
+    Else
+      оСуб.SetType(Replace(Uppercase(ВС.ТипЗначенияЛокальный),"СПРАВОЧНИК","REF"));
+    EndIf;
+  EndFunction
+
+  аСчет:=Form.Счет.Value;
+  If аСчет.Selected()=0 Then
+    Exit;
+  EndIf;
+  НазначитьТипРекв(Form.Субконто1,аСчет.ВидСубконто1);
+  НазначитьТипРекв(Form.Субконто2,аСчет.ВидСубконто2);
+  НазначитьТипРекв(Form.Субконто3,аСчет.ВидСубконто3);
+EndFunction
+
+
+Function ИнформацияПоСчету()
+  aEl:=Form.Object;
+  аСчет:=Form.Счет.Value;
+  If аСчет.Selected()=0 Then
+    Form.Субконто1.Value:=GetNothing();
+    Form.Субконто2.Value:=GetNothing();
+    Form.Субконто3.Value:=GetNothing();
+    Form.тСчет.Caption:="";
+  Else
+    Form.тСчет.Caption:=аСчет.Name;
+  EndIf;
+  
+  If аСчет.ВидСубконто1.Selected()=0 Then
+    Form.тСуб1.Caption:="";
+    Form.тС1.isDisabled:=1;
+    Form.Субконто1.isDisabled:=1;
+    If not isEmpty(Form.Субконто1.Value) Then
+      Form.Субконто1.Value:=GetNothing();
+    EndIf;  
+  Else
+    Form.тСуб1.Caption:=аСчет.ВидСубконто1.Name;
+    Form.тС1.isDisabled:=0;
+    Form.Субконто1.isDisabled:=0;
+  EndIf;
+  
+  If аСчет.ВидСубконто2.Selected()=0 Then
+    Form.тСуб2.Caption:="";
+    Form.тС2.isDisabled:=1;
+    Form.Субконто2.isDisabled:=1;
+    If not isEmpty(Form.Субконто2.Value) Then
+      Form.Субконто2.Value:=GetNothing();
+    EndIf;  
+  Else
+    Form.тСуб2.Caption:=аСчет.ВидСубконто2.Name;
+    Form.тС2.isDisabled:=0;
+    Form.Субконто2.isDisabled:=0;
+  EndIf;
+  
+  If аСчет.ВидСубконто3.Selected()=0 Then
+    Form.тСуб3.Caption:="";
+    Form.тС3.isDisabled:=1;
+    Form.Субконто3.isDisabled:=1;
+    If not isEmpty(Form.Субконто3.Value) Then
+      Form.Субконто3.Value:=GetNothing();
+    EndIf;  
+  Else
+    Form.тСуб3.Caption:=аСчет.ВидСубконто3.Name;
+    Form.тС3.isDisabled:=0;
+    Form.Субконто3.isDisabled:=0;
+  EndIf;
+  НазначитьТип();
+  Exit "";
+EndFunction
+

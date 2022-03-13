@@ -1,0 +1,84 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var тОписание Export;
+Var СтарыйШтрифтПоУмолчанию Export;
+Var СтароеРабочееМесто Export;
+
+Function ДобавитьВТаблицу(aEl)
+  If isEmpty(aEl) Then
+    Exit;
+  EndIf;
+  aTab:=Form.оТМЦ.Value;
+  а:=aTab.Find(aEl,,"@ELEMENT");
+  If а>0 Then
+    Box("Элемент "+Str(aEl)+" уже был выбран!",Q_STOP);
+  Else
+    aTab.NewLine();
+    aTab.Set(aTab.Size(),"@ELEMENT",aEl);
+    Form.isChanged(1);
+  EndIf;  
+EndFunction
+
+
+Function ПриПодбореЭлементов(aEl,Фл)
+  ДобавитьВТаблицу(aEl);
+EndFunction
+
+Function OnBeforeElementSave()
+  aEl:=Form.Object;
+  
+  if aEl.isFolder() Then
+    Exit 1;
+  EndIf;
+  
+  If глПользователь.общиеАдминистратор Then
+    оПолномочия:=Form.оПолномочия.Value;
+    For а:=1 to оПолномочия.Size() Do
+      aEl.SetValue(оПолномочия.Get(а),оПолномочия.Check(а));
+    EndDo;
+        
+    б:="";
+    оДокБ:=Form.оДокБ.Value;
+    For а:=1 to оДокБ.Size() Do
+      If оДокБ.Check(а) Then
+        б:=б+оДокБ.Get(а)+"@";
+      EndIf;
+    EndDo;
+    aEl.ДокументыДляБезграничногоРедактирования:=б;
+
+    б:="";
+    оДокРО:=Form.оДокРО.Value;
+    For а:=1 to оДокРО.Size() Do
+      If оДокРО.Check(а) Then
+        б:=б+оДокРО.Get(а)+"@";
+      EndIf;
+    EndDo;
+    aEl.ДокументыТолькоДляЧтения:=б;
+
+    б:="";
+    СпОтч:=Form.СпОтч.Value;
+    For а:=1 to СпОтч.Size() Do
+      If СпОтч.Check(а) Then
+        б:=б+СпОтч.Get(а)+"@";
+      EndIf;
+    EndDo;
+    aEl.ЗапрещенныеОтчеты:=б;
+  EndIf;
+  
+  aEl.ПринтерПоУмолчанию:=Form.ОснПринтер.Value.Get(Form.ОснПринтер.Value.SelectedLine);
+  
+  If СтароеРабочееМесто<>aEl.РабочееМесто Then
+    глЗагрузитьДрайверы();
+  EndIf;
+  
+  If СтарыйШтрифтПоУмолчанию<>aEl.стрШрифтПоУмолчанию Then
+    If aEl=глПользователь Then
+      GlobalDefaultSystemFont(aEl.стрШрифтПоУмолчанию);
+    EndIf;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+

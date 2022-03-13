@@ -1,0 +1,62 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=395
+  Height=20
+  OnTimerInterval=0
+  MaxControlSerial=3
+  LoadModes=0
+  Object LABEL
+    LayerName=Main
+    Left=150
+    Top=0
+    Width=245
+    Height=20
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=оМасса
+    ControlSerial=1
+    Caption=<масса документа>
+    HAlign=2
+    VAlign=1
+    AttachedButtons=0#0@9#0###
+    OnAttachedButtons
+      @@>@e@3vq@1_Gd1_(<_jA_RJ@H@2_2_C%A3@0wAf_+_4aZ_!@Iv:@(:_h_in0[@[@]_j@J@\_N@T5m]~
+      @@vlnLW_Z@u_j}@O@:_D@+_R_8@dY@5_!_A\@9@U@#@=Z@c_D_O@Z_$_Wr@f:9@r_P@{_\_E_GM_S@W@j
+      @{@q@W@d_;@.@2_Z7_f9@OR~"v:@I@&@Vp@L_h@K_7@%'p@O_N*_l_1^_Mf@H2*p@l_H@u_C~@v@%@"_V
+      @@iJ@OF@n_i@I_g@SI&(A5@V@7_I@'@?@q@z@D@-@2@F@L_Y_C@G_l@N.I_>_gw_G@fp_2@B_g_i5@r?_
+      @jDd@h@H@7tm@,_4@o_3@I_!@Ux@09@j^@[_7@IN@\@m"t@3_$M@j@-{@h_Y@X_&k@E@^@n9@^e_9y_!F
+      @@~@Ik@qt7_:_W@<_:V@o_!D_MT_"Lsti@{_;@o_fB_gEGd@V<@rt3@"@Ko_>@I^@("_g_7@\X/_(c^v@
+      @G@*,@B*gO_NrJP@/:@Q#oL0_^_#xp_<@2_"_d@2@E_O@c_iH_N$3@N@*?W_1@p_m@e=x_T_9_,@<9Ei_
+      @34@S@F@Z@WY4_Z{@B_I@[U@H1_V_$l@dL_MCj@V_0@n_+_Y@)@i_Uem_Zy@,_XW@._[z@z$_ZlO_\_^&
+      @.o_7_)_Z_]/_]]@VSo@c@y_+J@x@<_af@8_W@~y_&_.r_i@q@$_W@%g_ct\@^_2I@^@J@4@5_;a_m)84
+      @_G@r_C@G\_j_b%_h@jL@F@yN_6_*@D@%_a@6@lY_(_k_=@"O_E^_=_;L@6\_j_P@"-@x@c_S_!_G@d@U
+      @_RUg_S_%_9_#@Fq@p_l_m"@[_j_f$
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=0
+    Top=3
+    Width=145
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=2
+    Caption=Масса документа (кг):
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+End

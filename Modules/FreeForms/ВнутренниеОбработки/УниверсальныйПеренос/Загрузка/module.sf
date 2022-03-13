@@ -1,0 +1,2420 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var РезКаталог Export;
+Var ТбБух Export;
+Var ТбНак Export;
+Var ТабСпр Export;
+Var БухНачДата Export;
+Var БухКонДата Export;
+Var флБезТаблиц Export;
+Var ЗагруженоЭлементов Export, ОбновленоЭлементов Export, СозданоЭлементов Export;
+
+//Из синхронизации справочников
+Var СписокВидовДляСинхронизации Export;
+
+Function СоздатьНовыйЭлементИлиОбновить(Стр,Эл,ЛокальныйКод,Тб,флТолькоСоздать,аНом) Forward
+Function НайтиИлиСоздатьЛокальныйСправочникБезТаблиц(Вид,флГруппа,ЭлКод,ByRef флНовый,флНеСоздавать=0) Forward
+
+Function Видимость()
+  Form.тКодОбмена.isDisabled:=Form.оФлаг9.Value;
+  Form.оКодОбмена.isDisabled:=Form.оФлаг9.Value;
+  Form.тЗануляемыеСчета.isDisabled:=1-Form.оБухЗануление.Value;
+  Form.оСч.isDisabled:=1-Form.оБухЗануление.Value;
+  Form.тПереноситьНаСчет.isDisabled:=1-Form.оБухЗануление.Value;
+  Form.тПереноситьНаСчет.isDisabled:=1-Form.оБухЗануление.Value;
+  Form.оЗСчет.isDisabled:=1-Form.оБухЗануление.Value;
+  Form.тСклады.isDisabled:=1-Form.оЗанул41.Value;
+  Form.оСк.isDisabled:=1-Form.оЗанул41.Value;
+  Form.тНоменклатура.isDisabled:=1-Form.оТолькоТМЦ.Value;
+  Form.оН.isDisabled:=1-Form.оТолькоТМЦ.Value;
+  Form.оБезТаблиц.isDisabled:=1-Form.оКопия.Value;
+  If Form.оКопия.Value=0 Then
+    Form.оБезТаблиц.Value:=0;
+  EndIf;
+EndFunction
+
+
+Function РасшифроватьСтроку(Зн)
+  Exit DecodeString(Зн,,1);
+EndFunction
+
+Function ЗашифроватьСтроку(Зн)
+  Exit EncodeString(Unicode(Зн));
+EndFunction
+
+Function ПодобратьРодителяСправочника(Вид)
+  If Struct.Ref(Вид).Parents.Count()=0 Then
+    Exit "";
+  ElseIf Struct.Ref(Вид).Parents.Count()=1 Then  
+    Exit Struct.Ref(Вид).Parents(1).Name;
+  Else
+    Raise "Справочник "+Вид+" имеет более одного родителя, однако, в выгрузке вид родителя не указан!";
+  EndIf;
+EndFunction
+
+Function ИзменитьДлинуКода(Вид,Код,флДокумент=0)
+  If _Or(Код="",Вид="бухПланСчетов") Then
+    Exit Код;
+  EndIf;
+  If флДокумент=0 Then
+    Дл:=Struct.Ref(Вид).Props("Code").DataType;
+  Else
+    Дл:=Struct.Doc(Вид).Props("DocNum").DataType;
+  EndIf;  
+  If Pos("STRING.",Дл)<>1 Then
+    Exit Number(Код);
+  EndIf;
+  TearStr(Дл,"STRING.");
+  Дл:=Number(Дл);
+  If Length(Код)=Дл Then
+    Exit Код;
+  EndIf;
+  
+  Префикс:="";
+  While Pos(Left(Код,1),"0123456789")=0 Do
+    Префикс:=Префикс+Left(Код,1);
+    Код:=Mid(Код,2);
+  EndDo;
+  If Дл>Length(Префикс) Then
+    Exit Префикс+Right("000000000000000000"+Trim(Код),Дл-Length(Префикс));
+  EndIf;
+  Exit Right(Префикс,Дл);
+EndFunction
+
+Function НайтиЭлементПоПолномуКоду(Вид,Код)
+  аЭл:=DB("Ref."+Вид);
+
+  аКод:=Struct.Ref(Вид).Props("Code");
+  If isEmpty(аКод) Then
+    Raise "У справочника "+Вид+" отсутствует реквизит Code!";
+  EndIf;
+    
+  //<ПолныйКод>:<Код>@{+ если папка}<ВидРодитель>|<КодРодитель>@{+ если папка}<ВидРодитель>|<КодРодительРодителя>...  
+  If Struct.Ref(Вид).Parents.Count()>0 Then
+    If Pos("@",Код)>0 Then
+      КодРод:=Код;
+      ЛокКод:=TearStr(КодРод);
+      If _And(not isEmpty(аКод.Numerator),аКод.Numerator.UnicityControl=0) Then
+        If not аЭл.Find("Code",ИзменитьДлинуКода(Вид,ЛокКод)) Then
+          Exit 0;
+        EndIf;
+      Else
+        If Pos("|",КодРод)=0 then
+          ВидРодитель:=ПодобратьРодителяСправочника(Вид);
+        Else
+          ВидРодитель:=TearStr(КодРод,"|");
+          If Left(ВидРодитель,1)="+" Then
+            ВидРодитель:=Mid(ВидРодитель,2);
+          EndIf;
+        EndIf;
+        бЭл:=НайтиЭлементПоПолномуКоду(ВидРодитель,КодРод);
+        If бЭл=0 Then
+          Exit 0;
+        EndIf;
+        If бЭл.isFolder() Then
+          Raise "У справочника "+Вид+" ("+ЛокКод+") указан родитель "+бЭл+" ("+бЭл.Code+"), который является папкой!";
+        EndIf;
+        If not аЭл.Find("Code,@Parent",ИзменитьДлинуКода(Вид,ЛокКод),бЭл) Then
+          Exit 0;
+        EndIf;
+      EndIf;
+      Exit аЭл;
+    Else
+      If _And(not isEmpty(аКод.Numerator),аКод.Numerator.UnicityControl=0) Then
+        Raise "У справочника "+Вид+" ("+Код+") есть родители, однако в файле выгрузки код родителя пропущен!";
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  Код:=TearStr(Код);
+  If not аЭл.Find("Code",ИзменитьДлинуКода(Вид,Код)) Then
+    Exit 0;
+  EndIf;
+  Exit аЭл;
+EndFunction
+
+
+//флТолькоСоздать= -1 -- при отсутствии, показать ошибку
+//                  2 -- создать, даже если нет в загрузочном словаре
+//                 -2 -- при отсутствии не показывать ошибку (вернуть пустое значение)
+Function НайтиИлиСоздатьЭлемент(Вид,ВнешнийКод,флТолькоСоздать=0)
+  If Replace(ВнешнийКод,"@","")="" Then
+    Exit GetNothing("Ref."+Вид);
+  EndIf;
+
+  If флБезТаблиц Then
+    флГруппа:=Left(ВнешнийКод,1)="+";
+    If флГруппа Then
+      ВнешнийКод:=Mid(ВнешнийКод,2);
+    EndIf;
+    флНовый:=0;
+    Exit НайтиИлиСоздатьЛокальныйСправочникБезТаблиц(Вид,флГруппа,ВнешнийКод,флНовый,?(флТолькоСоздать=-2,1,0));
+  EndIf;  
+  
+  If not ТабСпр.FindAndGoto(Вид,,"Вид") Then
+    Raise "Неизвестный вид справочка "+Вид+"!";
+  EndIf;
+  Тб:=ТабСпр.Таб;
+  
+  If not Тб.FindAndGoto(ВнешнийКод,,"ВнешнийКод") Then
+    If not Тб.FindAndGoto("+"+ВнешнийКод,,"ВнешнийКод") Then
+      Raise "Сопоставьте все элементы: Эл. справочника "+Вид+" с кодом "+ВнешнийКод+" не сопоставлен!";
+    EndIf;
+  EndIf;
+  
+  If (not IsEmpty(Тб.Эл))And(Тб.Эл<>1) Then
+    Exit Тб.Эл;
+  EndIf;
+  
+  If Тб.Эл=0 Then
+    Raise "Рекурсивное создание? Эл. справочника "+Вид+" с кодом "+ВнешнийКод+" не найден!";
+  EndIf;
+  
+  If флТолькоСоздать=-1 Then
+    Raise "Сопоставьте все элементы: Эл. справочника "+Вид+" с кодом "+ВнешнийКод+" не сопоставлен!";
+  ElseIf флТолькоСоздать=-2 Then
+    Exit GetNothing();
+  EndIf;
+  
+  Стр:=Тб.Стр;
+  Exit СоздатьНовыйЭлементИлиОбновить(Стр,0,Тб.ЛокальныйКод,Тб,флТолькоСоздать,Тб.CurLine);
+EndFunction
+
+Function ПолучитьПолныйКод(Эл)
+  //<ПолныйКод>:<Код>@{+ если папка}<ВидРодитель>|<КодРодитель>@{+ если папка}<ВидРодитель>|<КодРодительРодителя>...  
+  If DBTypeStr(Эл)<>"REF" Then
+    Exit "";
+  EndIf;
+  If Struct.Ref(Эл.DBName()).Parents.Count()>0 Then
+    Exit Trim(Эл.Code)+"@"+?(Эл.Parent().isFolder(),"+")+Эл.Parent().DBName()+"|"+ПолучитьПолныйКод(Эл.Parent());
+  EndIf;
+  Exit Trim(Эл.Code);
+EndFunction
+
+
+Function НайтиИлиСоздатьДокумент(Вид,НомерДок,ДатаДок,ByRef ФлНовый)
+  ФлНовый:=0;
+  If isEmpty(Date(ДатаДок)) Then
+    Raise "Документ "+Вид+" №"+НомерДок+" неверная дата: "+ДатаДок;
+  EndIf;
+  аДок:=DB("Doc."+Вид);
+  If not IsEmpty(НомерДок) Then
+    НомерДок:=ИзменитьДлинуКода(Вид,НомерДок,1);
+    If аДок.Find("DocNum,<DocDate,>=DocDate",НомерДок,EndOfYear(Date(ДатаДок))+1,BegOfYear(Date(ДатаДок))) Then
+      Exit аДок;
+    EndIf;
+  EndIf;
+  ФлНовый:=1;
+  аДок.New();
+  аДок.DocDate:=Date(ДатаДок);
+  If not IsEmpty(НомерДок) Then
+    аДок.DocNum:=НомерДок;
+  Else
+    аДок.SetPrefix("DocNum",Trim(DBVar.ПрефиксИБ));
+  EndIf;  
+  аДок.Save();
+  Exit аДок;
+EndFunction
+
+Function ПолучитьАтрибут(Стр,ByRef аАтр)
+  //<ТипАтрибута>.<Знач>
+  аАтр:=GetNothing();
+  Тип:=TearStr(Стр,".");
+  If Тип="" Then
+    Exit 1;
+  ElseIf (Тип="Строка")or(Тип="STRING") Then
+    аАтр:=РасшифроватьСтроку(Стр);
+    Exit 1;
+  ElseIf (Тип="Число")or((Тип="NUMBER")) Then
+    аАтр:=Number(Стр);
+    Exit 1;
+  ElseIf (Тип="Дата")or(Тип="DATE") Then
+    //min: XX.XX.XX
+    If Length(Стр)<8 Then
+      аАтр:=Date(0);
+    Else
+      аАтр:=Date(Стр);
+    EndIf;  
+    Exit 1;
+  ElseIf (Тип="Перечисление")or(Тип="ENUM") Then
+    Вид:=TearStr(Стр,".");
+    Номер:=Number(TearStr(Стр,"."));
+    If Вид<>"" Then
+      If Номер>0 Then
+        Try
+          аАтр:=Enum.GetByIndex(Вид,Номер);
+        Except
+          Message(PopError(),"!");
+          Message("Перечисление: "+Вид+", индекс значения: "+Номер,"!");
+          Raise "Ошибка!";
+        EndTry  
+        Exit 1;
+      Else
+        аАтр:=GetNothing("Enum."+Вид);
+        Exit 1;
+      EndIf;
+    Else
+      Exit 1;
+    EndIf;
+  ElseIf (Тип="Справочник")or(Тип="REF") Then
+    Вид:=TearStr(Стр,".");
+    If Вид="бухПланСчетов" Then
+      ПолныйКод:=Стр;
+    Else
+      ПолныйКод:=TearStr(Стр,".");
+    EndIf;
+    If Вид<>"" Then
+      If Replace(ПолныйКод,"@","")<>"" Then
+        аАтр:=НайтиИлиСоздатьЭлемент(Вид,ПолныйКод,1);
+        Exit ?(аАтр=0,0,1);
+      Else
+        аАтр:=GetNothing("REF."+Вид);
+        Exit 1;
+      EndIf;
+    Else
+      Exit 1;
+    EndIf;
+  ElseIf (Тип="Документ")or(Тип="DOC") Then
+    Вид:=TearStr(Стр,".");
+    НомерДок:=TearStr(Стр);
+    ДатаДок:=Date(TearStr(Стр));
+    If Вид<>"" Then
+      ФлНовый:=0;
+      аАтр:=НайтиИлиСоздатьДокумент(Вид,НомерДок,ДатаДок,ФлНовый);
+      Exit ?(аАтр=0,0,1);
+    Else
+      Exit 1;
+    EndIf;
+  EndIf;
+EndFunction
+    
+
+Function НайтиИлиСоздатьЛокальныйСправочникБезТаблиц(Вид,флГруппа,ЭлКод,ByRef флНовый,флНеСоздавать=0)
+
+  If isEmpty(Struct.Ref(Вид)) Then
+    Raise "Справочник вида "+Вид+" не существует!";
+  EndIf;
+  КодРодитель:="";
+  If Pos("@",ЭлКод)>0 Then
+    КодРодитель:=ЭлКод;
+    ЭлКод:=TearStr(КодРодитель,"@");
+  EndIf;  
+  
+  флНовый:=0;
+  вЭл:=0;
+  аСпр:=DB("Ref."+Вид);
+  If Struct.Ref(Вид).Parents.Count()>0 Then
+    If КодРодитель="" Then
+      If Struct.Ref(Вид).Props("Code").Numerator.UnicityControl=0 Then
+        If аСпр.Find("Code",ИзменитьДлинуКода(Вид,ЭлКод))>0 Then
+          Exit аСпр;
+        ElseIf not флНеСоздавать Then
+          Raise "Справочник вида "+Вид+" с кодом "+ЭлКод+" не существует в базе, однако, в загрузке не задан код родителя, необходимый для создания элемента!";
+        Else  
+          Exit GetNothing();
+        EndIf;
+      Else
+        Raise "Справочник вида "+Вид+" с кодом "+ЭлКод+", в загрузке не задан код родителя!";
+      EndIf;  
+    Else
+      If Pos("|",КодРодитель)=0 then
+        ВидРодитель:=ПодобратьРодителяСправочника(Вид);
+      Else
+        ВидРодитель:=TearStr(КодРодитель,"|");
+      EndIf;
+      флГр:=0;
+      If Left(ВидРодитель,1)="+" Then
+        флГр:=1;
+        ВидРодитель:=Mid(ВидРодитель,2);
+      EndIf;
+      вЭл:=НайтиИлиСоздатьЛокальныйСправочникБезТаблиц(ВидРодитель,флГр,КодРодитель,флНовый,флНеСоздавать);
+      If (isEmpty(вЭл))And(флНеСоздавать) Then
+        Exit GetNothing();
+      EndIf;
+      
+      If аСпр.Find("@Parent,Code",вЭл,ИзменитьДлинуКода(Вид,ЭлКод))>0 Then
+        Exit аСпр;
+      EndIf;
+    EndIf;
+  Else
+    If аСпр.Find("Code",ИзменитьДлинуКода(Вид,ЭлКод))>0 Then
+      Exit аСпр;
+    ElseIf флНеСоздавать Then  
+      Exit GetNothing();
+    EndIf;
+  EndIf;
+
+  If флГруппа Then
+    If Struct.Ref(Вид).HasFolders Then
+      аСпр.New(1);
+    Else
+      Message("Элемент справочника "+Вид+" с кодом "+ЭлКод+" является папкой, однако справочник не подразумевает наличия папок!","!");
+      Exit 0;
+    EndIf;  
+  Else
+    аСпр.New();
+  EndIf;  
+  If not isEmpty(вЭл) Then
+    аСпр.Parent(вЭл);
+  EndIf;  
+  аСпр.Code:=ИзменитьДлинуКода(Вид,ЭлКод);
+  If not isEmpty(Struct.Ref(Вид).Props("Name")) Then
+    аСпр.Name:="...Синхронизация...";
+  EndIf;  
+  аСпр.Save();
+  
+  Exit аСпр;
+EndFunction
+
+Function СоздатьНовыйЭлементИлиОбновить(Стр,Эл,ЛокальныйКод,Тб,флТолькоСоздать,аНом);
+  Стр0:=Стр;
+  Вид:=TearStr(Стр,Chr(1));
+  
+  If isEmpty(Struct.Ref(Вид)) Then
+    Raise "Справочник вида "+Вид+" не существует!";
+  EndIf;
+  
+  флУдален:=Number(TearStr(Стр,Chr(1)));
+  флГруппа:=Number(TearStr(Стр,Chr(1)));
+  ВидРодитель:="";
+  КодРодитель:=TearStr(Стр,Chr(1));
+{  
+  If Pos("|",КодРодитель)=0 then
+    ВидРодитель:=ПодобратьРодителяСправочника(Вид);
+  Else
+    ВидРодитель:=TearStr(КодРодитель,"|");
+  EndIf;
+}  
+  КодПапки:=TearStr(Стр,Chr(1));
+  ЭлКод:=TearStr(Стр,Chr(1));
+  ЭлИмя:=TearStr(Стр,Chr(1));
+  ЭлИмя:=РасшифроватьСтроку(ЭлИмя);
+
+  ФлНовый:=(Эл=0);
+  аСпр:=DB("Ref."+Вид);
+  If Эл<>0 Then
+    If Эл.Selected()=0 Then
+      Raise "Внутреняя ошибка (1), копируемый элемент "+Вид+" ("+Эл+") не выбран!";
+    EndIf;
+    аСпр:=Эл.Copy();
+  Else
+    If флГруппа Then
+      If Struct.Ref(Вид).HasFolders Then
+        аСпр.New(1);
+      Else
+        Message("Элемент справочника "+Вид+" с кодом "+ЭлКод+" ("+ЭлИмя+") является папкой, однако справочник не подразумевает наличия папок!","!");
+        Exit 0;
+      EndIf;  
+    Else
+      аСпр.New();
+    EndIf;  
+  EndIf;
+  
+  //Родитель
+  If Struct.Ref(Вид).Parents.Count()>0 Then
+    If Pos("|",КодРодитель)=0 then
+      ВидРодитель:=ПодобратьРодителяСправочника(Вид);
+    Else
+      ВидРодитель:=TearStr(КодРодитель,"|");
+    EndIf;
+    вЭл:=НайтиИлиСоздатьЭлемент(ВидРодитель,КодРодитель,1);//Только создать со словом "синхронизация"
+    If Эл<>0 Then
+      If аСпр.Parent()<>вЭл Then
+        Raise "Проблема с элементом вида "+Вид+" с кодом "+аСпр.Code+", родитель в выгрузке ("+КодРодитель+") не совпадает с родителем в локальной базе!";
+      EndIf;
+    ElseIf аСпр.Parent()<>вЭл Then
+      аСпр.Parent(вЭл);
+    EndIf;
+  EndIf;
+  
+  If Эл=0 Then
+    If isEmpty(Struct.Ref(Вид).Props("Code")) Then
+      //Code отсутствует
+    ElseIf isEmpty(ЛокальныйКод) Then
+      If аСпр.Struct.Props("Code").Numerator.AutoNumeration=2 Then
+        Raise "Реквизит Code справочника "+Вид+" не нумеруется автоматически, однако установки запрещают использовать код из загрузки! Загрузите справочник с другими установками!";
+      Else
+        аСпр.SetPrefix("Code","0");
+      EndIf;
+    Else
+      ЛокальныйКод:=tearStr(ЛокальныйКод,"@");
+      аСпр.Code:=ИзменитьДлинуКода(Вид,ЛокальныйКод);
+    EndIf;
+    
+    If not isEmpty(Struct.Ref(Вид).Props("Name")) Then
+      аСпр.Name:="...Синхронизация...";
+    EndIf;
+    СозданоЭлементов:=СозданоЭлементов+?(аСпр.Status()<0,1,0);
+    Try
+      аСпр.Save();
+    Except
+      Message("Ошибка при создании элемента справочника "+аСпр.DBName()+"!","!");
+      Стр:=PopError();
+      Message(Стр,"!");
+      Raise Стр;
+    EndTry;
+    If Not флБезТаблиц Then
+      //Если верхняя строка не выполнится, Тб не обновится
+      Тб.CurLine:=аНом;
+      Тб.ЛокальныйКод:=ПолучитьПолныйКод(аСпр);
+      Тб.флЗагрузка:=1;
+      Тб.Эл:=аСпр;
+    EndIf;  
+  EndIf;
+  If флТолькоСоздать Then
+    Exit аСпр;
+  EndIf;
+  
+  ФлПолностью:=1;
+  аАтр:="";
+  If not isEmpty(Struct.Ref(Вид).Props("Name")) Then
+    If аСпр.Name<>ЭлИмя Then
+      аСпр.Name:=ЭлИмя;
+    EndIf;  
+  EndIf;  
+  
+  //Папка
+  If not isEmpty(КодПапки) Then
+    If Struct.Ref(Вид).HasFolders Then
+      вЭл:=НайтиИлиСоздатьЭлемент(Вид,КодПапки);
+      If аСпр.Folder()<>вЭл Then
+        аСпр.Folder(вЭл);
+      EndIf;  
+    Else
+      Message("Элемент справочника "+Вид+" с кодом "+ЭлКод+" ("+ЭлИмя+") принадлежит папке с кодом "+КодПапки+", однако справочник не подразумевает наличия папок!","!");
+    EndIf;  
+  EndIf;
+  
+  ФлУстТриггер:=0;
+  ФлТриггер:=0;
+  ТабСтрочнаяЧасть:=0;
+  ТПериод:=Tab.Create("СтрЧасть,НомерСтроки,Реквизит,Дата,Значение");
+  ИдСтрочнаяЧасть:="";
+  While Стр<>"" Do
+    Стр2:=TearStr(Стр,Chr(1));
+    Ид:=TearStr(Стр2);
+    If Left(Ид,1)=Chr(2) Then
+      Ид:=Mid(Ид,2);
+      If isEmpty(Struct.Ref(Вид).LineParts(Ид)) Then
+        Raise "Справочник "+Вид+" не имеет строчной части "+Ид+"!";
+      EndIf;
+      ТабСтрочнаяЧасть:=аСпр.LineParts(Ид);
+      ТабСтрочнаяЧасть.NewLine();
+      ИдСтрочнаяЧасть:=Ид;
+      Continue;
+    EndIf;
+    If Ид=":TRIGGER" Then
+      If аСпр.Struct.Trigger Then
+        //Стр2: "0@NUMBER.<Значение>"
+        TearStr(Стр2);
+        TearStr(Стр2,".");
+        ФлУстТриггер:=1;
+        ФлТриггер:=Number(Стр2);
+      EndIf;
+      Continue;
+    EndIf;
+    
+    флПериод:=Number(TearStr(Стр2));
+    
+    If isEmpty(ИдСтрочнаяЧасть) Then
+      If isEmpty(Struct.Ref(Вид).Props(Ид)) Then
+        Raise "Справочник "+Вид+" не имеет реквизита "+Ид+"!";
+      EndIf;
+      флПериодЛок:=Struct.Ref(Вид).Props(Ид).Periodical;
+    Else
+      If isEmpty(Struct.Ref(Вид).LineParts(ИдСтрочнаяЧасть).Props(Ид)) Then
+        Raise "Строчная часть "+ИдСтрочнаяЧасть+" справочника "+Вид+" не имеет реквизита "+Ид+"!";
+      EndIf;
+      флПериодЛок:=Struct.Ref(Вид).LineParts(ИдСтрочнаяЧасть).Props(Ид).Periodical;
+    EndIf;  
+    
+    If флПериод Then
+      //Периодический на удаленной стороне
+      //<Дата>@<Значение>Chr(3)<Дата2>...
+      If флПериодЛок=0 Then
+        Message("Справочник "+Вид+", реквизит "+Ид+" не является периодическим в локальной базе, однако в выгрузке он периодический!","!");
+        //Устанавливаем последнее из значений
+        Стр3:="";
+        While Стр2<>"" Do
+          Стр3:=TearStr(Стр2,Chr(3));
+        EndDo;
+        TearStr(Стр3);
+        If Стр3<>"" Then
+          If not ПолучитьАтрибут(Стр3,аАтр) Then
+            ФлПолностью:=0;
+          EndIf;
+          If not isEmpty(ИдСтрочнаяЧасть) Then
+            ТабСтрочнаяЧасть.Set(ТабСтрочнаяЧасть.CurLine,Ид,аАтр);
+          ElseIf аСпр.GetValue(Ид)<>аАтр Then
+            аСпр.SetValue(Ид,аАтр);
+          EndIf;  
+        EndIf;
+      ElseIf not isEmpty(ИдСтрочнаяЧасть) Then
+        While Стр2<>"" Do
+          Стр3:=TearStr(Стр2,Chr(3));
+          аДата:=Date(TearStr(Стр3));
+          If not ПолучитьАтрибут(Стр3,аАтр) Then
+            ФлПолностью:=0;
+          EndIf;
+          ТПериод.AddLine("СтрЧасть,НомерСтроки,Реквизит,Дата,Значение",ИдСтрочнаяЧасть,ТабСтрочнаяЧасть.Size(),Ид,аДата,аАтр);
+        EndDo;  
+      Else
+        aTab:=аСпр.LoadPeriodicalValues(Ид);
+        bTab:=Tab.Create();
+        aTab.CopyTo(bTab);
+        aTab.ClearLines();
+        While Стр2<>"" Do
+          Стр3:=TearStr(Стр2,Chr(3));
+          аДата:=Date(TearStr(Стр3));
+          If not ПолучитьАтрибут(Стр3,аАтр) Then
+            ФлПолностью:=0;
+          EndIf;
+          aTab.AddLine("_Date,_Value",аДата,аАтр);
+        EndDo;
+        If not aTab.Compare(bTab) Then
+          аСпр.SavePeriodicalValues(Ид,aTab);
+        EndIf;  
+      EndIf;
+    Else
+      //Обычный на удаленной стороне
+      If not ПолучитьАтрибут(Стр2,аАтр) Then
+        ФлПолностью:=0;
+      EndIf;
+      If флПериодЛок=0 Then
+        If not isEmpty(ИдСтрочнаяЧасть) Then
+          ТабСтрочнаяЧасть.Set(ТабСтрочнаяЧасть.CurLine,Ид,аАтр);
+        ElseIf аСпр.GetValue(Ид)<>аАтр Then
+          аСпр.SetValue(Ид,аАтр);
+        EndIf;  
+      Else
+        Message("Справочник "+Вид+", реквизит "+Ид+" является периодическим в локальной базе, однако в выгрузке он не периодический!","!");
+        If not isEmpty(ИдСтрочнаяЧасть) Then
+          ТПериод.AddLine("СтрЧасть,НомерСтроки,Реквизит,Дата,Значение",ИдСтрочнаяЧасть,ТабСтрочнаяЧасть.Size(),Ид,'01.01.1981',аАтр);
+        ElseIf аСпр.GetValue(Ид,'01.01.1981')<>аАтр Then
+          аСпр.SetValue(Ид,аАтр,'01.01.1981');
+        EndIf;  
+      EndIf;
+    EndIf;
+  EndDo;
+  
+  //Если объект не загружен, он не изменялся...
+  If аСпр.Loaded()=1 Then
+    аСпр.Save(0);
+  EndIf;  
+  If (аСпр.Status()=1)And(флУдален=0) Then
+    аСпр.Mark(0,0);
+  ElseIf (флУдален=1)And(аСпр.Status()<>1) Then
+    аСпр.Mark(1,0);
+  EndIf;
+
+  If ТПериод.Size()>0 Then
+    ТПерТаб:=Tab.Create("СтрЧасть,НомерСтроки,Реквизит,Таб");
+    ТПериод.Select();
+    While ТПериод.Next() Do
+      ТПерТаб.CurLine:=0;
+      If ТПерТаб.LocateAndGoto("СтрЧасть,НомерСтроки,Реквизит",ТПериод.СтрЧасть,ТПериод.НомерСтроки,ТПериод.Реквизит)=0 Then
+        aTab:=аСпр.LoadPeriodicalValues(ТПериод.СтрЧасть+"."+ТПериод.НомерСтроки+"."+ТПериод.Реквизит);
+        aTab.ClearLines();
+        ТПерТаб.AddLine("СтрЧасть,НомерСтроки,Реквизит,Таб",ТПериод.СтрЧасть,ТПериод.НомерСтроки,ТПериод.Реквизит,aTab);
+      EndIf;
+      aTab:=ТПерТаб.Таб;
+      aTab.AddLine("_Date,_Value",ТПериод.Дата,ТПериод.Значение);
+    EndDo;
+    ТПерТаб.Select();
+    While ТПерТаб.Next() Do
+      аСпр.SavePeriodicalValues(ТПерТаб.СтрЧасть+"."+ТПерТаб.НомерСтроки+"."+ТПерТаб.Реквизит,ТПерТаб.Таб);
+    EndDo;
+    ТПерТаб:=0;
+    ТПериод:=0;
+  EndIf;
+  If ФлУстТриггер Then
+    аСпр.SetTrigger(ФлТриггер);
+  EndIf;  
+    
+  If not ФлПолностью Then
+    Message("Сопоставьте все реквизиты: Эл. справочника "+Вид+" с кодом "+аСпр.Code+" и наименованием "+Trim(аСпр.Name)+" заполнен не полностью!","!");
+  EndIf;
+  
+  If Not флБезТаблиц Then
+    Тб.CurLine:=аНом;
+    Тб.ЛокальныйКод:=ПолучитьПолныйКод(аСпр);
+    Тб.флЗагрузка:=1-ФлПолностью;
+  EndIf;
+  ЗагруженоЭлементов:=ЗагруженоЭлементов+ФлНовый;
+  ОбновленоЭлементов:=ОбновленоЭлементов+(1-ФлНовый);
+  
+  Exit аСпр;
+EndFunction
+
+Function ЗафиксироватьЛинки()
+  ТабСпр.Select();
+  While ТабСпр.Next() Do
+    Вид:=ТабСпр.Вид;
+    ТекФайл:=Trim(РезКаталог)+"_RefLink_"+Вид+".txt";
+    БакФайл:=ТекФайл+".bak";
+        
+    Т:=Text.Create(1);
+    Т.AddString("@LINKV4@");
+    Т.AddString(Вид);
+    Тб:=ТабСпр.Таб;
+    Тб.Select();
+    While Тб.Next() Do
+      If (IsEmpty(Тб.Эл))Or(Тб.Эл=2) Then
+        Continue;
+      EndIf;
+      //<ВнешнийКод>Chr(1)<ЛокальныйКод>Chr(1)<ТребуетПолнойЗагрузки>Chr(1)<ВнешнееИмя>Chr(1)<Реквизиты>
+      Т.AddString(Тб.ВнешнийКод+Chr(1)+Тб.ЛокальныйКод+Chr(1)+Тб.флЗагрузка+Chr(1)+ЗашифроватьСтроку(Тб.ВнешнееИмя)+Chr(1)+Тб.Стр);
+    EndDo;
+      
+    If File.DoesFileExist(ТекФайл) Then
+      File.MoveFile(ТекФайл,БакФайл,1);
+    EndIf;
+    If not Т.Save(ТекФайл,-1,1) Then
+      Message("Невозможно сохранить файл линков "+ТекФайл+"! Это серьезная ошибка, так как элементы могут быть продублированы при следующей загрузке!","!!!");
+    EndIf;
+  EndDo;
+EndFunction
+
+Function удПолучитьРасшифровку(Тип,Стр2)
+  Рез:="";
+  If (Тип="Справочник")or(Тип="REF") Then
+    Вид:=TearStr(Стр2,".");
+    аЭл:=НайтиИлиСоздатьЭлемент(Вид,Стр2,-1);
+    Exit аЭл;
+  ElseIf (Тип="Число")or(Тип="NUMBER") Then
+    Exit Number(Стр2);
+  ElseIf (Тип="Строка")or(Тип="STRING") Then
+    Exit РасшифроватьСтроку(Стр2);
+  ElseIf (Тип="Дата")or(Тип="DATE") Then
+    //min: XX.XX.XX
+    If Length(Стр2)<8 Then
+      Exit Date(0);
+    Else
+      Exit Date(Стр2);
+    EndIf;  
+  ElseIf (Тип="Перечисление")or(Тип="ENUM") Then
+    Вид:=TearStr(Стр2,".");
+    Номер:=Number(TearStr(Стр2,"."));
+    If Вид="" Then
+      Exit GetNothing();
+    EndIf;
+    If Номер=0 Then
+      Exit GetNothing("ENUM."+Вид);
+    EndIf;
+    Try
+      Exit Enum.GetByIndex(Вид,Номер);
+    Except
+      Message(PopError(),"!");
+      Message("Перечисление: "+Вид+", индекс значения: "+Номер,"!");
+      Raise "Ошибка!";
+    EndTry  
+  ElseIf (Тип="Документ")or(Тип="DOC") Then
+    Вид:=TearStr(Стр2,".");
+    НомерДок:=TearStr(Стр2,".");
+    ДатаДок:=Date(TearStr(Стр2,"."));
+    If Вид="" Then
+      Exit GetNothing();
+    EndIf;
+    ФлНовый:=0;
+    аДок:=НайтиИлиСоздатьДокумент(Вид,НомерДок,ДатаДок,ФлНовый);
+    Exit аДок;
+  EndIf;
+  Exit GetNothing();
+EndFunction
+
+
+
+Function ДобавитьВТаблицуБухЗануления(аДок)
+
+  Function _ПроверитьФильтры(зСчет,Субконто1,Субконто2);
+    стрСклады:=",41.1,41.2,41.3,41.4,43,";
+    оСч:=Form.оСч.Value.Get(1);
+    оСчНЕ:=Form.оСч.Value.Get(2);
+    оСк:=Form.оСк.Value.Get(1);
+    оСкНЕ:=Form.оСк.Value.Get(2);
+    оН:=Form.оН.Value.Get(1);
+    оННЕ:=Form.оН.Value.Get(2);
+  
+    ФлНужный:=0;//Не нужный -- зануляется
+    If оСч.Size()>0 Then
+      If not оСч.Contains(зСчет) Then
+        ФлНужный:=1;
+      EndIf;
+    EndIf;
+    If (not ФлНужный)And(оСчНЕ.Size()>0) Then
+      If оСчНЕ.Contains(зСчет) Then
+        ФлНужный:=1;
+      Else
+        ФлНужный:=0;
+      EndIf;
+    EndIf;
+    
+    If (Form.оЗанул41.Value=1)And(not ФлНужный) Then
+      If Pos(","+зСчет.Code+",",стрСклады)>0 Then
+        If оСк.Size()>0 Then
+          If not оСк.Contains(Субконто2) Then
+            ФлНужный:=1;
+          EndIf;
+        EndIf;
+        If оСкНЕ.Size()>0 Then
+          If оСкНЕ.Contains(Субконто2) Then
+            ФлНужный:=1;
+          Else
+            ФлНужный:=0;
+          EndIf;
+        EndIf;
+      EndIf;
+    EndIf;
+
+    If (Form.оТолькоТМЦ.Value=1)And(not ФлНужный) Then
+      If Pos(","+зСчет.Code+",",стрСклады)>0 Then
+        If оН.Size()>0 Then
+          If not оН.Contains(Субконто1) Then
+            ФлНужный:=1;
+          EndIf;
+        EndIf;
+        If оННЕ.Size()>0 Then
+          If оННЕ.Contains(Субконто1) Then
+            ФлНужный:=1;
+          Else
+            ФлНужный:=0;
+          EndIf;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    Exit ФлНужный;
+  EndFunction
+
+  оСк:=Form.оСк.Value.Get(1);
+  оСкНЕ:=Form.оСк.Value.Get(2);
+  оН:=Form.оН.Value.Get(1);
+  оННЕ:=Form.оН.Value.Get(2);
+  
+  If Form.оБухЗануление.Value=1 Then
+    ФлЧет:=0;
+    
+    aTab:=аДок.LoadStorage("БухгалтерскиеСчета");
+    aTab.Select();
+    While aTab.Next() Do
+      зПлюс:=?(aTab._Expense=0,-1,1);//Обращаем знак
+      зЮЛ:=aTab.ЮрЛицо;
+      зСчет:=aTab.Счет;
+      зСчетКод:=зСчет.Code;
+      зСуб1:=aTab.Субконто1;
+      зСуб2:=aTab.Субконто2;
+      зСуб3:=aTab.Субконто3;
+      зСумма:=aTab.Сумма*зПлюс;
+      зКл:=aTab.Количество*зПлюс;
+      
+      If _ПроверитьФильтры(зСчет,aTab.Субконто1,aTab.Субконто2) Then
+        зСчет:=Form.оЗСчет.Value;
+        зСчетКод:=Form.оЗСчет.Value.Code;
+        зСуб1:=GetNothing();
+        зСуб2:=GetNothing();
+        зСуб3:=GetNothing();
+        зКл:=0;
+      EndIf;
+      
+      ТбБух.AddLine("зЮЛ,зСч,Суб1,Суб2,Суб3,Кл,См,Месяц",зЮЛ,зСчет,зСуб1,зСуб2,зСуб3,зКл,зСумма,BegOfMonth(аДок.DocDate));
+      If зСчет.Забалансовый=0 Then
+        If aTab.Next()=0 Then
+          Raise "Неверные (непарные) движения по счетам в документе "+аДок+"!";
+        EndIf;
+        
+        зПлюс:=?(aTab._Expense=0,-1,1);//Обращаем знак
+        зЮЛ:=aTab.ЮрЛицо;
+        зСчет:=aTab.Счет;
+        зСчетКод:=зСчет.Code;
+        зСуб1:=aTab.Субконто1;
+        зСуб2:=aTab.Субконто2;
+        зСуб3:=aTab.Субконто3;
+        зСумма:=aTab.Сумма*зПлюс;
+        зКл:=aTab.Количество*зПлюс;
+        
+        If _ПроверитьФильтры(зСчет,aTab.Субконто1,aTab.Субконто2) Then
+          зСчет:=Form.оЗСчет.Value;
+          зСчетКод:=Form.оЗСчет.Value.Code;
+          зСуб1:=GetNothing();
+          зСуб2:=GetNothing();
+          зСуб3:=GetNothing();
+          зКл:=0;
+        EndIf;
+        
+        ТбБух.зСч2:=зСчет;
+        ТбБух.Суб12:=зСуб1;
+        ТбБух.Суб22:=зСуб2;
+        ТбБух.Суб32:=зСуб3;
+        ТбБух.Кл2:=зКл;
+        ТбБух.См2:=зСумма;
+      EndIf;
+      
+      If (ТбБух.зСч=ТбБух.зСч2)And(ТбБух.зСч=Form.оЗСчет.Value) Then
+        ТбБух.Remove(ТбБух.Size());
+      EndIf;
+    EndDo;
+  EndIf;
+  
+  оДвиж:=Form.оДвиж.Value;
+  For i:=1 to оДвиж.Size() Do
+    If not оДвиж.Check(i) Then
+      Continue;
+    EndIf;
+    ИмяНак:=оДвиж.Get(i);
+    If not isEmpty(Struct.Doc(аДок.DBName()).StoragesAllowed(ИмяНак)) Then
+      Continue;
+    EndIf;
+    
+    aTab:=аДок.LoadStorage(ИмяНак);
+    aTab.Select();
+    While aTab.Next() Do
+      If ИмяНак="ОстаткиТМЦ" Then
+        If Form.оЗанул41.Value=1 Then
+          If оСк.Size()>0 Then
+            If not оСк.Contains(aTab.Склад) Then
+              Continue;
+            EndIf;
+          EndIf;
+          If оСкНЕ.Size()>0 Then
+            If оСкНЕ.Contains(aTab.Склад) Then
+              Continue;
+            EndIf;
+          EndIf;
+        EndIf;
+        
+        If Form.оТолькоТМЦ.Value=1 Then
+          If оН.Size()>0 Then
+            If not оН.Contains(aTab.Номенклатура) Then
+              Continue;
+            EndIf;
+          EndIf;
+          If оННЕ.Size()>0 Then
+            If оННЕ.Contains(aTab.Номенклатура) Then
+              Continue;
+            EndIf;
+          EndIf;
+        EndIf;
+      EndIf;
+    
+      зПлюс:=-1;
+      If Struct.Storages(ИмяНак).PeriodicalStorage Then
+        зПлюс:=?(aTab._Expense=0,-1,1);
+      EndIf;  
+      ТТ1:=List.Create();
+      ТТ2:=List.Create();
+      ТТ3:=List.Create();
+      ТбНак.AddLine("ИмяНак,Месяц,ТТ1,ТТ2,ТТ3",ИмяНак,BegOfMonth(аДок.DocDate),ТТ1,ТТ2,ТТ3);
+      For i:=1 to Struct.Storages(ИмяНак).Props.Count() Do
+        Ид:=Struct.Storages(ИмяНак).Props(i).Name;
+        Зн:=aTab.Get(aTab.CurLine,Ид);
+        If Struct.Storages(ИмяНак).Props(i).Asset Then
+          ТТ2.SetByName(Ид,Зн*зПлюс);
+        ElseIf Struct.Storages(ИмяНак).Props(i).Accumulator Then
+          ТТ1.SetByName(Ид,Зн);
+        Else
+          ТТ3.SetByName(Ид,Зн);
+        EndIf;
+      EndDo;
+    EndDo;  
+  EndDo;
+EndFunction
+
+Function ПолучитьСписокФайлов(Маска)
+  сп:=List.Create();
+  Ф:=File.Create();
+  Ф.FindOpen(Маска);
+  While Ф.FindNextFile()<>"" Do
+    Файл:=Trim(РезКаталог)+Ф.FileName;
+    if Ф.IsDirectory(Файл) Then
+      Continue;
+    EndIf;
+    сп.Add(Файл);
+  EndDo;
+  Exit сп;
+EndFunction
+
+Function НайтиУровеньРодителей(Вид)
+  If _Or(isEmpty(Struct.Ref(Вид)),Struct.Ref(Вид).Parents().Count()=0) Then
+    Exit 0;
+  EndIf;
+  j:=0;
+  For i:=1 To Struct.Ref(Вид).Parents().Count() Do
+    j:=Max(j,НайтиУровеньРодителей(Struct.Ref(Вид).Parents(i).Name));
+  EndDo;
+  Exit j+1;
+EndFunction
+
+
+
+Function ЗагрузитьФайлНастройкиСправочников()
+  оСправ:=Form.оСправ.Value;
+  If File.DoesFileExist(Trim(РезКаталог)+"_RefSettings.txt") Then
+    Т:=Text.Create(1);
+    Т.Load(Trim(РезКаталог)+"_RefSettings.txt",0);
+    For i:=1 to Т.Size() Do
+      Стр:=Т.GetLine(i);
+      //<Имя>.<Флаг>.<МаксКод>
+      СтрИмя:=TearStr(Стр,".");
+      If СтрИмя="" Then
+        Continue;
+      EndIf;
+      If isEmpty(Struct.Ref(СтрИмя)) Then
+        Message("Файл настройки справочников: не существует справочник "+СтрИмя,"!");
+        Continue;
+      EndIf;
+      
+      If not оСправ.FindAndGoto(СтрИмя,,"Вид") Then
+        Continue;
+      EndIf;
+      Фл:=Number(TearStr(Стр,"."));
+      МаксКод:=Number(TearStr(Стр,"."));
+      оСправ.Check(оСправ.CurLine,"флОбновлять",Фл);
+      оСправ.МаксКод:=МаксКод;
+      оСправ.Всего:="?";
+    EndDo;
+  EndIf;
+  
+  ТабСпр:=Tab.Create("Вид,Таб");//Вид справочника, Таблица соответствия справочника
+  ТабСпр.AddColumn("ФлОК",,"Number"); //Временный флаг, незаполненных нет (0)
+  ТабСпр.AddColumn("ФлУровень",,"Number"); //Временный флаг, количество уровней родителей
+  
+  ФлБылиЭлементы:=0;
+  //Загрузка файлов соответствия
+  СпФайлы:=ПолучитьСписокФайлов(РезКаталог+"_RefLink_*.txt");
+  For iFile:=1 To СпФайлы.Size() Do
+    Файл:=СпФайлы.Get(iFile);
+  
+    ТСпр:=Text.Create(1);
+    ТСпр.Load(Файл,0);
+    
+    Form.StatusText("Загрузка "+Файл+"...");
+    Стр:=ТСпр.GetLine(1);
+    If Стр<>"@LINKV4@" Then
+      Continue;
+    EndIf;
+    
+    Вид:=Trim(ТСпр.GetLine(2));//Имя справочника
+    If ТабСпр.FindAndGoto(Вид,,"Вид")=0 Then
+      ТабСпр.AddLine("Вид",Вид);
+      ТабСпр.ФлУровень:=НайтиУровеньРодителей(Вид);
+      Тб:=Tab.Create("ВнешнийКод,ВнешнееИмя,ЛокальныйКод,Эл,Стр,флЗагрузка");
+      ТабСпр.Таб:=Тб;
+    EndIf;
+    Тб:=ТабСпр.Таб;
+    
+    For i:=3 to ТСпр.Size() Do
+      ФлБылиЭлементы:=1;
+      Стр:=ТСпр.GetLine(i);
+      //<ВнешнийКод>Chr(1)<ЛокальныйКод>Chr(1)<ТребуетПолнойЗагрузки>Chr(1)<ВнешнееИмя>Chr(1)<Реквизиты>
+      ВнКод:=TearStr(Стр,Chr(1));
+      ЛокКод:=TearStr(Стр,Chr(1));
+      флЗагрузка:=Number(TearStr(Стр,Chr(1)));
+      ВнИмя:=TearStr(Стр,Chr(1));
+      ВнИмя:=DecodeString(ВнИмя,,1);
+      //Стр -- реквизиты (Стр0)
+      If Тб.FindAndGoto(ВнКод,,"ВнешнийКод")=0 Then
+        Эл:=0;
+        If ЛокКод<>"" Then
+          Эл:=НайтиЭлементПоПолномуКоду(Вид,ЛокКод);
+          If Эл=0 Then
+            //Message("Файл настройки справочников: не найден лок. элемент справочника "+Вид+", с кодом "+ЛокКод+"!","!");
+            Continue;
+          EndIf;
+        EndIf;
+        
+        Тб.AddLine("ВнешнийКод,ВнешнееИмя,флЗагрузка,ЛокальныйКод,Стр,Эл",ВнКод,ВнИмя,флЗагрузка,ЛокКод,Стр,Эл);
+      EndIf;
+    EndDo;
+  EndDo;
+  ТабСпр.Sort("ФлУровень+,Вид+");
+  
+  If ФлБылиЭлементы Then
+    Message("Загрузка сопоставлений справочников успешно завершена!","I");
+  EndIf;  
+EndFunction
+
+
+
+
+Function ЗагрузитьДокументы()
+  ЧлДокументов:=0;
+  СпФайлы:=ПолучитьСписокФайлов(РезКаталог+"Docs*.txt");
+  For iFile:=1 To СпФайлы.Size() Do
+    Файл:=СпФайлы.Get(iFile);
+    Message("Загружается файл: "+Файл,"I");
+    ФлФорсирование9:=Uppercase(GetFileName(Файл))="DOCS_SPECIAL.TXT";
+  
+    Тб:=Text.Create(1);
+    Тб.Load(Файл,0);
+
+    Стр:=Тб.GetLine(1);
+    If Стр<>"@DOCSV4@" Then
+      Continue;
+    EndIf;
+    
+    ЧлДокументов2:=0;
+    ОсновнойЦиклСтрока:=1;
+    While ОсновнойЦиклСтрока<Тб.Size() Do
+      ОсновнойЦиклСтрока:=ОсновнойЦиклСтрока+1;
+      Стр:=Тб.GetLine(ОсновнойЦиклСтрока);
+      If Pos("DC:",Стр)<>1 Then
+        Continue;
+      EndIf;
+      //Загружаем документ до ED:
+      TearStr(Стр,"DC:");
+      ВидДок:=TearStr(Стр,Chr(1));
+      
+      If isEmpty(Struct.Doc(ВидДок)) Then
+        Raise "Документы вида "+ВидДок+" не найдены в локальной базе!";
+      EndIf;
+      
+      НомерДок:=TearStr(Стр,Chr(1));
+      ДатаДок:=TearStr(Стр,Chr(1));
+      флОбработан:=Number(TearStr(Стр,Chr(1)));
+      флУдален:=Number(TearStr(Стр,Chr(1)));
+      ФлНовый:=0;
+      аДок:=НайтиИлиСоздатьДокумент(ВидДок,НомерДок,ДатаДок,ФлНовый);
+      
+      If БухНачДата=0 Then
+        БухНачДата:=аДок.DocDate;
+        БухКонДата:=БухНачДата;
+      Else
+        БухНачДата:=Min(БухНачДата,аДок.DocDate);
+        БухКонДата:=Max(БухКонДата,аДок.DocDate);
+      EndIf;
+      
+
+      
+      //Цикл загрузки и обработки
+      While 1 Do
+        If (Form.оОбработанные.Value=0)And(аДок.Status()>1) Then
+          Break;
+        EndIf;
+        If (аДок.Status()=1)And(not флУдален) Then
+          аДок.Mark(0,0);
+        ElseIf (флУдален)And(аДок.Status()<>1) Then
+          аДок.Mark(1,0);
+        EndIf;
+        If isEmpty(Date(ДатаДок)) Then
+          Raise "Документ "+ВидДок+" №"+НомерДок+" неверная дата: "+ДатаДок;
+        EndIf;
+        ДатаДок:=Date(ДатаДок);
+        If GetYear(ДатаДок)<>GetYear(аДок.DocDate) Then
+          Raise "Документ "+аДок+", год не совпадает с годом загрузки!";
+        EndIf;
+        
+        If аДок.DocDate<>ДатаДок Then
+          аДок.DocDate:=ДатаДок;
+        EndIf;
+        
+        //Очищаем документ
+        If not ФлНовый Then
+          For i3:=1 to Struct.Doc(ВидДок).Props.Count() Do
+            Ид:=Struct.Doc(ВидДок).Props(i3).Name;
+            If (Ид<>"DocDate")And(Ид<>"DocNum") Then
+              аДок.SetValue(Ид,GetNothing());
+            EndIf;  
+          EndDo;
+          For i2:=1 to Struct.Doc(ВидДок).LineParts.Count() Do
+            iLP:=Struct.Doc(ВидДок).LineParts(i2);
+            аДок.LineParts(iLP.Name).ClearLines();
+          EndDo;
+        EndIf;
+        
+        
+        //Реквизиты документа
+        ОсновнойЦиклСтрока:=ОсновнойЦиклСтрока+1;
+        Стр:=Тб.GetLine(ОсновнойЦиклСтрока);
+        If Pos("P1:",Стр)<>1 Then
+          ОсновнойЦиклСтрока:=ОсновнойЦиклСтрока-1;
+        Else
+          TearStr(Стр,"P1:");
+          While Стр<>"" Do
+            Стр2:=TearStr(Стр,Chr(1));
+            Ид:=TearStr(Стр2,"@");
+            флПериод:=Number(TearStr(Стр2));
+            If isEmpty(Struct.Doc(ВидДок).Props(Ид)) Then
+              Raise "Документ "+ВидДок+" не найден реквизит "+Ид+"!";
+            EndIf;
+            флПериодЛок:=Struct.Doc(ВидДок).Props(Ид).Periodical;
+            If флПериод<>флПериодЛок Then
+              Raise "Документ "+ВидДок+" периодичность локального реквизита "+Ид+" не совпадает с периодичностью реквизита в выгрузке!";
+            EndIf;
+            If флПериод Then
+              aTab:=аДок.LoadPeriodicalValues(Ид);
+              bTab:=Tab.Create();
+              aTab.CopyTo(bTab);
+              aTab.ClearLines();
+              While Стр2<>"" Do
+                Стр3:=TearStr(Стр2,Chr(3));
+                аДата:=Date(TearStr(Стр3));
+                аАтр:=0;
+                ПолучитьАтрибут(Стр3,аАтр);
+                aTab.AddLine("_Date,_Value",аДата,аАтр);
+              EndDo;
+              If not aTab.Compare(bTab) Then
+                аДок.SavePeriodicalValues(Ид,aTab);
+              EndIf;  
+            Else
+              аАтр:=0;
+              ПолучитьАтрибут(Стр2,аАтр);
+              аДок.SetValue(Ид,аАтр);
+            EndIf;  
+          EndDo;
+        EndIf;
+        
+        //Строчные части
+        While 1 Do 
+          ОсновнойЦиклСтрока:=ОсновнойЦиклСтрока+1;
+          Стр:=Тб.GetLine(ОсновнойЦиклСтрока);
+          If Pos("P2:",Стр)<>1 Then
+            ОсновнойЦиклСтрока:=ОсновнойЦиклСтрока-1;
+            break;
+          EndIf;
+          TearStr(Стр,"P2:");
+          
+          ИмяСЧ:=TearStr(Стр,Chr(1));
+          ЧлСтрок:=Number(Стр);
+          If isEmpty(Struct.Doc(ВидДок).LineParts(ИмяСЧ)) Then
+            Raise "Документ "+ВидДок+" не найдена строчная часть "+ИмяСЧ+"!";
+          EndIf;
+          aTab:=аДок.LineParts(ИмяСЧ);
+          ФлПеридическиеРеквизиты:=0;
+          ОсновнойЦиклСтрока0:=ОсновнойЦиклСтрока;
+        
+          For аСтроки:=1 to ЧлСтрок Do
+            ОсновнойЦиклСтрока:=ОсновнойЦиклСтрока+1;
+            Стр:=Тб.GetLine(ОсновнойЦиклСтрока);
+            If Pos("P3:",Стр)<>1 Then
+              Raise "Ошибка в файле импорта ("+ОсновнойЦиклСтрока+"), ожидается выражение P3!";
+            EndIf;
+            aTab.NewLine();
+            
+            TearStr(Стр,"P3:");
+            While Стр<>"" Do
+              Стр2:=TearStr(Стр,Chr(1));
+              Ид:=TearStr(Стр2,"@");
+              флПериод:=Number(TearStr(Стр2));
+              If isEmpty(Struct.Doc(ВидДок).LineParts(ИмяСЧ).Props(Ид)) Then
+                Raise "Документ "+ВидДок+" строчная часть "+ИмяСЧ+": не найден реквизит "+Ид+"!";
+              EndIf;
+              флПериодЛок:=Struct.Doc(ВидДок).LineParts(ИмяСЧ).Props(Ид).Periodical;
+              If флПериод<>флПериодЛок Then
+                Raise "Документ "+ВидДок+" периодичность локального реквизита "+Ид+" строчной части "+ИмяСЧ+" не совпадает с периодичностью реквизита в выгрузке!";
+              EndIf;
+              
+              If флПериод Then
+                ФлПеридическиеРеквизиты:=1;
+              Else
+                аАтр:=0;
+                ПолучитьАтрибут(Стр2,аАтр);
+                aTab.Set(aTab.CurLine,Ид,аАтр);
+              EndIf;
+            EndDo;
+          EndDo;//По всем строкам строчной части
+          
+          //Обновление периодических реквизитов строчных частей документов
+          If ФлПеридическиеРеквизиты Then
+            аДок.Save();//TODO: Можно записывать только один раз для всех строчных частей, а не для каждой
+            ОсновнойЦиклСтрока0:=ОсновнойЦиклСтрока;
+            For аСтроки:=1 to ЧлСтрок Do
+              ОсновнойЦиклСтрока:=ОсновнойЦиклСтрока+1;
+              aTab.CurLine:=аСтроки;
+              Стр:=Тб.GetLine(ОсновнойЦиклСтрока);
+              While Стр<>"" Do
+                Стр2:=TearStr(Стр,Chr(1));
+                Ид:=TearStr(Стр2,"@");
+                флПериод:=Number(TearStr(Стр2));
+                If флПериод=0 Then
+                  Continue;
+                EndIf;
+                
+                aTab2:=аДок.LoadPeriodicalValues(ИмяСЧ+"."+аСтроки+"."+Ид);
+                bTab2:=Tab.Create();
+                aTab2.CopyTo(bTab2);
+                aTab2.ClearLines();
+                While Стр2<>"" Do
+                  Стр3:=TearStr(Стр2,Chr(3));
+                  аДата:=Date(TearStr(Стр3));
+                  аАтр:=0;
+                  ПолучитьАтрибут(Стр3,аАтр);
+                  aTab2.AddLine("_Date,_Value",аДата,аАтр);
+                EndDo;
+                If not aTab2.Compare(bTab2) Then
+                  аДок.SavePeriodicalValues(ИмяСЧ+"."+аСтроки+"."+Ид,aTab2);
+                EndIf;  
+              EndDo;
+            EndDo;  
+          EndIf;
+        EndDo;//По всем строчным частям документа
+        
+        If (Form.оФлаг9.Value=1)or(ФлФорсирование9) Then
+          аДок.ФлагОбмена:=9;
+        EndIf;
+        аДок.Save();
+        If IsEmpty(НомерДок) Then
+          Message("Внимание! Выгрузка содержит указание создать новый документ! Был создан документ "+аДок+"!","!");
+          Message("  Если вы будете загружать выгрузку повторно, будет создан дублирующийся документ, будьте внимательны!","!");
+        EndIf;
+        
+        If IsEmpty(НомерДок) And флОбработан Then
+          сп:=List.Create();
+          сп.SetByName("УровеньФорсирования",1);
+          глРаботаетРобот:=1;
+          Try
+            If not аДок.Publish(сп) Then
+              Raise "Невозможно обработать документ ("+аДок+")!";
+            EndIf;
+          Finally
+            глРаботаетРобот:=0;
+          EndTry;  
+        ElseIf флОбработан Then
+          спНакопители:=List.Create();
+          ОсновнойЦиклСтрока:=ОсновнойЦиклСтрока+1;
+          Стр:=Тб.GetLine(ОсновнойЦиклСтрока);
+          While Pos("ST:",Стр)=1 Do
+            TearStr(Стр,"ST:");
+            ИмяНак:=TearStr(Стр,Chr(1));
+            aTab:=спНакопители.GetByName(ИмяНак);
+            If isEmpty(aTab) Then
+              aTab:=аДок.InitStorageTab(ИмяНак);
+              спНакопители.SetByName(ИмяНак,aTab);
+            EndIf;  
+            While Стр<>"" Do
+              Стр2:=TearStr(Стр,Chr(1));
+              ДвТип:=TearStr(Стр2,Chr(2));
+              TearStr(Стр2,Chr(2));//TODO: Загружать также дату движения
+              aTab.NewLine();
+              If aTab.GetColumnIndex("_Expense")>0 Then
+                aTab._Expense:=?(ДвТип="+",0,1);
+              EndIf;  
+              While Стр2<>"" Do
+                Стр3:=TearStr(Стр2,Chr(2));
+                Ид:=TearStr(Стр3,"@");
+                If isEmpty(Struct.Storages(ИмяНак).Props(Ид)) Then
+                  Raise "Накопитель "+ИмяНак+" не найден реквизит "+Ид+"!";
+                EndIf;
+                аАтр:=0;
+                ПолучитьАтрибут(Стр3,аАтр);
+                aTab.Set(aTab.CurLine,Ид,аАтр);
+              EndDo;
+            EndDo;
+            
+            ОсновнойЦиклСтрока:=ОсновнойЦиклСтрока+1;
+            If ОсновнойЦиклСтрока>Тб.Size() Then
+              Break;
+            EndIf;
+            Стр:=Тб.GetLine(ОсновнойЦиклСтрока);
+          EndDo;
+          If ОсновнойЦиклСтрока<=Тб.Size() Then
+            ОсновнойЦиклСтрока:=ОсновнойЦиклСтрока-1;
+          EndIf;  
+          
+          ФлОк:=0;
+          BeginTransaction();
+          Try
+            While 0=0 Do
+              Try
+                аДок.ClearStorages();
+              Except
+                RollbackTransaction();
+                Sleep(100);
+                BeginTransaction();
+                Continue;
+              EndTry;
+              Break;
+            EndDo;  
+            аДок.PublishedMark(1);
+            
+            For i:=1 To спНакопители.Size() Do
+              aTab:=спНакопители.Get(i);
+              ИмяНак:=спНакопители.GetName(i);
+              If aTab.Size()>0 Then
+                аДок.SaveStorage(ИмяНак,aTab,аДок.DocDate);
+              EndIf;  
+            EndDo;
+            
+            аДок.Save();
+            ФлОк:=1;
+          Finally
+            If ФлОк Then
+              CommitTransaction();
+            Else
+              RollbackTransaction();
+            EndIf;
+          EndTry
+        EndIf;
+
+        //Message(""+аДок,"I");
+        ЧлДокументов:=ЧлДокументов+1;
+        ЧлДокументов2:=ЧлДокументов2+1;
+        Form.StatusText("Загружено документов: "+ЧлДокументов);
+        Break;
+      EndDo;
+      
+      //Копим таблицу движений по бух. учету
+      ДобавитьВТаблицуБухЗануления(аДок);
+    EndDo;
+    File.MoveFile(Файл,Trim(РезКаталог)+"done_"+GetFileName(Файл),1);
+    Message("Успешно загружен файл: "+Файл+", "+ЧлДокументов2+" документов, всего документов: "+ЧлДокументов,"I");
+  EndDo;
+
+  If ((Form.оБухЗануление.Value=1)And(БухНачДата<>0))Or(ТбНак.Size()>0) Then
+    ТбБух.Group("Месяц,зЮЛ,зСч,Суб1,Суб2,Суб3,зСч2,Суб12,Суб22,Суб32","Кл,Кл2,См,См2");
+    
+    аДата:=BegOfMonth(БухНачДата);
+    While аДата<=BegOfMonth(БухКонДата) Do
+      
+      If ТбНак.FindAndGoto(аДата,,"Месяц")>0 Then
+        //Зануление накопителей
+        аДок:=Doc.УниверсальныйДокумент;
+        аДок.New();
+        аДок.КодОперации:=Enum.коУниверсальныйДокумент.УниверсальныйДокумент;
+        аДок.DocDate:=Min(EndOfMonth(аДата),Date());
+        аДок.Автор:=глПользователь;
+        аДок.SetPrefix("DocNum",Trim(DBVar.ПрефиксИБ)+"ЯЯ");
+        аДок.ФлагОбмена:=?(Form.оФлаг9.Value=1,9,0);
+        аДок.Комментарий:="Корректировка загрузки по накопителям";
+        aTab:=аДок.LineParts("Содержание");
+        
+        While ТбНак.FindAndGoto(аДата,,"Месяц")>0 Do
+          ТбНак.Месяц:=0;
+          
+          aTab.NewLine();
+          aTab.ИмяНакопителя:=ТбНак.ИмяНак;
+          aTab.ЗнакДвижения:="+";
+          
+          Стр0:="";
+          ТТ1:=ТбНак.ТТ1;
+          For i:=1 to ТТ1.Size() Do
+            Ид:=ТТ1.GetName(i);
+            Зн:=ТТ1.Get(i);
+            аСтр:=глЗашифроватьЗначениеУД(Зн);
+            Стр0:=Стр0+?(Стр0="","","###")+Ид+"@"+аСтр;
+          EndDo;
+          aTab.Аккумуляторы:=Стр0;
+          
+          Стр0:="";
+          ТТ2:=ТбНак.ТТ2;
+          For i:=1 to ТТ2.Size() Do
+            Ид:=ТТ2.GetName(i);
+            Зн:=ТТ2.Get(i);
+            аСтр:=глЗашифроватьЗначениеУД(Зн);
+            Стр0:=Стр0+?(Стр0="","","###")+Ид+"@"+аСтр;
+          EndDo;
+          aTab.Активы:=Стр0;
+          
+          Стр0:="";
+          ТТ3:=ТбНак.ТТ3;
+          For i:=1 to ТТ3.Size() Do
+            Ид:=ТТ2.GetName(i);
+            Зн:=ТТ2.Get(i);
+            аСтр:=глЗашифроватьЗначениеУД(Зн);
+            Стр0:=Стр0+?(Стр0="","","###")+Ид+"@"+аСтр;
+          EndDo;
+          aTab.Реквизиты:=Стр0;
+        EndDo;
+        
+        
+        If aTab.Size()>0 Then
+          аДок.Save();
+          сп:=List.Create();
+          сп.SetByName("УровеньФорсирования",1);
+          глРаботаетРобот:=1;
+          Try
+            If not аДок.Publish(сп) Then
+              Raise "Невозможно обработать документ ("+аДок+")!";
+            EndIf;
+          Finally
+            глРаботаетРобот:=0;
+          EndTry;  
+          
+          Message("Корректировка накопителей: "+аДок,"I");
+        EndIf;
+      EndIf;
+      
+      
+      If ТбБух.FindAndGoto(аДата,,"Месяц")=0 Then
+        аДата:=BegOfMonth(EndOfMonth(аДата)+1);
+        Continue;
+      EndIf;
+      
+      аДок:=Doc.УниверсальныйДокумент;
+      аДок.New();
+      аДок.КодОперации:=Enum.коУниверсальныйДокумент.УниверсальныйДокумент;
+      аДок.DocDate:=Min(EndOfMonth(аДата),Date());
+      аДок.Автор:=глПользователь;
+      аДок.SetPrefix("DocNum",Trim(DBVar.ПрефиксИБ)+"ЯЯ");
+      аДок.ФлагОбмена:=?(Form.оФлаг9.Value=1,9,0);
+      аДок.Комментарий:="Корректировка загрузки по бух. счетам";
+      aTab:=аДок.LineParts("Содержание");
+      
+      While ТбБух.FindAndGoto(аДата,,"Месяц")>0 Do
+        ТбБух.Месяц:=0;
+        
+        aTab.NewLine();
+        aTab.ИмяНакопителя:="БухгалтерскиеСчета";
+        aTab.ЗнакДвижения:="+";
+        Стр:="ЮрЛицо@"+глЗашифроватьЗначениеУД(ТбБух.зЮЛ)+"###Счет@"+глЗашифроватьЗначениеУД(ТбБух.зСч);
+        If not IsEmpty(ТбБух.Суб1) Then
+          Стр:=Стр+"####Субконто1@"+глЗашифроватьЗначениеУД(ТбБух.Суб1);
+        EndIf;
+        If not IsEmpty(ТбБух.Суб2) Then
+          Стр:=Стр+"####Субконто2@"+глЗашифроватьЗначениеУД(ТбБух.Суб2);
+        EndIf;
+        If not IsEmpty(ТбБух.Суб3) Then
+          Стр:=Стр+"####Субконто3@"+глЗашифроватьЗначениеУД(ТбБух.Суб3);
+        EndIf;
+        aTab.Аккумуляторы:=Стр;
+        aTab.Активы:="Сумма@"+глЗашифроватьЗначениеУД(ТбБух.См)+"###Количество@"+глЗашифроватьЗначениеУД(ТбБух.Кл);
+        
+        If not IsEmpty(ТбБух.зСч2) Then
+          aTab.Реквизиты:="КоррСчет@"+глЗашифроватьЗначениеУД(ТбБух.зСч2);
+        
+          aTab.NewLine();
+          aTab.ИмяНакопителя:="БухгалтерскиеСчета";
+          aTab.ЗнакДвижения:="+";
+          Стр:="ЮрЛицо@"+глЗашифроватьЗначениеУД(ТбБух.зЮЛ)+"###Счет@"+глЗашифроватьЗначениеУД(ТбБух.зСч2);
+          If not IsEmpty(ТбБух.Суб12) Then
+            Стр:=Стр+"####Субконто1@"+глЗашифроватьЗначениеУД(ТбБух.Суб12);
+          EndIf;
+          If not IsEmpty(ТбБух.Суб22) Then
+            Стр:=Стр+"####Субконто2@"+глЗашифроватьЗначениеУД(ТбБух.Суб22);
+          EndIf;
+          If not IsEmpty(ТбБух.Суб23) Then
+            Стр:=Стр+"####Субконто3@"+глЗашифроватьЗначениеУД(ТбБух.Суб32);
+          EndIf;
+          aTab.Аккумуляторы:=Стр;
+          aTab.Активы:="Сумма@"+глЗашифроватьЗначениеУД(ТбБух.См2)+"###Количество@"+глЗашифроватьЗначениеУД(ТбБух.Кл2);
+          aTab.Реквизиты:="КоррСчет@"+глЗашифроватьЗначениеУД(ТбБух.зСч);
+        EndIf;
+      EndDo;
+      
+
+      If aTab.Size()>0 Then
+        аДок.Save();
+        сп:=List.Create();
+        сп.SetByName("УровеньФорсирования",1);
+        глРаботаетРобот:=1;
+        Try
+          If not аДок.Publish(сп) Then
+            Raise "Невозможно обработать документ ("+аДок+")!";
+          EndIf;
+        Finally
+          глРаботаетРобот:=0;
+        EndTry;  
+        
+        Message("Корректировка бух. счетов: "+аДок,"I");
+      EndIf;
+            
+    EndDo;
+  EndIf;//Бух зануление
+  
+  Exit 1;
+EndFunction
+
+
+Function OnExecute()
+  РезКаталог:="Exchange.txt";
+  If SaveFileDialog(РезКаталог,"Выберите каталог для загрузки:")<>1 Then
+    Exit;
+  EndIf;
+  РезКаталог:=GetPath(РезКаталог);
+  If Trim(РезКаталог)="" Then
+    Box("Выберите каталог загрузки, так как программа хранит в нем все настройки загрузки!",Q_STOP);
+    Exit;
+  EndIf;
+  флБезТаблиц:=Form.оБезТаблиц.Value;
+  
+  If not флБезТаблиц Then
+    ЗагрузитьФайлНастройкиСправочников();
+  Else
+    ТабСпр:=0;
+  EndIf;  
+  
+  Message("Выбран каталог загрузки: """+РезКаталог+"""!","I");
+  аЧлБезЗаписи:=0;
+  
+  ТбБух:=Tab.Create("зЮЛ,зСч,Суб1,Суб2,Суб3,зСч2,Суб12,Суб22,Суб32,Месяц");
+  ТбБух.AddColumn("Кл",,"Number");
+  ТбБух.AddColumn("См",,"Number");
+  ТбБух.AddColumn("Кл2",,"Number");
+  ТбБух.AddColumn("См2",,"Number");
+  
+  БухНачДата:=0;
+  БухКонДата:=0;
+  
+  оКопия:=Form.оКопия.Value;
+  ТбНак:=Tab.Create("Месяц,ИмяНак,ТТ1,ТТ2,ТТ3");
+  
+  оСправ:=Form.оСправ.Value;
+  оСправ.Select();
+  While оСправ.Next() Do
+    оСправ.Всего:=0;
+  EndDo;
+  
+  флСправочники:=0;
+  ЗагруженоЭлементов:=0;
+  ОбновленоЭлементов:=0;
+  СозданоЭлементов:=0;
+  ФлСинхро:=0;
+  //Загружаем справочники, все элементы должны быть созданы до загрузки документов
+  Try
+    СпФайлы:=ПолучитьСписокФайлов(РезКаталог+"Refs*.txt");
+    If СпФайлы.Size()>0 Then
+      Message("Начало загрузки справочников...","I");
+      флСправочники:=1;
+    EndIf;
+    СпФайлыДляСинхронизации:=List.Create();
+    For iFile:=1 To СпФайлы.Size() Do
+      Файл:=СпФайлы.Get(iFile);
+      Message("Загружается файл: "+Файл,"I");
+    
+      Form.StatusText("Загрузка файла: "+Файл);
+      Тб:=Text.Create(1);
+      Тб.Load(Файл,0);
+      
+      Стр:=Тб.GetLine(1);
+      If Стр<>"@REFSV4@" Then
+        Message("Файл "+Файл+" имеет неверный формат!","!");
+        Continue;
+      EndIf;
+      ФлВсеЭлементыЗагружены:=1;
+      
+      оСправ.Lock();
+      Try
+        For а:=2 to Тб.Size() Do
+          If а%100=0 Then
+            Form.StatusText("Загрузка файла: "+Файл+" "+а+" из "+Тб.Size());
+            оСправ.Unlock();
+            оСправ.Lock();
+          EndIf;  
+        
+          Стр:=Тб.GetLine(а);
+          If Pos("RF:",Стр)<>1 Then
+            Continue;
+          EndIf;
+          TearStr(Стр,"RF:");
+          Стр0:=Стр;
+          Вид:=TearStr(Стр,Chr(1));
+          флУдален:=Number(TearStr(Стр,Chr(1)));
+          флГруппа:=Number(TearStr(Стр,Chr(1)));
+          ВидРодитель:="";
+          КодРодитель:=TearStr(Стр,Chr(1));
+          If Pos("|",КодРодитель)>0 Then
+            ВидРодитель:=TearStr(КодРодитель,"|");
+          EndIf;
+          КодПапки:=TearStr(Стр,Chr(1));
+          ЭлКод:=TearStr(Стр,Chr(1));
+          ЭлИмя:=TearStr(Стр,Chr(1));
+          ЭлИмя:=РасшифроватьСтроку(ЭлИмя);
+          If ЭлКод="" Then
+            Raise "В файле загрузки справочников справочник "+Вид+" имеет пустой код!";
+          EndIf;
+          
+          If оСправ.FindAndGoto(Вид,,"Вид")>0 Then
+            оСправ.Всего:=оСправ.Всего+1;
+          EndIf;
+          
+          If not флБезТаблиц Then
+            If not ТабСпр.FindAndGoto(Вид,,"Вид") Then
+              ТабСпр.AddLine("Вид",Вид);
+              ТабСпр.ФлУровень:=НайтиУровеньРодителей(Вид);
+              Тб2:=Tab.Create("ВнешнийКод,ВнешнееИмя,ЛокальныйКод,Эл,Стр,флЗагрузка");
+              ТабСпр.Таб:=Тб2;
+              ТабСпр.Sort("ФлУровень+,Вид+");
+            Else
+              Тб2:=ТабСпр.Таб;
+            EndIf;
+            
+            If Тб2.FindAndGoto(?(not флГруппа,"","+")+ЭлКод,,"ВнешнийКод") Then
+              If оСправ.FindAndGoto(Вид,,"Вид") Then
+                If оСправ.Check(оСправ.CurLine,"флОбновлять")=1 Then
+                  Тб2.флЗагрузка:=1;
+                  ФлВсеЭлементыЗагружены:=0;
+                EndIf;
+              EndIf;
+              If Number(Тб2.флЗагрузка) Then
+                ФлСинхро:=1;
+              EndIf;
+              If IsEmpty(Тб2.ЛокальныйКод) Then
+                ФлВсеЭлементыЗагружены:=0;
+              EndIf;
+              Тб2.Стр:=Стр0;
+              Continue;
+            EndIf;
+            
+            Тб2.AddLine("ВнешнийКод,ВнешнееИмя,Стр",?(not флГруппа,"","+")+ЭлКод,ЭлИмя,Стр0); //TODO: сортированные операции
+          Else
+            флНовый:=0;
+            аЭл:=НайтиИлиСоздатьЛокальныйСправочникБезТаблиц(Вид,флГруппа,ЭлКод,флНовый);
+            If аЭл=0 Then
+              Continue;
+            EndIf;
+            флОбновлять:=1;
+            If not флНовый Then
+              If оСправ.FindAndGoto(Вид,,"Вид") Then
+                If оСправ.Check(оСправ.CurLine,"флОбновлять")=0 Then
+                  флОбновлять:=0;
+                EndIf;
+              EndIf;
+            EndIf;
+            If not флОбновлять Then
+              If not isEmpty(Struct.Ref(Вид).Props("Name")) Then
+                Дл:=Struct.Ref(Вид).Props("Name").DataType;
+                If Pos("STRING.",Дл)=1 Then
+                  TearStr(Дл,"STRING.");
+                  Дл:=Number(Дл);
+                Else
+                  Дл:=100;
+                EndIf;
+                If аЭл.Name=Left("...Синхронизация...",Дл) Then
+                  флОбновлять:=1;
+                EndIf;
+              Else
+                флОбновлять:=1;
+                For i3:=1 to Struct.Ref(Вид).Props.Count() Do
+                  Ид:=Struct.Ref(Вид).Props(i3).Name;
+                  If Ид="Code" Then
+                    Continue;
+                  EndIf;
+                  If Struct.Ref(Вид).Props(Ид).Periodical Then
+                    continue;
+                  EndIf;
+                  If not isEmpty(аЭл.GetValue(Ид)) Then
+                    флОбновлять:=0;
+                    break;
+                  EndIf;
+                EndDo;
+              EndIf;  
+            Endif; 
+              
+            
+            
+            If not флОбновлять Then
+              Continue;
+            EndIf;
+            
+            СоздатьНовыйЭлементИлиОбновить(Стр0,аЭл,ЭлКод,0,0,0);
+            Continue;
+          EndIf;
+          
+          
+          
+          ФлСинхро:=1;
+          ЧлВнКод:=ЭлКод;
+          ЧлВнКод:=TearStr(ЧлВнКод);
+          СтВнКод:=ЧлВнКод;
+          //Ш000023
+          If (ЧлВнКод<>"")And(Left(ЧлВнКод,1)>"9") Then
+            ЧлВнКод:=Mid(ЧлВнКод,2);
+          EndIf;
+          ЧлВнКод:=Number(ЧлВнКод);
+          ЧлВнКод:=?(ЧлВнКод=0,-1,ЧлВнКод);
+          
+          ФлСоп:=0;
+          If (ЧлВнКод<>-1)Or(оКопия=1) Then
+            If оСправ.FindAndGoto(Вид,,"Вид") Then
+              If _Or(оКопия=1,Number(оСправ.МаксКод)>0) Then
+                If _Or(оКопия,ЧлВнКод<Number(оСправ.МаксКод)) Then
+                  ФлСоп:=1;
+                  //Ищем...
+                  Эл:=НайтиЭлементПоПолномуКоду(Вид,ЭлКод);
+                  If isEmpty(Эл) Then
+                    //Не найден, ставим как новый с указанием кода
+                    Тб2.Эл:=1;
+                    Тб2.флЗагрузка:=1;
+                    Тб2.ЛокальныйКод:=ЭлКод;
+                    ФлВсеЭлементыЗагружены:=0;
+                  Else
+                    //Найден, ставим в соответствие
+                    Тб2.Эл:=Эл;
+                    If оСправ.Check(оСправ.CurLine,"флОбновлять")=1 Then
+                      Тб2.флЗагрузка:=1;
+                    EndIf;
+                    Тб2.ЛокальныйКод:=ЭлКод;
+                  EndIf;
+                EndIf;
+              EndIf;
+            EndIf;
+          EndIf;
+          
+          If not ФлСоп Then
+            Тб2.ЛокальныйКод:="";
+            Тб2.Эл:=0;
+            ФлВсеЭлементыЗагружены:=0;
+          EndIf;
+        EndDo;
+      Finally
+        оСправ.Unlock();
+      EndTry;
+      
+      If (ФлВсеЭлементыЗагружены)or(флБезТаблиц) Then
+        File.MoveFile(Файл,Trim(РезКаталог)+"done_"+GetFileName(Файл),1);
+        Message("Успешно загружен файл: "+Файл,"I");
+      ElseIf not флБезТаблиц Then
+        СпФайлыДляСинхронизации.Add(Файл);
+      EndIf;  
+    EndDo;
+
+    ФлТолькоОбновление:=0;
+    If (not ФлСинхро)And(not флБезТаблиц) Then
+      ТабСпр.Select();
+      While ТабСпр.Next() Do
+        Тб2:=ТабСпр.Таб;
+        Тб2.Select();
+        While Тб2.Next() Do
+          If IsEmpty(Тб2.Эл) Then
+            ФлСинхро:=1;
+            Break;
+          ElseIf Тб2.флЗагрузка Then
+            ФлТолькоОбновление:=1;
+          EndIf;
+        EndDo;
+        If ФлСинхро Then
+          Break;
+        EndIf;
+      EndDo;
+    EndIf;
+    
+    While ((ФлСинхро)Or(ФлТолькоОбновление))And(not флБезТаблиц) Do
+      If (ФлСинхро)And(Form.оКопия.Value=0) Then
+        aList:=List.Create();
+        aList.SetByName("РезКаталог",РезКаталог);
+        aList.SetByName("ТабСпр",ТабСпр);
+        LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\УниверсальныйПеренос\Загрузка",aList,0,"Module","СинхронизацияСправочников");
+        If aList.GetByName("Ответ")<>1 Then
+          Exit;
+        EndIf;
+      EndIf;
+    
+      ФлСинхро:=0;
+      ФлТолькоОбновление:=0;
+      аНом2:=0;
+      While аНом2<ТабСпр.Size() Do
+        аНом2:=аНом2+1;
+        ТабСпр.CurLine:=аНом2;
+        Вид:=ТабСпр.Вид;
+        Тб:=ТабСпр.Таб;
+        
+        аНом:=0;
+        While аНом<Тб.Size() Do
+          аНом:=аНом+1;
+          Form.StatusText("Справочник "+Вид+": "+аНом+" из "+Тб.Size());
+          
+          Тб.CurLine:=аНом;
+          If IsEmpty(Тб.Эл) Then
+            ФлСинхро:=1;
+            Continue;
+          EndIf;
+          
+          If (Тб.Эл=1)Or(Тб.флЗагрузка) Then
+            //Создание нового или обновление!
+            Стр:=Тб.Стр;
+            Эл:=СоздатьНовыйЭлементИлиОбновить(Стр,?(Тб.Эл=1,0,Тб.Эл),Тб.ЛокальныйКод,Тб,0,аНом);
+          EndIf;
+        EndDo;
+      EndDo;
+      
+      If Form.оКопия.Value=1 Then
+        Break;
+      EndIf;
+    EndDo;
+    
+    If (not ФлСинхро)And(not флБезТаблиц) Then
+      For i:=1 To СпФайлыДляСинхронизации.Size() Do
+        Файл:=СпФайлыДляСинхронизации.Get(i);
+        File.MoveFile(Файл,Trim(РезКаталог)+"done_"+GetFileName(Файл),1);
+        Message("Успешно загружен файл: "+Файл,"I");
+      EndDo;
+    EndIf;  
+    
+  Finally  
+    If not флБезТаблиц Then
+      ЗафиксироватьЛинки();
+    EndIf;  
+  EndTry;  
+
+  If флСправочники Then
+    Message("Загрузка справочников окончена, итоги:","I");
+    Message("    Создано элементов: "+СозданоЭлементов,"I");
+    Message("        из них загружено: "+ЗагруженоЭлементов,"I");
+    Message("    Обновлено существующих элементов: "+ОбновленоЭлементов,"I");
+  EndIf;
+  
+  
+  //Загружаем остатки
+  СпФайлы:=ПолучитьСписокФайлов(РезКаталог+"Blns_*.txt");
+  If (СпФайлы.Size()>0)And(Trim(DBVar.ПрефиксИБ)="") Then
+    Box("Прежде чем загружать начальные остатки, необходимо задать корректный префикс базы в установках базы данных!",Q_STOP);
+    Exit;
+  EndIf;
+  If СпФайлы.Size()>0 Then
+    Message("Начало загрузки остатков накопителей...","I"); 
+  EndIf;
+  For iFile:=1 To СпФайлы.Size() Do
+    Файл:=СпФайлы.Get(iFile);
+  
+    Тб:=Text.Create(1);
+    Тб.Load(Файл,0);
+  
+    Стр:=Тб.GetLine(1);
+    If Стр<>"@BLNSV4@" Then
+      Continue;
+    EndIf;
+    
+    i:=1;
+    While i<Тб.Size() Do
+      i:=i+1;
+      Стр:=Тб.GetLine(i);
+      
+      If Pos("BL:",Стр)=0 Then
+        Continue;
+      EndIf;
+      TearStr(Стр,"BL:");
+      ДатаДок:=TearStr(Стр,Chr(1));
+      Коммент:=DecodeString(Стр,,1);
+      
+      аДок:=Doc.УниверсальныйДокумент;
+      аДок.New();
+      аДок.DocDate:=Date(ДатаДок);
+      аДок.КодОперации:=Enum.коУниверсальныйДокумент.УниверсальныйДокумент;
+      аДок.SetPrefix("DocNum",Trim(DBVar.ПрефиксИБ)+"ЯЯ");
+      aTab:=аДок.LineParts("Содержание");
+      
+      While i<Тб.Size() Do
+        i:=i+1;
+        
+        Form.StatusText("Остатки ("+Файл+"): "+i+" из "+Тб.Size());
+        Стр:=Тб.GetLine(i);
+        If Pos("TR:",Стр)=0 Then
+          i:=i-1;
+          Break;
+        EndIf;
+        TearStr(Стр,"TR:");
+        aTab.NewLine();
+        ИмяНак:=TearStr(Стр,Chr(1));
+        aTab.ИмяНакопителя:=ИмяНак;
+        aTab.ЗнакДвижения:=TearStr(Стр,Chr(1));
+        
+        РезАккум:="";
+        СтрАккум:=TearStr(Стр,Chr(1));
+        While СтрАккум<>"" Do
+          Стр2:=TearStr(СтрАккум,Chr(2));
+          Имя:=TearStr(Стр2,"@");
+          Тип:=TearStr(Стр2,".");
+          If isEmpty(Struct.Storages(ИмяНак).Props(Имя)) Then
+            Raise "Накопитель "+ИмяНак+", не найден реквизит "+Имя;
+          EndIf;
+          If not Struct.Storages(ИмяНак).Props(Имя).Accumulator Then
+            Raise "Накопитель "+ИмяНак+", реквизит "+Имя+" не является аккумулятором!";
+          EndIf;
+          аСтр:=удПолучитьРасшифровку(Тип,Стр2);
+          аСтр:=глЗашифроватьЗначениеУД(аСтр);
+          РезАккум:=РезАккум+?(РезАккум="","","###")+Имя+"@"+аСтр;
+        EndDo;
+        aTab.Аккумуляторы:=РезАккум;
+        
+        РезАктив:="";
+        СтрАктив:=TearStr(Стр,Chr(1));
+        While СтрАктив<>"" Do
+          Стр2:=TearStr(СтрАктив,Chr(2));
+          Имя:=TearStr(Стр2,"@");
+          Тип:=TearStr(Стр2,".");
+          If isEmpty(Struct.Storages(ИмяНак).Props(Имя)) Then
+            Raise "Накопитель "+ИмяНак+", не найден реквизит "+Имя;
+          EndIf;
+          If not Struct.Storages(ИмяНак).Props(Имя).Asset Then
+            Raise "Накопитель "+ИмяНак+", реквизит "+Имя+" не является активом!";
+          EndIf;
+          аСтр:=удПолучитьРасшифровку(Тип,Стр2);
+          аСтр:=глЗашифроватьЗначениеУД(аСтр);
+          РезАктив:=РезАктив+?(РезАктив="","","###")+Имя+"@"+аСтр;
+        EndDo;
+        aTab.Активы:=РезАктив;
+        
+        РезРеквизит:="";
+        СтрРеквизит:=TearStr(Стр,Chr(1));
+        While СтрРеквизит<>"" Do
+          Стр2:=TearStr(СтрРеквизит,Chr(2));
+          Имя:=TearStr(Стр2,"@");
+          Тип:=TearStr(Стр2,".");
+          If isEmpty(Struct.Storages(ИмяНак).Props(Имя)) Then
+            Raise "Накопитель "+ИмяНак+", не найден реквизит "+Имя;
+          EndIf;
+          If (Struct.Storages(ИмяНак).Props(Имя).Asset)Or(Struct.Storages(ИмяНак).Props(Имя).Accumulator) Then
+            Raise "Накопитель "+ИмяНак+", реквизит "+Имя+" является активом или аккумулятором, однако, ожидался простой реквизит!";
+          EndIf;
+          аСтр:=удПолучитьРасшифровку(Тип,Стр2);
+          аСтр:=глЗашифроватьЗначениеУД(аСтр);
+          РезРеквизит:=РезРеквизит+?(РезРеквизит="","","###")+Имя+"@"+аСтр;
+        EndDo;
+        aTab.Реквизиты:=РезРеквизит;
+      EndDo;
+      
+      
+      If aTab.Size()>0 Then
+        аДок.ФлагОбмена:=9;
+        аДок.Save();
+        сп:=List.Create();
+        сп.SetByName("УровеньФорсирования",1);
+        глРаботаетРобот:=1;
+        Try
+          If not аДок.Publish(сп) Then
+            Raise "Невозможно обработать документ ("+аДок+")!";
+          EndIf;
+        Finally
+          глРаботаетРобот:=0;
+        EndTry;  
+        
+        Message("Остатки: "+аДок,"I");
+      EndIf;
+    EndDo;
+    
+    File.MoveFile(Файл,Trim(РезКаталог)+"done_"+GetFileName(Файл),1);
+  EndDo;
+  If СпФайлы.Size()>0 Then
+    Message("Загрузка остатков накопителей завершена!","I"); 
+  EndIf;
+  
+  
+  
+  //Загружаем особые реквизиты журналов
+  СпФайлы:=ПолучитьСписокФайлов(РезКаталог+"Jors_*.txt");
+  If СпФайлы.Size()>0 Then
+    Message("Начало загрузки дополнительных реквизитов журналов...","I"); 
+  EndIf;
+  For iFile:=1 To СпФайлы.Size() Do
+    Файл:=СпФайлы.Get(iFile);
+  
+    Тб:=Text.Create(1);
+    Тб.Load(Файл,0);
+  
+    Стр:=Тб.GetLine(1);
+    If Стр<>"@JORSV4@" Then
+      Continue;
+    EndIf;
+    
+    i:=1;
+    While i<Тб.Size() Do
+      i:=i+1;
+      Form.StatusText("Журналы ("+Файл+"): "+i+" из "+Тб.Size());
+      
+      Стр:=Тб.GetLine(i);
+      
+      If Pos("JR:",Стр)=0 Then
+        Continue;
+      EndIf;
+      TearStr(Стр,"JR:");
+      ИмяЖурнала:=TearStr(Стр,Chr(1));
+      ФлТип:=Number(TearStr(Стр,Chr(1)));//0 -- документ, 1 -- справочник
+      Ид:=TearStr(Стр,Chr(1));
+      
+      If ФлТип=0 Then
+        Номер:=TearStr(Стр,Chr(1));
+        ДатаДок:=Date(TearStr(Стр,Chr(1)));
+        ДатаДок1:=BegOfYear(ДатаДок);
+        ДатаДок2:=EndOfYear(ДатаДок1)+1;
+        аДок:=DB("Doc."+Ид);
+        If not аДок.FindEx(3,,"~(DocDate<ДатаДок2)And(DocDate>=ДатаДок1)And(DocNum=Номер)") Then
+          Message("Документ "+Ид+" №"+Номер+" от "+ДатаДок+" в базе отсутствует, его доп. реквизиты в журнале "+ИмяЖурнала+" заполнены не будут!","!");
+          Continue;
+        EndIf;
+      Else
+        Код:=TearStr(Стр,Chr(1));
+        аДок:=НайтиЭлементПоПолномуКоду(Ид,Код);
+        If аДок=0 Then
+          Message("Элемент справочника "+Ид+" с кодом "+Код+" в базе отсутствует, его доп. реквизиты в журнале "+ИмяЖурнала+" заполнены не будут!","!");
+          Continue;
+        EndIf;
+      EndIf;
+      Try
+        аЖур:=аДок.GetJournalObject(ИмяЖурнала);
+      Except
+        Message("В текущей базе "+?(ФлТип=0,"документ","справочник")+" типа "+Ид+" не связан с журналом "+ИмяЖурнала+", строка выгрузки "+i+" будет пропущена!","!");
+        Continue;
+      EndTry;  
+      
+      While Стр<>"" Do
+        Стр1:=TearStr(Стр,Chr(1));
+        Ид2:=TearStr(Стр1,"@");
+        If IsEmpty(Struct.Jor(ИмяЖурнала).Props(Ид2)) Then
+          Message("В текущей базе в журнале "+ИмяЖурнала+" отсутствует реквизит "+Ид2+"!","!");
+          Continue;
+        EndIf;
+        
+        bEl:=0;
+        ПолучитьАтрибут(Стр1,bEl);
+        aEl:=аЖур.GetValue(Ид2);
+        If aEl<>bEl Then
+          аЖур.SetValue(Ид2,bEl);
+          аЖур.SetJournalProperty(Ид2);
+        EndIf;
+      EndDo;
+    EndDo;
+    
+    File.MoveFile(Файл,Trim(РезКаталог)+"done_"+GetFileName(Файл),1);
+  EndDo;
+  If СпФайлы.Size()>0 Then
+    Message("Загрузка дополнительных реквизитов журналов завершена!","I"); 
+  EndIf;
+  
+
+
+  //Загружаем глобальные переменные
+  СпФайлы:=ПолучитьСписокФайлов(РезКаталог+"Dbvars_*.txt");
+  If СпФайлы.Size()>0 Then
+    Message("Начало загрузки глобальных переменных...","I"); 
+  EndIf;
+  For iFile:=1 To СпФайлы.Size() Do
+    Файл:=СпФайлы.Get(iFile);
+  
+    Тб:=Text.Create(1);
+    Тб.Load(Файл,0);
+  
+    Стр:=Тб.GetLine(1);
+    If Стр<>"@DBVRV4@" Then
+      Continue;
+    EndIf;
+    
+    i:=1;
+    While i<Тб.Size() Do
+      i:=i+1;
+      Form.StatusText("Переменные ("+Файл+"): "+i+" из "+Тб.Size());
+      
+      Стр:=Тб.GetLine(i);
+      
+      If Pos("VR:",Стр)=0 Then
+        Continue;
+      EndIf;
+      TearStr(Стр,"VR:");
+      Ид:=TearStr(Стр,"@");
+      If isEmpty(Struct.DBVar(Ид)) Then
+        Message("Глобальная переменная "+Ид+" отсутствует в текущей базе, информация будет пропущена!","!");
+        Continue;
+      EndIf;
+      флПериод:=Number(TearStr(Стр,"@"));
+      флПериодЛок:=Struct.DBVar(Ид).Periodical;
+      
+      If флПериод Then
+        //Периодическая на удаленной стороне
+        //<Дата>@<Значение>Chr(3)<Дата2>...
+        If флПериодЛок=0 Then
+          Message("Глобальная переменная "+Вид+" не является периодической в локальной базе, однако в выгрузке она периодическая!","!");
+          //Устанавливаем последнее из значений
+          Стр3:="";
+          While Стр<>"" Do
+            Стр3:=TearStr(Стр,Chr(3));
+          EndDo;
+          TearStr(Стр3);
+          If Стр3<>"" Then
+            аАтр:=0;
+            If not ПолучитьАтрибут(Стр3,аАтр) Then
+              ФлПолностью:=0;
+            EndIf;
+            DBVar.SetValue(Ид,аАтр);
+          EndIf;
+        Else
+          aTab:=DBVar.LoadPeriodicalValues(Ид);
+          bTab:=Tab.Create();
+          aTab.CopyTo(bTab);
+          aTab.ClearLines();
+          While Стр<>"" Do
+            Стр3:=TearStr(Стр,Chr(3));
+            аДата:=Date(TearStr(Стр3));
+            аАтр:=0;
+            If not ПолучитьАтрибут(Стр3,аАтр) Then
+              ФлПолностью:=0;
+            EndIf;
+            aTab.AddLine("_Date,_Value",аДата,аАтр);
+          EndDo;
+          If not aTab.Compare(bTab) Then
+            DBVar.SavePeriodicalValues(Ид,aTab);
+          EndIf;  
+        EndIf;
+      Else
+        //Обычная на удаленной стороне
+        аАтр:=0;
+        If not ПолучитьАтрибут(Стр,аАтр) Then
+          ФлПолностью:=0;
+        EndIf;
+        If флПериодЛок=0 Then
+          DBVar.SetValue(Ид,аАтр);
+        Else
+          Message("Глобальная переменная "+Вид+" является периодической в локальной базе, однако в выгрузке она не периодическая!","!");
+          DBVar.SetValue(Ид,аАтр,'01.01.1981');
+        EndIf;
+      EndIf;
+    EndDo;
+    
+    File.MoveFile(Файл,Trim(РезКаталог)+"done_"+GetFileName(Файл),1);
+  EndDo;
+  If СпФайлы.Size()>0 Then
+    Message("Загрузка глобальных переменных завершена!","I"); 
+  EndIf;
+  
+    
+    
+  Message("Начало загрузки документов...","I");
+  Try
+    If not ЗагрузитьДокументы() Then
+      Message("Загрузка документов завершена с ошибками!","!");  
+    Else
+      Message("Загрузка документов завершена успешно!","I"); 
+    EndIf;  
+  Except
+    Message(PopError(),"!");
+    Message("Загрузка документов завершена с ошибками!","!");  
+  EndTry;  
+EndFunction
+
+Function СинхронизацияСправочниковПринять()
+  Фл:=0;
+  ТабСпр.Select();
+  While ТабСпр.Next() Do
+    Тб:=ТабСпр.Таб;
+    Тб.Select();
+    While Тб.Next() Do
+      If IsEmpty(Тб.Эл) Then
+        If AskQuestion("Не все элементы были сопоставлены или помечены, как новые, программа создаст новые элементы, но загрузка осуществлена не будет, пока "+
+          "сопоставление не будет завершено. Вы уверены, что хотите продолжить?",Q_QUESTION+Q_YESNO)<>R_YES Then
+          Exit;
+        EndIf;
+        Фл:=1;
+        Break;
+      EndIf;
+    EndDo;
+    If Фл Then
+      Break;
+    EndIf;
+  EndDo;
+  Param.SetByName("Ответ",1);
+  Form.Close(0);  
+EndFunction
+
+
+Function СинхронизацияСправочниковОбновитьСписок()
+  While 0=0 Do
+    ТекВид:=Trim(Form.оВид.Value);
+    СписокВидовДляСинхронизации:=List.Create();
+  
+    ТабСпр.Select();
+    While ТабСпр.Next() Do
+      Ид:=ТабСпр.Вид;
+      If ТабСпр.ФлОК=0 Then
+        Continue;
+      EndIf;
+      СписокВидовДляСинхронизации.Add(Ид);
+    EndDo;
+  
+    If ТекВид="" Then
+      Form.оВид.Value:=?(СписокВидовДляСинхронизации.Size()>0,СписокВидовДляСинхронизации.Get(1),"");
+    Else
+      If СписокВидовДляСинхронизации.Find(ТекВид)>0 Then
+        Form.оВид.Value:=ТекВид;
+      Else
+        Form.оВид.Value:=?(СписокВидовДляСинхронизации.Size()>0,СписокВидовДляСинхронизации.Get(1),"");
+      EndIf;
+    EndIf;
+    If СписокВидовДляСинхронизации.Size()=0 Then
+      СинхронизацияСправочниковПринять();
+      Exit;
+    EndIf;
+    
+    ТекВид:=Trim(Form.оВид.Value);
+    оТаб:=Form.оТаб.Value;
+    
+    //Заполнение таблицы
+    оТаб.Lock();
+    Try
+      оТаб.ClearLines();
+      If ТабСпр.FindAndGoto(ТекВид,,"Вид")=0 Then
+        Exit;
+      EndIf;
+      Тб:=ТабСпр.Таб;
+      
+      ФлОК:=0;
+      Ид:=ТекВид;
+      Тб.Select();
+      While Тб.Next() Do
+        If IsEmpty(Тб.Эл) Then
+          //Есть родитель?
+          If Struct.Ref(Ид).Parents().Count()>0 Then
+            КодРод:=Тб.ВнешнийКод;
+            If (Pos("@",Тб.ВнешнийКод)>0)And(Pos("|",КодРод)>0) Then
+              TearStr(КодРод);
+              ВидРодитель:=TearStr(КодРод,"|");
+              If Left(ВидРодитель,1)="+" Then
+                ВидРодитель:=Mid(ВидРодитель,2);
+              EndIf;
+            Else
+              Стр:=Тб.Стр;
+              TearStr(Стр,Chr(1));//Вид
+              TearStr(Стр,Chr(1));//ФлУдален
+              TearStr(Стр,Chr(1));//ФлГруппа
+              КодРод:=TearStr(Стр,Chr(1));//Родитель: <Тип>@<Код>
+              If Pos("@",КодРод)=0 Then
+                //1-й родитель
+                ВидРодитель:=Struct.Ref(Ид).Parents(1).Name;
+              Else
+                ВидРодитель:=TearStr(КодРод,"@");
+              EndIf;
+            EndIf;  
+              
+            If ТабСпр.FindAndGoto(ВидРодитель,,"Вид")=0 Then
+              Message("В файлах загрузки отсутствует справочник: "+ВидРодитель,"!");
+              Continue;
+            EndIf;
+            Тб2:=ТабСпр.Таб;
+              
+            If Тб2.FindAndGoto(КодРод,,"ВнешнийКод")>0 Then
+              If IsEmpty(Тб2.Эл) Then
+                ФлОК:=1;
+                Continue;
+              ElseIf Тб2.Эл=1 Then
+                Тб.Эл:=1;
+                Continue;
+              EndIf;
+            EndIf;
+          EndIf;
+          
+          ФлОК:=1;
+          оТаб.AddLine("ВнешнийКод,ВнешнееИмя,ФлНовый",Тб.ВнешнийКод,Тб.ВнешнееИмя,1);
+        EndIf;
+      EndDo;
+    Finally
+      оТаб.Unlock();
+    EndTry;
+    
+    ТабСпр.ФлОК:=ФлОК;
+    If ФлОК=1 Then
+      Break;
+    EndIf;
+  EndDo;  
+  оТаб.Sort("ВнешнийКод+");
+EndFunction
+
+Function СинхронизацияСправочниковСохранитьТаблицу(Вид)
+  Т:=Text.Create(1);
+  Т.AddString("@LINKV4@");
+  Т.AddString(Вид);
+  If ТабСпр.FindAndGoto(Вид,,"Вид")=0 Then
+    Exit;
+  EndIf;
+  
+  ФлОК:=0;
+  Тб:=ТабСпр.Таб;
+  Тб.Select();
+  While Тб.Next() Do
+    If IsEmpty(Тб.Эл) Then
+      ФлОК:=1;
+    EndIf;
+    If (IsEmpty(Тб.Эл))Or(Тб.Эл=1) Then
+      Continue;
+    EndIf;
+    //<ВнешнийКод>Chr(1)<ЛокальныйКод>Chr(1)<ТребуетПолнойЗагрузки>Chr(1)<ВнешнееИмя>Chr(1)<Реквизиты>
+    Т.AddString(Тб.ВнешнийКод+Chr(1)+Тб.ЛокальныйКод+Chr(1)+Тб.флЗагрузка+Chr(1)+ЗашифроватьСтроку(Тб.ВнешнееИмя)+Chr(1)+Тб.Стр);
+  EndDo;
+  ТабСпр.ФлОК:=ФлОК;
+  Т.Save(Trim(РезКаталог)+"\_RefLink_"+Вид+".txt",-1,1);
+EndFunction
+
+
+Function СинхронизацияСправочниковНайтиРодителя(ВидСпр,СтрКод,ТбРекв)
+  TearStr(СтрКод);
+  If Struct.Ref(ВидСпр).Parents().Count()>0 Then
+    If Pos("|",СтрКод)>0 Then
+      //{+ если папка}<ВидРодитель|КодРодитель>@{+ если папка}<ВидРодитель|КодРодительРодителя>...  
+      КодРод:=TearStr(СтрКод);//{+ если папка}<ВидРодитель|КодРодитель>
+      ВидРод:=TearStr(КодРод,"|");
+      if Left(ВидРод,1)="+" Then
+        ВидРод:=Mid(ВидРод,2);
+      EndIf;
+      
+      If ТабСпр.FindAndGoto(ВидРод,,"Вид")=0 Then
+        Тб:=Tab.Create("ВнешнийКод,ВнешнееИмя,ЛокальныйКод,Эл,Стр,флЗагрузка");
+      Else
+        Тб:=ТабСпр.Таб;
+      EndIf;
+      
+      If Тб.FindAndGoto(КодРод,,"ВнешнийКод")>0 Then
+        If (not IsEmpty(Тб.Эл))And(Тб.Эл<>1) Then
+          Exit Тб.Эл;
+        EndIf;
+      EndIf;
+      Exit 0;
+    EndIf;
+  
+    TearStr(ТбРекв,Chr(1));//Вид
+    TearStr(ТбРекв,Chr(1));//ФлУдален
+    TearStr(ТбРекв,Chr(1));//ФлГруппа
+    СтрКод:=TearStr(ТбРекв,Chr(1));//Родитель: <Тип>@<Код>
+    If Pos("@",СтрКод)=0 Then
+      //1-й родитель
+      ВидРодитель:=Struct.Ref(ВидСпр).Parents(1).Name;
+    Else
+      ВидРодитель:=TearStr(СтрКод,"@");
+    EndIf;
+  
+    If ТабСпр.FindAndGoto(ВидРодитель,,"Вид")=0 Then
+      Тб:=Tab.Create("ВнешнийКод,ВнешнееИмя,ЛокальныйКод,Эл,Стр,флЗагрузка");
+    Else
+      Тб:=ТабСпр.Таб;
+    EndIf;
+    
+    If Тб.FindAndGoto(СтрКод,,"ВнешнийКод")>0 Then
+      If (not IsEmpty(Тб.Эл))And(Тб.Эл<>1) Then
+        Exit Тб.Эл;
+      EndIf;
+    EndIf;
+  Else
+    Exit 1;
+  EndIf;
+  
+  Exit 0;
+EndFunction
+
+
+Function СинхронизацияСправочниковВыбратьЭлемент(ВидСпр,ТекЭл=0,СтрКод,Тб2)
+  Эл:=DB("Ref."+ВидСпр);
+  Фл:=0;
+  ФлРод:=0;
+  If Struct.Ref(ВидСпр).Parents().Count()>0 Then
+    ФлРод:=1;
+  EndIf;
+  
+  оТаб:=Form.оТаб.Value;
+  Род:=0;
+  If not isEmpty(ТекЭл) Then
+    If ФлРод Then
+      Род:=ТекЭл.Parent();
+    EndIf;
+    Эл:=ТекЭл;
+    Фл:=1;
+  EndIf;
+  
+  If not Фл Then
+    вЭл:=СинхронизацияСправочниковНайтиРодителя(ВидСпр,стрКод,Тб2.Стр);
+    If вЭл=0 Then
+      Exit 0;
+    ElseIf вЭл<>1 Then
+      Род:=вЭл;
+    EndIf;
+  EndIf;
+  If isEmpty(Эл) Then
+    If ФлРод Then
+      If not isEmpty(Род) Then
+        Эл.Find("Name,@Parent",Trim(оТаб.ВнешнееИмя),Род);
+      EndIf;
+    Else
+      Эл.Find("Name",Trim(оТаб.ВнешнееИмя));
+    EndIf;
+  EndIf;
+  Эл:=SelectObject("Ref."+ВидСпр,Род,0,"Module","SelectForm",Эл,,"Имя загружаемого элемента: "+Trim(оТаб.ВнешнееИмя),2);
+  If not isEmpty(Эл) Then
+    Exit Эл;
+  EndIf;
+  Exit 0;
+EndFunction

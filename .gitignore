@@ -1,0 +1,5 @@
+_DeploymentBin_ConsoleClient/
+_DeploymentBin_GUIClient/
+_DeploymentBin_Server/
+_ConfigFiles/ServersList.ini
+Project.Lock

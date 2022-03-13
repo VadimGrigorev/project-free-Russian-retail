@@ -1,0 +1,84 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=Административные деления
+  Width=670
+  Height=375
+  OnTimerInterval=0
+  MaxControlSerial=4
+  LoadModes=0
+  Object BUTTON
+    LayerName=Main
+    Left=5
+    Top=350
+    Width=90
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=2
+    Caption=Закрыть
+    HotKey=
+    Picture=0
+    OnClick
+      @@>@eW_1e+@It1'_L_(_L>_l@+f_V"@"+@3ah@}@ONCQ_j3@o@M@?_8@qs~@O5_A_-_A_e_Q@?@;K_W_O
+      @_l@K@T<}@%@J@r;@'@}_G3@a3@m_U_hO\@BJ@R_i_7h_T(@M@>@]_K-@5ss_=R@Hag_I_I&_l,u_W@+_
+      @5_N@._C@"_:}}Y_Y@j@O@lQ@}<p(
+    End
+  End
+  Object TABLE
+    LayerName=Main
+    Left=5
+    Top=5
+    Width=665
+    Height=340
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=15
+    Flags=16520
+    Hint=
+    Name=MainTab
+    ControlSerial=3
+    AttachedButtons=0#0@10001#0###@10003#0###@10004#0###@10006#0###@10007#2###@10012#0###@10028#0###@10026#2###@10031#0###
+    HotKey=
+    Folders=0
+    DBSource
+      @@>@e@)VU@*T_?U@{@&#!&_F"X
+    End
+    Filters
+      @@>@e@9)/@7-*.@,T@*@{@z$!5@f#_?
+    End
+    InitialSortString
+      @@>@e_ao_7q_A'!&o"@v
+    End
+    OnAfterEditCell
+      @@>@e@3@Y_K@1_GR1_2_K$_gA@w@E@{Cc@%_>@ntf'@Dl(@#_E_&_CJ@3_+@7k_N_+_l_(_-@&@)R_!ce
+      @@7@l~_]@V@R@v@:_8@M_&@>@Y4@-:@d_+_B_U@:_h_H{@p@t_C@%_E@p$@N@S_&_k@j_>C@]&_hT@,@7
+      @_V_=_8s_1B_,}LZU@i~O_X+_#_Ti_H_K'_#1@(_3D"_T@)@}@o2_:B@,@9_V,?@l@dQ@|W_f=%@f&_j
+      @K&?@6lh@S_=@\N@?_N_>@8@r@$_m_5@(HKuL_Uo@o!P@+@'@s_\@I&_#o@f@~x_X@6_=_$S_Y@1_=@N@
+      @Cx_MP.df@F&N8_-a[@z)@:5@Nn-_;<_V7_&@3_)@G@O_,N.@y#q_Q@^HY5_m@T@/q*_Xk6_)@i@R-_'@
+      @O@w_QSz_P@j@i@N_f_+@K^J@g,Ln_,@9;i9_ZF@5@X@hD_,@(}ze@h_^_h@>@t_L}t@L9@Z_4_?@8@S_
+      @._Oa#_9@(\g_M_O_N@x@t@%_P_<_Y_1@$@c_)h|@L9@q_-@5-_fj_(@a_k_Lv_:3@+_1.^@k_*n@.C}
+      @@s@Y@V_6@l_X@V@&@g:(_L_R?_j@XL_$_m@W_5G@|@1@~_FQ@5_2@l~_:=_F@^_R_G_F@1@(@XM@N_b_
+      @&7:2_G[P@^_9'_\_K@O_9@vW>_E_S_R@O@}@~_a_>@${@J_6<@(@^o!@Y~w_lz_i@I_'@|_7M@k@%@U@
+      @NE_(@6<6.d@Zc_8Zz_M_V@Zm_?@<_,_B@T@Z_1?@^_[_Z*@h@7@Ek_(_?@>@7@k@/(C!aT@b@a_Ch_Cb
+      @%:@>x@<Ex@m@7A@x?xU@E@^y#c@im_-A@+_*,@S@r@CJ-9_7}@W_e@I@2@j_'@W:4m@<F6?_Y5@s@zO
+      @@0@t_I_H@B_%_[@N_9@4_<@~_i@-@J_HP@u@(_l.@y@z_l_?
+    End
+    HeaderColumnsData
+      @T#S#R#R#R#R#R#T#T#R#TR#TR#TR#####@3CdKCdWCdVC###R#"R#R#R#R#R#R#R#S#R#S#SRR#SRR#S
+      @RR#]G@(GzG####@-CdWCdLCdMC##DC|CwCECwCtCxC~CtCvCtCwC#R#"R#R#S#R#S#S#R#R#R#R#T#YR
+      @#YR#hG~G@)G####hG~G@)GWG{G@#G{G@'G~G@9G##DC|CwCECwCtCxC~CtCvCtC{CEC#R#"R#R#S#R#R
+      @#S#R#R#R#S#T#SRRRR#UR[#WG{G@#G{G@'G~G{G####@8CdICdUCdMC##DC|CwCECwCtCxC~CtCvCtCx
+      @C#R#"R#R#S#R#S#S#R#R#R#R#T#XR#XR#[G@'GzG{G@"G@+G####[G@'GzG{G@"G@+G##DC|CwCECwCt
+      @CxC~CtCvCtCyCEC#R#"R#R#R#R#S#R#R#R#R#S#T#SSR#SRR#UG@'G{G@2G@'G~GGfC@"G@(GzG####
+      @]G@(GzGTGvG}G@5G##DC|CwCECwCtCxC~CtCvCtCzCEC#R#
+    End
+  End
+End

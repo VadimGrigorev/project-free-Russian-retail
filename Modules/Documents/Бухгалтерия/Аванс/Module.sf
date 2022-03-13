@@ -1,0 +1,53 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function ОбновитьВидимость()
+  aEl:=Form.Object;
+  If aEl.КодОперации=Enum.коАванс.АвансПолученный Then
+    Form.ТаблицаЗачтенияАванса.IsInvisible:=0;
+    Form.рТаблицаЗачтенияАванса.IsInvisible:=0;
+  Else
+    Form.ТаблицаЗачтенияАванса.IsInvisible:=1;
+    Form.рТаблицаЗачтенияАванса.IsInvisible:=1;
+  EndIf;
+EndFunction
+
+Function OnCreateFromObject()
+  //Ввод на основании
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+   
+  if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+    Form.Close(0);
+    Exit;
+  EndIf;
+  
+  If aEl.КодОперации.Selected()=0 Then
+    aEl.КодОперации:=Enum.коАванс.АвансВыданный;
+  EndIf;
+EndFunction
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  
+  If aEl.КодОперации=Enum.коАванс.АвансПолученный Then
+    aTab:=aEl.LineParts("ЗачтениеАванса");
+    If Round(aTab.Sum("СуммаЗачтения"),2)>aEl.СуммаВзаиморасчетов Then
+      Message("Совокупность сумм зачтения не может быть больше суммы документа!","!");
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If aEl.ЮрЛицо.Selected()=0 Then
+    Box("Выберите юридическое лицо документа!",Q_STOP);
+    Exit 0;
+  EndIf;  
+
+  Exit 1; 
+EndFunction
+
+Function OnAfterChangeOperationCode()
+  ОбновитьВидимость();
+EndFunction

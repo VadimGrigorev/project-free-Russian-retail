@@ -1,0 +1,72 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function OnExecute(СпУстановки)
+  НачДата:=BegOfDay(Form.НачДата.Value);
+  КонДата:=BegOfDay(Form.КонДата.Value);
+  оЮЛ:=Form.оЮЛ.Value;
+  оМг:=Form.оМг.Value;
+  оК:=Form.оК.Value;
+  оД:=Form.оД.Value;
+  оН:=Form.оН.Value;
+  оСк:=Form.оСк.Value;
+  оФорма:=Form.оПечатнаяФорма.Value.Value;
+
+  ТЗ0:="зСтатус:=Doc.#.@Status;Condition(зСтатус>1);зДата:=BegOfDay(Doc.#.DocDate);Condition((зДата>=НачДата)And(зДата<=КонДата));
+  |Документ:=Doc.#;
+  |зУч:=Doc.#.УчитыватьВНалоговомУчете;Condition(зУч=1);
+  |зК:=Doc.#.Контрагент;"+_NEWLINE+
+  ?(оЮЛ.Get(1).Size()+оЮЛ.Get(2).Size()>0,"зЮЛ:=Doc.#.ЮрЛицо;Condition(зЮЛ IN оЮЛ.Get(1));Condition(зЮЛ NOT IN оЮЛ.Get(2));"+_NEWLINE)+
+  ?(оМг.Get(1).Size()+оМг.Get(2).Size()>0,"зМг:=Doc.#.Магазин;Condition(зМг IN оМг.Get(1));Condition(зМг NOT IN оМг.Get(2));"+_NEWLINE)+
+  ?(оК.Get(1).Size()+оК.Get(2).Size()>0,"Condition(зК IN оК.Get(1));Condition(зК NOT IN оК.Get(2));"+_NEWLINE)+
+  ?(оД.Get(1).Size()+оД.Get(2).Size()>0,"зД:=Doc.#.Договор;Condition(зД IN оД.Get(1));Condition(зД NOT IN оД.Get(2));"+_NEWLINE)+
+  ?(оСк.Get(1).Size()+оСк.Get(2).Size()>0,"зСк:=Doc.#.Склад;Condition(зСк IN оСк.Get(1));Condition(зСк NOT IN оСк.Get(2));"+_NEWLINE)+
+  ?(оН.Get(1).Size()+оН.Get(2).Size()>0,"зН:=Doc.#.Номенклатура.Номенклатура;Condition(зН IN оН.Get(1));Condition(зН NOT IN оН.Get(2));"+_NEWLINE)+
+  "Group зК,Документ;";
+  
+  ТЗ:="("+Replace(Replace(ТЗ0,"#","Реализация"),"$","АдресДоставки")+") UNION ALL"+_NEWLINE+
+    "("+Replace(Replace(ТЗ0,"#","ПоступлениеТМЦ"),"$","Договор")+")"+
+    ?(Form.оВозвраты.Value=1,"UNION ALL ("+Replace(Replace(ТЗ0,"#","ВозвратОтПокупателя"),"$","АдресДоставки")+
+      ") UNION ALL ("+Replace(Replace(ТЗ0,"#","ВозвратПоставщику"),"$","Договор")+")")+";";
+  З:=Query.Create();
+  З.Execute(ТЗ,2);
+
+  Message("Удерживайте Ctrl+S, чтобы остановить печать до ее завершения...","I");
+  аНом:=0;
+  While З.Next(1) Do
+    While З.Next(2) Do
+      зДок:=З.Документ;
+      aList:=List.Create();
+      aList.Add(зДок,"Object");
+      aList.Add(1,"ПечататьБезВывода");
+      aList.Add(1,"КоличествоКопий");
+      aList.Add(1,"АвтоматическаяПечать");
+      Message(""+З.зК+":"+зДок);
+      стрПуть:="Modules\FreeForms\ПечатныеФормы\Документ."+зДок.DBName()+"\";
+      стрФорма:=оФорма;
+      If isEmpty(стрФорма) Then
+        стрФорма:="Накладная";
+        If зДок.DBName()="Реализация" Then
+          стрФорма:="ТОРГ12";
+        EndIf;
+      EndIf;
+      
+      If IsKeyComboActive("Ctrl+S") Then
+        Message("Печать остановлена!","!");
+        Break 2;
+      EndIf;
+      
+      If File.DoesFileExist(стрПуть+стрФорма+"\Module.sfc")+File.DoesFileExist(стрПуть+стрФорма+"\Module.sf")=0 Then
+        Message("Пропущен документ "+зДок+", так как не найдена печатная форма "+стрФорма+"!","!");
+        Continue;
+      EndIf;
+      LoadModule(0,стрПуть+стрФорма,aList,0,"Module","Form");
+      аНом:=аНом+1;
+    EndDo;
+  EndDo;
+  Message("Работа окончена, распечатано "+аНом+" печатных форм!","I");
+EndFunction
+
+

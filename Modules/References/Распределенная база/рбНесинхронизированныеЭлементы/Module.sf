@@ -1,0 +1,372 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Var спНеОтображать Export;
+Var оВЭ Export;
+Var ТекВид Export;
+Var ФлИзменения Export;
+Var флНеНачинатьРедактирование Export;
+
+Function НайтиРодителя(ВидСпр,Префикс,стрКод,БезВыбора=0) Forward;
+
+Function Изменения(Фл)
+  ФлИзменения:=Фл;
+  Form.bSave.isDisabled:=1-Фл;
+EndFunction
+
+Function ОбновитьРежим()
+  MainTab:=Form.MainTab.Value;
+  Form.тВид.Caption:=оВЭ.GetName(ТекВид+2);
+  MainTab.Column("Флаг").isVisible:=?(ТекВид=-1,1,0);
+EndFunction;
+
+Function флУжеСопоставлен(Эл,ТекЭл)
+  в:=Ref.рбСопоставленныеЭлементы;
+  Exit в.Find("Элемент,ПрефиксУдаленнойБазы,КодУдаленнойБазы",Эл,Trim(ТекЭл.ПрефиксУдаленнойБазы),Trim(ТекЭл.КодУдаленнойБазы));
+EndFunction
+
+
+Function ПодобратьВарианты(Эл)
+  MainTab:=Form.MainTab.Value;
+  
+  Вид:=Trim(Эл.ВидСправочника);
+  ФлГруппа:=?(Left(Эл.КодУдаленнойБазы,1)="+",1,0);
+  ФлПодчиненный:=Struct.Ref(Вид).Parents.Count()>0;
+  СпВар:=List.Create();
+  б:=DB("Ref."+Вид);
+  
+  If (Вид="кнтКонтрагенты")And(ФлГруппа=0) Then
+    пИНН:=Trim(Эл.ДополнительныеИдентификаторы);
+    пИНН:=Trim(TearStr(пИНН,","));
+    If (пИНН<>"")And(Pos(Left(пИНН,1),"123456789")>0) Then
+      пИНН:=Replace(пИНН,"\","/");
+      
+      б.Select("ИНН",пИНН);
+      While б.Next() Do
+        Фл:=флУжеСопоставлен(б,Эл);
+        СпВар.Add(б.Copy(),?(Фл=0,"    ","(+) ")+б+" ("+б.Folder()+")");
+      EndDo;
+    EndIf;
+    Exit СпВар;
+  ElseIf (Вид="тмцПартииТМЦ")And(ФлГруппа=0) Then
+    пНУ:=Trim(Эл.ДополнительныеИдентификаторы);
+    пКСР:=Date(Trim(TearStr(пНУ,",")));
+    в:=НайтиРодителя(Вид,Trim(Эл.ПрефиксУдаленнойБазы),Trim(Эл.КодУдаленнойБазы),1);
+    If в=0 Then
+      Exit СпВар;
+    EndIf;
+    б.Select("@Parent,КСР",в,пКСР);
+    While б.Next() Do
+      Фл:=флУжеСопоставлен(б,Эл);
+      Фл2:=?(UpperCase(пНУ)=UpperCase(Trim(б.НомерУдостоверения)),1,0);
+      СпВар.Add(б.Copy(),""+?(Фл=0,"    ","(+) ")+?(Фл2=0,"    ","[ТОЧ] ")+б.КСР+" ("+Trim(б.НомерУдостоверения)+")");
+    EndDo;
+    Exit СпВар;
+  EndIf;
+  
+  //По наименованию
+  If (not isEmpty(Meta.Ref(Вид).Props("Name")))And(Trim(Эл.Name)<>"") Then
+    в:=НайтиРодителя(Вид,Trim(Эл.ПрефиксУдаленнойБазы),Trim(Эл.КодУдаленнойБазы),1);
+    If в=0 Then
+      Exit СпВар;
+    EndIf;
+    
+    If not ?(в<>1,б.Find("@Parent,Name",в,Trim(Эл.Name)),б.Find("Name",Trim(Эл.Name))) Then
+      Exit СпВар;
+    EndIf;
+    
+    If б.IsFolder()=ФлГруппа Then
+      If not флУжеСопоставлен(б,Эл) Then
+        СпВар.Add(б,""+б+" (по наименованию)");
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  Exit СпВар;
+EndFunction
+
+Function ВыбратьЭлемент(элТек,ВидСпр,ТекЭл=0,Префикс,стрКод,стрДоп="")
+  б:=DB("Ref."+ВидСпр);
+  Фл:=0;ФлРод:=0;
+  if Struct.Ref(ВидСпр).Parents.Count()>0 Then
+    ФлРод:=1;
+  EndIf;
+  
+  If (not IsEmpty(ТекЭл))And(ТекЭл<>1) Then
+    If Uppercase(ТекЭл.DBName())=Uppercase(ВидСпр) Then
+      б:=ТекЭл;
+      Фл:=1;
+    EndIf;  
+  EndIf;
+  
+  в:=1;
+  If Фл=0 Then
+    в:=НайтиРодителя(ВидСпр,Префикс,стрКод);
+    If в=0 Then
+      Exit 0;
+    EndIf;
+  ElseIf ФлРод Then
+    в:=б.Parent();
+  EndIf;
+  
+  Try
+    If (элТек.Selected()<>0)And(б.Selected()=0) Then
+      If глЕстьРеквизитСправочника("Name",б.DBName()) Then
+        If ?(в<>1,б.Find("Name,@Parent",Trim(элТек.Name),в),б.Find("Name",Trim(элТек.Name)))=0 Then
+          //Глупости...
+          //в2:=Ref.рбСопоставленныеЭлементы;
+          //а:=Ref.рбУдаленныеБазы;
+          //а.Select();
+          //While а.Next() Do
+          //  If Trim(а.ПрефиксБазы)<>Trim(элТек.ПрефиксУдаленнойБазы) Then
+          //    Инд:=Trim(а.ПрефиксБазы)+"#"+ВидСпр+"#"+Trim(стрКод);
+          //    If в2.Find("Индекс",Инд) Then
+          //      б:=в2.Элемент;
+          //      Break;
+          //    EndIf;
+          //  EndIf;
+          //EndDo;
+        EndIf;
+      EndIf;  
+    EndIf;
+  Except
+  EndTry;
+  
+  //If (ВидСпр="тмцПартииТМЦ")And(стрДоп<>"")And(б.Selected()=0) Then
+  //  пНУ:=Trim(стрДоп);
+  //  пКСР:=Date(Trim(TearStr(пНУ,",")));
+  //  б.Find("КСР",Date(пКСР));
+  //EndIf;
+  
+  б:=SelectObject("Ref."+ВидСпр,в,0,"Module","SelectForm",б,,""+Trim(элТек.Name)+" в "+Trim(элТек.ДополнительныеИдентификаторы),2+?(Left(стрКод,1)="+",1,0));
+  If Not isEmpty(б) Then
+    Exit б;
+  EndIf;
+  Exit 0;
+EndFunction
+
+Function НайтиРодителя(ВидСпр,Префикс,стрКод,БезВыбора=0)
+  if Struct.Ref(ВидСпр).Parents.Count()>0 Then
+    в:=Ref.рбСопоставленныеЭлементы;
+    в2:=Ref.рбНесинхронизированныеЭлементы;
+    TearStr(стрКод);
+    
+    //<КодЭлемента>@<КодРодителя>[.<IDРодителя>]@...
+    Стр3:=TearStr(стрКод);
+    if Pos(".",Стр3)>0 Then
+      Стр4:=tearStr(Стр3,".");
+      Ид:=Struct.ObjectByMetaID(Стр3).Name;
+      стрКод:=Стр4+?(стрКод="","","@"+стрКод);
+    Else
+      Ид:=Struct.Ref(ВидСпр).Parents(1).Name;
+      стрКод:=Стр3+?(стрКод="","","@"+стрКод);
+    EndIf;
+    
+    Инд:=Trim(Префикс)+"#"+Ид+"#"+Trim(стрКод);
+    If в.Find("Индекс",Инд) Then
+      Exit в.Элемент;
+    ElseIf БезВыбора=0 Then
+      If в2.Find("Индекс",Инд) Then
+        в:=ВыбратьЭлемент(в2,Ид,,Префикс,стрКод);
+        If в=0 Then
+          Exit 0;
+        EndIf;
+        Exit в;
+      EndIf;
+      Exit 0;
+    Else
+      Exit 0;
+    EndIf;
+  EndIf;
+  Exit 1;
+EndFunction
+
+
+Function СоздатьСопоставлениеЭлемента(б,флТихо=0)
+  MainTab:=Form.MainTab.Value;
+  aEl:=Form.MainTab.SelectedElement;
+  
+  if Struct.Ref(Trim(aEl.ВидСправочника)).Parents.Count()>0 Then
+    КодВл:=Trim(aEl.КодУдаленнойБазы);
+    TearStr(КодВл);
+    ВидСпр:=Trim(aEl.ВидСправочника);
+    
+    //<КодЭлемента>@<КодРодителя>[.<IDРодителя>]@...
+    Стр3:=TearStr(КодВл);
+    if Pos(".",Стр3)>0 Then
+      Стр4:=tearStr(Стр3,".");
+      ВидСпр:=Struct.ObjectByMetaID(Стр3).Name;
+      КодВл:=Стр4+?(КодВл="","","@"+КодВл);
+    Else
+      ВидСпр:=Struct.Ref(ВидСпр).Parents(1).Name;
+      КодВл:=Стр3+?(КодВл="","","@"+КодВл);
+    EndIf;
+    
+    Индекс:=Trim(aEl.ПрефиксУдаленнойБазы)+"#"+ВидСпр+"#"+КодВл;
+    в:=Ref.рбСопоставленныеЭлементы;
+    If в.Find("Индекс",Trim(Индекс)) Then
+      If б.Parent()<>в.Элемент Then
+        If флТихо=0 Then
+          Box("Нельзя менять владельцев при сопоставлении элементов!",Q_STOP);
+        EndIf;  
+        Exit;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  в:=Ref.рбСопоставленныеЭлементы;
+  If в.Find("Элемент,ПрефиксУдаленнойБазы,<>КодУдаленнойБазы",б,aEl.ПрефиксУдаленнойБазы,aEl.КодУдаленнойБазы) Then
+    If флТихо=1 Then
+      Exit;
+    EndIf;
+    Box("Для этого элемента уже присутствует сопоставленный элемент для такой же удаленной базы. Его код "+Trim(в.КодУдаленнойБазы)+", его наименование: "+Trim(в.Name)+"! "+
+      "Будьте внимательны, возможно, вы совершаете ошибку!",Q_WARNING);
+  EndIf;
+  
+  If флТихо=0 Then
+    MainTab.CurLine:=MainTab.SelectedLine;
+  EndIf;  
+  MainTab.элСопоставление:=б;
+  MainTab.оСоп:=б;
+  Изменения(1);
+EndFunction
+
+Function Сохранить(флВопрос)
+  If not ФлИзменения Then
+    Exit;
+  EndIf;
+  //If флВопрос Then
+  //  If AskQuestion("Сохранить произведенные изменения?",Q_QUESTION+Q_YESNO)<>R_YES Then
+  //    Изменения(0);
+  //    Exit;
+  //  EndIf;
+  //EndIf;  
+
+  Form.StatusText("Записываются текущие изменения...");
+  Тб:=Tab.Create("Эл,Индекс");//Список детей, родителями которых могут быть элементы тек. справочника
+  MainTab:=Form.MainTab.Value;
+  
+  Фл:=0;
+  aEl:=0;
+  MainTab.Select();
+  While MainTab.Next() Do
+    aEl:=MainTab.Get(MainTab.CurLine,"@ELEMENT");
+    if aEl.isFolder()=0 Then
+      Фл:=1;
+      Break;
+    EndIf;
+  EndDo;
+  If Фл=0 Then
+    Изменения(0);//Error
+    Exit;
+  EndIf;
+  
+  ВидСпр:=Trim(aEl.ВидСправочника);
+  Фл:=Struct.Ref(ВидСпр).Children.Count()>0;
+  ТекРод:=Form.MainTab.FolderElement;
+  ПрефиксБазы:=aEl.ПрефиксУдаленнойБазы;
+  
+  If Фл=1 Then
+    //Condition(зЭл IN ТекРод);
+    ТЗ:="зЭл:=Ref.рбНесинхронизированныеЭлементы;
+    |зФл:=Ref.рбНесинхронизированныеЭлементы.Флаг;
+    |зПапка:=Ref.рбНесинхронизированныеЭлементы.@IsFolder;
+    |зПрефиксУдаленнойБазы:=Ref.рбНесинхронизированныеЭлементы.ПрефиксУдаленнойБазы;
+    |Condition(зФл<2);
+    |Condition(зПапка=0);
+    |Condition(зПрефиксУдаленнойБазы=ПрефиксБазы);
+    |Group зЭл;";
+    З:=Query.Create();
+    З.Execute(ТЗ);
+    
+    а:=0;
+    While З.Next(1) Do
+      ВидСпр:=Trim(З.зЭл.ВидСправочника);
+      стрКод:=Trim(З.зЭл.КодУдаленнойБазы);
+      КлИБ:=Trim(З.зЭл.ПрефиксУдаленнойБазы);
+      While Struct.Ref(ВидСпр).Parents.Count()>0 Do
+        TearStr(стрКод);
+      
+        //<КодЭлемента>@<КодРодителя>[.<IDРодителя>]@...
+        Стр3:=TearStr(стрКод);
+        if Pos(".",Стр3)>0 Then
+          Стр4:=tearStr(Стр3,".");
+          ВидСпр:=Struct.ObjectByMetaID(Стр3).Name;
+          стрКод:=Стр4+?(стрКод="","","@"+стрКод);
+        Else
+          ВидСпр:=Struct.Ref(ВидСпр).Parents(1).Name;
+          стрКод:=Стр3+?(стрКод="","","@"+стрКод);
+        EndIf;
+      
+        а:=а+1;
+        If а%10=0 Then
+          Form.StatusText(а);
+        EndIf;
+        Тб.NewLine();
+        Тб.Эл:=З.зЭл;
+        Тб.Индекс:=КлИБ+"#"+ВидСпр+"#"+стрКод;
+      EndDo;
+    EndDo;
+  EndIf;
+  
+  MainTab.Select();
+  While MainTab.Next() Do
+    Form.StatusText(MainTab.Size()-MainTab.CurLine+1);
+    If isEmpty(MainTab.элСопоставление) Then
+      Continue;
+    EndIf;
+    
+    If MainTab.элСопоставление=1 Then
+      //Новый
+      а:=MainTab.Get(MainTab.CurLine,"@ELEMENT");
+      а.Флаг:=3;
+      If not глЗаписать(а) Then
+        Exit;
+      EndIf;
+      б:=Ref.рбСопоставленныеЭлементы;
+      If б.Find("Индекс",Trim(а.Индекс)) Then
+        б.DeletePhysically();
+      EndIf;
+      //Для всех подчиненных элементов, имеющих флаг 0 или 1, выставляем флаг 3
+      While Тб.FindAndGoto(Trim(а.Индекс),,"Индекс") Do
+        а2:=Тб.Эл;
+        If а2.Флаг<2 Then
+          а2.Флаг:=3;
+          глЗаписать(а2);
+        EndIf;
+        Стр:=0;
+        While Тб.Find(а2,Стр,"Эл") Do
+          Тб.Remove(Стр);
+          Стр:=0;
+        EndDo;
+      EndDo;
+    Else
+      //Синхронизирован
+      а:=MainTab.Get(MainTab.CurLine,"@ELEMENT");
+      а.Флаг:=2;
+      б:=Ref.рбСопоставленныеЭлементы;
+      If not б.Find("Индекс",а.Индекс) Then
+        в:=глНайтиКонтейнерСопоставления(Trim(а.ПрефиксУдаленнойБазы),Trim(а.ВидСправочника),0,0,"рбСопоставленныеЭлементы");
+        б.New();
+        б.Name:=а.Name;
+        б.Folder(в);
+        б.ПрефиксУдаленнойБазы:=Trim(а.ПрефиксУдаленнойБазы);
+        б.КодУдаленнойБазы:=Trim(а.КодУдаленнойБазы);
+        б.ВидСправочника:=а.ВидСправочника;
+        б.Индекс:=а.Индекс;
+        б.Элемент:=MainTab.элСопоставление;
+        If not глЗаписать(б) Then
+          Exit;
+        EndIf;
+      EndIf;
+      If not глЗаписать(а) Then
+        Exit;
+      EndIf;
+    EndIf;
+  EndDo;  
+  
+  Изменения(0);
+EndFunction
+

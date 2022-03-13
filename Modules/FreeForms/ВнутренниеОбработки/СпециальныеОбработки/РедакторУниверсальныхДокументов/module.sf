@@ -1,0 +1,349 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+var Док Export;
+var НомерСтроки Export;
+
+Function ЗначенияРеквизитовВСтроку(Таб)
+  Result:="";
+  Таб.Select();
+  While Таб.Next() Do
+    Имя:=Таб.Идентификатор;
+    Зн:=Таб.Значение;
+    If isEmpty(Зн) Then
+      Continue;
+    EndIf;
+    Стр:=глЗашифроватьЗначениеУД(Зн);
+    Result:=Result+?(Result="","","###")+Имя+"@"+Стр;
+    //<Имя>@<ТипДанных>@<Значение>
+  EndDo;
+EndFunction
+
+
+Function OnSaveRequest()
+  Накопитель:=Form.Накопитель.Value;
+  If isEmpty(Накопитель) Then
+    Box("Выберите тип накопителя!",Q_STOP);
+    Exit 0;
+  EndIf;
+  If Form.IsChanged()=0 Then
+    Exit 1;
+  EndIf;
+  aTab:=Док.LineParts("Содержание");
+  aTab.CurLine:=НомерСтроки;
+  aTab.ИмяНакопителя:=Накопитель;
+  aTab.ЗнакДвижения:=?(Form.ДвижениеПриход.Value=1,"+","-");
+  aTab.Аккумуляторы:=ЗначенияРеквизитовВСтроку(Form.Аккумуляторы.Value);
+  aTab.Активы:=ЗначенияРеквизитовВСтроку(Form.Активы.Value);
+  aTab.Реквизиты:=ЗначенияРеквизитовВСтроку(Form.Реквизиты.Value);
+  Form.IsChanged(0);
+  Exit 1;
+EndFunction
+
+
+Function ЗаполнитьРеквизиты(Стр,Таб)
+  Накопитель:=Form.Накопитель.Value;
+  //Разделяется знаками "###"
+  While Trim(Стр)>"" Do
+    Стр2:=TearStr(Стр,"###");
+    Стр2:=Replace(Replace(Стр2,"&#","#"),"&&","&");
+    If Стр2<>"" Then
+      //<Имя>@<ТипДанных>@<Значение>
+      ИмяАтрибута:=TearStr(Стр2);
+      ТипДанных:=TearStr(Стр2);//"STRING","ANY","NUMBER","DATE","REF.<XXX>,REF.<XXX2>"...
+      Значение:=Стр2;//[<ТипРодительX>.<КодРодительX>@...<ТипРодитель1>.<КодРодитель1>@]<Тип>.<Код>
+      
+      If Таб.FindAndGoto(ИмяАтрибута,,"Идентификатор")=0 Then
+        Box("Найден неизвестный идентификатор ("+ИмяАтрибута+")! Изменять такой документ не рекомендуется!",Q_STOP);
+        Таб.NewLine();
+        Таб.Идентификатор:=ИмяАтрибута;
+      Else
+        ТипДанных2:=Struct.Stor(Накопитель).Props(ИмяАтрибута).DataType;
+        If not глСравнитьТипыДанных(ТипДанных,ТипДанных2,1) Then
+          Box("Тип данных идентификатора "+ИмяАтрибута+" отличается от записанного в документ! Изменять такой документ не рекомендуется! Обратитесь к администратору системы!",Q_STOP);
+        EndIf;
+      EndIf;
+      
+      Зн:=0;
+      If not глНайтиЗначениеУДПоТипуДанных(Зн,ТипДанных,Значение) Then
+        Box("Значение идентификатора "+ИмяАтрибута+" не найдено! Изменять такой документ не рекомендуется! Обратитесь к администратору системы!",Q_STOP);
+      EndIf;
+      Таб.Значение:=Зн;
+    EndIf;
+  EndDo;
+EndFunction
+
+Function ОбновитьРодителей()
+  Function _ПолучитьРодителя(Зн)
+    Result:="";
+    If _And(not isEmpty(Зн),pos("DB.REF.",TypeStr(Зн))=1,Struct.Ref(Replace(TypeStr(Зн),"DB.REF.","")).Parents.Count()>0,not isEmpty(Зн.Parent())) Then
+      Result:=""+_ПолучитьРодителя(Зн.Parent());
+      Result:=""+Зн.Parent()+?(Result="","","."+Result);
+    EndIf;
+  EndFunction
+
+  Стр:="";
+  Аккумуляторы:=Form.Аккумуляторы.Value;
+  If Аккумуляторы.SelectedLine>0 Then
+    Аккумуляторы.CurLine:=Аккумуляторы.SelectedLine;
+    Зн:=Аккумуляторы.Значение;
+    Стр:=_ПолучитьРодителя(Зн);
+  EndIf;
+  Form.АккумуляторыРодитель.Caption:=?(Стр="","","Родители: "+Стр);
+  
+  Стр:="";
+  Реквизиты:=Form.Реквизиты.Value;
+  If Реквизиты.SelectedLine>0 Then
+    Реквизиты.CurLine:=Реквизиты.SelectedLine;
+    Зн:=Реквизиты.Значение;
+    Стр:=_ПолучитьРодителя(Зн);
+  EndIf;
+  Form.РеквизитыРодитель.Caption:=?(Стр="","","Родители: "+Стр);
+EndFunction
+
+Function Обновить(флНеИзДокумента=0)
+  Form.пЗаголовок.Caption:="Документ "+Док+", строка: "+НомерСтроки;  
+  If Form.IsChanged() Then
+    If AskQuestion("Были сделаны изменения, если обновить форму, они будут утеряны. Продолжить?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Exit;
+    EndIf;
+  EndIf;
+  Form.IsChanged(0);
+  
+  aTab:=Док.LineParts("Содержание");
+  aTab.CurLine:=НомерСтроки;
+  If not флНеИзДокумента Then
+    Накопитель:=Trim(aTab.ИмяНакопителя);
+    If isEmpty(Struct.Stor(Накопитель))And(Накопитель<>"") Then
+      Box("Накопитель "+Накопитель+" неизвестен в этой конфигурации! Обработка документа будет невозможна!",Q_STOP);
+      Form.Close(0);
+      Exit;
+    EndIf;
+    Form.Накопитель.Value:=Накопитель;
+  Else
+    Накопитель:=Form.Накопитель.Value;
+  EndIf;  
+  
+  Фл:=0;
+  If Накопитель<>"" Then
+    For i:=1 To Struct.Stor(Накопитель).Props.Count() Do
+      If Struct.Stor(Накопитель).Props(i).IsAccumulator Then
+        Фл:=1;
+        Break;
+      EndIf;
+    EndDo;
+  EndIf;  
+  Form.ДвижениеПриход.isDisabled:=1-Фл;
+  If not Фл Then
+    Form.ДвижениеПриход.Value:=0;
+  EndIf;
+  
+  Аккумуляторы:=Form.Аккумуляторы.Value;
+  Активы:=Form.Активы.Value;
+  Реквизиты:=Form.Реквизиты.Value;
+  
+  Аккумуляторы.ClearLines();
+  Активы.ClearLines();
+  Реквизиты.ClearLines();
+  
+  If Накопитель<>"" Then
+    For i:=1 To Struct.Stor(Накопитель).Props.Count() Do
+      If Struct.Stor(Накопитель).Props(i).IsAccumulator Then
+        Аккумуляторы.AddLine("Идентификатор",Struct.Stor(Накопитель).Props(i).Name);
+      ElseIf Struct.Stor(Накопитель).Props(i).IsAsset Then
+        Активы.AddLine("Идентификатор",Struct.Stor(Накопитель).Props(i).Name);
+      Else
+        Реквизиты.AddLine("Идентификатор",Struct.Stor(Накопитель).Props(i).Name);
+      EndIf;
+    EndDo;
+  EndIf;  
+  
+  If not флНеИзДокумента Then
+    Form.ДвижениеПриход.Value:=Trim(aTab.ЗнакДвижения)="+";
+    ЗаполнитьРеквизиты(Trim(aTab.Аккумуляторы),Аккумуляторы);
+    ЗаполнитьРеквизиты(Trim(aTab.Активы),Активы);
+    ЗаполнитьРеквизиты(Trim(aTab.Реквизиты),Реквизиты);
+  EndIf;  
+  ОбновитьРодителей();
+EndFunction
+
+Function ИзменитьДокумент(Таб,ИмяРеквизита,Значение)
+  If Таб.SelectedLine=0 Then
+    Exit;
+  EndIf;
+  Таб.CurLine:=Таб.SelectedLine;
+  ЗначениеСтарое:=Таб.Значение;
+  If isEmpty(ЗначениеСтарое) Then
+    Exit;
+  EndIf;
+  Нум:=0;
+  СтрДляПоиска:=глЗашифроватьЗначениеУД(ЗначениеСтарое);
+  СтрДляПоиска:=Таб.Идентификатор+"@"+СтрДляПоиска;
+  
+  СтрДляИзменения:=глЗашифроватьЗначениеУД(Значение);
+  СтрДляИзменения:=Таб.Идентификатор+"@"+СтрДляИзменения;
+  
+  aTab:=Док.LineParts("Содержание");
+  aTab.Select();
+  While aTab.Next() Do
+    If Pos(СтрДляПоиска,aTab.Get(aTab.CurLine,ИмяРеквизита))>0 Then
+      Стр:=aTab.Get(aTab.CurLine,ИмяРеквизита);
+      aTab.Set(aTab.CurLine,ИмяРеквизита,Replace(Стр,СтрДляПоиска,СтрДляИзменения));
+      Нум:=Нум+1;
+    EndIf;
+  EndDo;
+  
+  If Нум>0 Then
+    Box("Всего было сделано "+Нум+" замен в документе!",Q_INFORMATION);
+    Exit;
+  EndIf;
+EndFunction
+
+Function НайтиРеквизитВДокументе(Таб,ИмяРеквизита)
+  If Таб.SelectedLine=0 Then
+    Exit;
+  EndIf;
+  Таб.CurLine:=Таб.SelectedLine;
+  Зн:=Таб.Значение;
+  If isEmpty(Зн) Then
+    Exit;
+  EndIf;
+  If Form.IsChanged()=1 Then
+    If AskQuestion("Сохранить сделанные в текущей строке изменения?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Exit;
+    EndIf;
+  EndIf;
+  if not OnSaveRequest() Then
+    Exit;
+  EndIf;  
+  
+  СтрДляПоиска:=глЗашифроватьЗначениеУД(Зн);
+  СтрДляПоиска:=Таб.Идентификатор+"@"+СтрДляПоиска;
+  
+  Фл:=0;
+  aTab:=Док.LineParts("Содержание");
+  aTab.CurLine:=НомерСтроки;
+  While aTab.Next() Do
+    If Pos(СтрДляПоиска,aTab.Get(aTab.CurLine,ИмяРеквизита))>0 Then
+      Фл:=1;
+      НомерСтроки:=aTab.CurLine;
+      Break;
+    EndIf;
+  EndDo;
+  
+  If not Фл Then
+    Box("Искомое значение не найдено в последующих строках документа!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  Обновить();
+EndFunction
+
+Function ВыбратьЗначениеРеквизита(Таб,ИмяТаблицы)
+  Накопитель:=Form.Накопитель.Value;
+  If isEmpty(Накопитель) Then
+    Exit;
+  EndIf;
+  Таб.CurLine:=Таб.SelectedLine;
+  ФлТипВыбран:=not isEmpty(Таб.Значение);
+  ТипЗначения:=Struct.Stor(Накопитель).Props(Таб.Идентификатор).DataType;
+  If ФлТипВыбран Then
+    ТипЗначения:=TypeStr(Таб.Значение);
+    If pos("DB.",ТипЗначения)=1 Then
+      ТипЗначения:=Replace(ТипЗначения,"DB.","");
+    ElseIf pos("NUMBER",ТипЗначения)=1 Then
+      ТипЗначения:=Struct.Stor(Накопитель).Props(Таб.Идентификатор).DataType;
+      ФлТипВыбран:=0;
+    EndIf;
+  EndIf;
+  
+  If not ФлТипВыбран Then
+    If not Struct.Stor(Накопитель).Props(Таб.Идентификатор).IsSingleType then
+      ТипЗначения:=SelectDataType(Struct.Stor(Накопитель).Props(Таб.Идентификатор).DataType,"Выберите тип значения:");
+      If isEmpty(ТипЗначения) Then
+        Exit;
+      EndIf;
+    EndIf;
+  EndIf;
+
+  Зн:=Таб.Значение;
+  If pos("STRING",ТипЗначения)=1 Then
+    If not AskString(Зн,"Введите значение:") Then
+      Exit;
+    EndIf;
+  ElseIf pos("DATE",ТипЗначения)=1 Then
+    Зн:=AskDate(Зн,"Введите значение:",1);
+    if isEmpty(Зн) Then
+      Exit;
+    EndIf;
+  ElseIf pos("NUMBER",ТипЗначения)=1 Then
+    TearStr(ТипЗначения,".");
+    Дл:=Number(TearStr(ТипЗначения,"."));
+    Тч:=Number(TearStr(ТипЗначения,"."));
+    If not AskNumber(Зн,"Введите значение:",Дл,Тч) Then
+      Exit;
+    EndIf;
+  ElseIf pos("REF.",ТипЗначения)=1 Then
+    Родитель:=0;
+    If _And(not isEmpty(Зн),Struct.Ref(Replace(ТипЗначения,"REF.","")).Parents.Count()>0,not isEmpty(Зн.Parent())) Then
+      Родитель:=Зн.Parent();
+    EndIf;
+    Зн:=SelectObject(ТипЗначения,Родитель,0,"Module","SelectForm",Зн,,"Выберите требуемый элемент",3);
+    if isEmpty(Зн) Then
+      Exit;
+    EndIf;
+  ElseIf pos("DOC.",ТипЗначения)=1 Then
+    TearStr(ТипЗначения,".");
+    Зн:=SelectObject("Jor.ОбщийЖурнал",ТипЗначения,0,"Module","SelectForm",,,"Выберите требуемый документ");
+    if isEmpty(Зн) Then
+      Exit;
+    EndIf;
+    If Зн.DBName()<>ТипЗначения Then
+      Box("Выбранный документ не является документом вида "+ТипЗначения+"!",Q_STOP);
+      Exit;
+    EndIf;
+  ElseIf pos("ENUM.",ТипЗначения)=1 Then
+    TearStr(ТипЗначения,".");
+    Method:=0;
+    Result:=0;
+    Сп:=List.Create();
+    For i:=1 to Struct.Enum(ТипЗначения).Values.Count() Do
+      Сп.Add(Enum.GetByIndex(ТипЗначения,i));
+    EndDo;
+    Зн:=0;
+    If Сп.Select(Зн,1)=0 Then
+      Exit;
+    EndIf;
+  ElseIf pos("NOTHING",ТипЗначения)=1 Then
+    Зн:=GetNothing();
+  EndIf;
+    
+  Form.Control(ИмяТаблицы).RereadValue(Зн);
+EndFunction;
+
+
+Function ПерейтиНаСтроку(Индекс)
+  If Form.IsChanged()=1 Then
+    If AskQuestion("Ссохранить сделанные в текущей строке изменения?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Exit;
+    EndIf;
+  EndIf;
+  if not OnSaveRequest() Then
+    Exit;
+  EndIf;
+  aTab:=Док.LineParts("Содержание");
+  aTab.CurLine:=НомерСтроки;
+  НомерСтроки:=НомерСтроки+Индекс;
+  If НомерСтроки<1 Then
+    НомерСтроки:=1;
+  EndIf;
+  If НомерСтроки>aTab.Size() Then
+    If AskQuestion("Добавить строку в документ?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Form.Close(0);
+      Exit;
+    EndIf;
+    aTab.NewLine();
+  EndIf;
+  Обновить();
+EndFunction

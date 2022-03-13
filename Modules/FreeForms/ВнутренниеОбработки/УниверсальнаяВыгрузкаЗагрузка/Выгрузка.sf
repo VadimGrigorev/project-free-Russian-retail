@@ -1,0 +1,1465 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var СпТипы Export;
+Var НачДата Export, КонДата Export;
+Var спНастройки Export;
+Var Уст Export;
+Var ПапкаВыгрузки Export;
+Var ДополнительныйСписок Export;
+Var лнUTF8 Export, лнКонвертироватьПереводСтроки Export, лнFTP Export, лнEmail Export, лнЗапуститьФайлПослеВыгрузки Export, лнТипВыгрузки Export, лнИмяДок Export;
+Var лнКОДок Export, лнВыгружатьПоДням Export, тПроверкаКорректностиВыгрузки Export, лнПартии Export, лнОтниматьВозвраты Export, лнОдинДокументНаФайл Export, лнИмяФайла Export;
+Var лнИсполнитьПередВыгрузкой Export;
+Var спДопСвойства Export; //Оптимизация
+Var aVars Export;
+Var ТабДокументы Export;
+
+//Переменные, для доступа из шаблонов
+Var ФайлВыгрузки Export,НомерСтроки Export,Номенклатура Export,ТекДата Export,КоличествоНачало Export,КоличествоКонец Export,КоличествоПриход Export,КоличествоРасход Export;
+Var aDoc Export, aLP Export, Количество Export, Сумма Export, Себестоимость Export, НомерСтрокиВсего Export;
+
+//Функции, для доступа из шаблонов
+Function ПолучитьШтрихкод(зН)
+  Exit глПолучитьШтрихкод(зН,1,1,1);
+EndFunction
+
+Function ПолучитьСтавкуНДС(зНДС)
+  If зНДС=Enum.СтавкиНДС.НДС10 Then
+    Exit 10;
+  ElseIf зНДС=Enum.СтавкиНДС.НДС20 Then
+    Exit 20;
+  ElseIf зНДС=Enum.СтавкиНДС.НДС18 Then
+    Exit 18;
+  EndIf;
+  Exit 0;
+EndFunction
+
+Function ПолучитьИНН(зЭл)
+  If pos("DB.DOC.",TypeStr(зЭл))=1 Then
+    зЭл:=зЭл.Контрагент;
+  EndIf;
+
+  If pos("DB.REF.",TypeStr(зЭл))=1 Then
+    Стр:="";
+    If зЭл.DBName()="кнтКонтрагенты" Then
+      Стр:=зЭл.ИНН;
+    ElseIf зЭл.DBName()="адАдресаДоставки" Then
+      Стр:=зЭл.Parent().ИНН;
+    ElseIf зЭл.DBName()="адСсылкиНаАдресаДоставки" Then
+      Стр:=зЭл.Parent().Parent().ИНН;
+    EndIf;
+    Стр:=Replace(Стр,"\","/");
+    Exit TearStr(Стр,"/");
+  EndIf;
+  Exit "";
+EndFunction
+
+Function ПолучитьКПП(зЭл)
+  If pos("DB.DOC.",TypeStr(зЭл))=1 Then
+    If глЕстьРеквизитДокумента("АдресДоставки",зЭл.DBName()) Then
+      If not isEmpty(зЭл.АдресДоставки) Then
+        зЭл:=зЭл.АдресДоставки;
+      EndIf;  
+    EndIf;
+  EndIf;
+  If pos("DB.DOC.",TypeStr(зЭл))=1 Then
+    зЭл:=зЭл.Контрагент;
+  EndIf;
+
+  If pos("DB.REF.",TypeStr(зЭл))=1 Then
+    Стр:="";
+    If зЭл.DBName()="кнтКонтрагенты" Then
+      Стр:=зЭл.ИНН;
+    ElseIf зЭл.DBName()="адАдресаДоставки" Then
+      If зЭл.КПП<>"" Then
+        Exit зЭл.КПП;
+      EndIf;
+      Стр:=зЭл.Parent().ИНН;
+    ElseIf зЭл.DBName()="адСсылкиНаАдресаДоставки" Then
+      If зЭл.адСсылка.КПП<>"" Then
+        Exit зЭл.адСсылка.КПП;
+      EndIf;
+      Стр:=зЭл.Parent().Parent().ИНН;
+    EndIf;
+    Стр:=Replace(Стр,"\","/");
+    TearStr(Стр,"/");
+    Exit Стр;
+  EndIf;
+  Exit "";
+EndFunction
+
+Function ПолучитьЛицензию(зК,зАД=0,ИмяРеквизита="")
+  зЛиц:=глПолучитьЛицензиюКонтрагентаНаДату(зК,КонДата,Enum.кнтТипыЛицензий.АлкогольнаяРозничная,Enum.кнтТипыЛицензий.АлкогольнаяОптовая,зАД);
+  If ИмяРеквизита="" Then
+    Exit зЛиц;
+  Else
+    Exit ?(not IsEmpty(зЛиц),зЛиц.GetValue(ИмяРеквизита),"");
+  EndIf;
+EndFunction
+
+Function ПолучитьДополнительноеСвойство(аЭл,СтрТип)
+  If _Or(isEmpty(спДопСвойства),IsEmpty(спДопСвойства.GetByName(СтрТип))) Then
+    If isEmpty(спДопСвойства) Then
+      спДопСвойства:=List.Create();
+    EndIf;
+    аТип:=Ref.общТипыДополнительныхСвойств;
+    If not аТип.Find("Name",СтрТип) Then
+      Message("Внимание! Не найдено доп. свойство с наименование """+СтрТип+"""!","!");
+      Exit "";
+    EndIf;
+    спДопСвойства.SetByName(СтрТип,аТип);
+  EndIf;
+  аТип:=спДопСвойства.GetByName(СтрТип);
+  
+  бЭл:=Ref.общДополнительныеСвойства;
+  If бЭл.Find("ТипСвойства,Элемент",аТип,аЭл) Then
+    Exit Trim(бЭл.Name);
+  EndIf;
+  Exit "";
+EndFunction
+
+Function ОчиститьКаталог(Папка,Сообщ);
+  Message(Сообщ,"I");
+  Папка:=AddBackSlash(Папка);
+  Сп:=List.Create();
+  Ф:=File.Create();
+  Ф.FindOpen(Trim(Папка)+"*.*");
+  While Ф.FindNextFile()<>"" Do
+    Сп.Add(Trim(Папка)+Ф.FileName);
+  EndDo;
+  For i:=1 To Сп.Size() Do
+    File.DeleteFile(Trim(Сп.Get(i)));
+  EndDo;
+EndFunction
+
+
+Function лВычислитьВыражение(СтрИсходник)
+  СтрРез:="";
+  While pos("!!!",СтрИсходник)>0 Do
+    СтрРез:=СтрРез+TearStr(СтрИсходник,"!!!");
+    Стр2:=TearStr(СтрИсходник,"!!!");
+    Try
+      СтрРез:=СтрРез+Eval(Стр2);
+    Except
+      Message(PopError(),"!");
+      Message("Ошибка при вычислении выражения """+Стр2+"""!","!");
+    EndTry;
+  EndDo;
+  СтрРез:=СтрРез+СтрИсходник;
+  Exit СтрРез;
+EndFunction
+
+Function ПропуститьДоСледующегоРаздела(Tx,ByRef Index,СтрКроме="")
+  While Index<=Tx.Size() Do
+    Стр:=Tx.GetLine(Index);
+    If Стр<>СтрКроме Then
+      If Left(Стр,1)="@" Then
+        Exit Стр;
+      EndIf;
+    EndIf;  
+    Index:=Index+1;
+  EndDo;
+  Exit "";
+EndFunction
+
+Function ВыгрузитьПростойБлок(Tx,ByRef Index,ТРез,СтрТип)
+  //!!!EXECUTE!!! блок
+  Стр:=Tx.GetLine(Index);
+  If Стр="!!!EXECUTE!!!" Then
+    Стр2:="";
+    Index:=Index+1;
+    While Index<=Tx.Size() Do
+      Стр:=Tx.GetLine(Index);
+      If Стр="!!!EXECUTE!!!" Then
+        Index:=Index+1;
+        Break;
+      EndIf;
+      Стр2:=?(Стр2="","",Стр2+_NEWLINE)+Стр;
+      Index:=Index+1;
+    EndDo;
+    Try
+      If Стр2<>"" Then
+        Exec(Стр2);
+      EndIf;  
+    Except
+      ТипОшибки:=PeekError(1);
+      ТипОшибки:=Trim(TearStr(ТипОшибки," at "));
+      ТипОшибки:=Number(Mid(ТипОшибки,2));
+      If ТипОшибки=41 Then  //Пользовательская ошибка
+        Message(PopError(4),"!");
+      Else
+        Message(PopError(),"!");
+        Message("Ошибка возникла при вычислении выражения:");
+        Message(Стр2);
+      EndIf;        
+      Exit 0;
+    EndTry;
+  EndIf;
+  
+  While Index<=Tx.Size() Do
+    Стр:=Tx.GetLine(Index);
+    If Стр=СтрТип Then
+      Index:=Index+1;
+      Exit 1;
+    EndIf;
+    Стр:=лВычислитьВыражение(Стр);
+    ТРез.AddString(Стр);
+    Index:=Index+1;
+  EndDo;
+  Exit 1;
+EndFunction
+
+Function ОкончаниеВыгрузки(ТРез,Имя)
+
+  If лнUTF8=1 Then
+    ТРез.TranslateTo(65001);
+  Else
+    ТРез.TranslateTo(0);
+  EndIf;
+  If лнКонвертироватьПереводСтроки=1 Then
+    Стр:=ТРез.ToString();
+    Стр:=Replace(Стр,Chr(13)+Chr(10),Chr(10));
+    StringToFile(Стр,Имя);
+  Else
+    ТРез.Save(Имя);
+  EndIf;
+  
+  If лнЗапуститьФайлПослеВыгрузки<>"" Then
+    Стр:=лВычислитьВыражение(лнЗапуститьФайлПослеВыгрузки);
+    Message("Запуск: "+Стр,"I");
+    SysExec(Стр,1);
+  EndIf;
+  
+  If лнFTP<>"" Then
+    If not isEmpty(DBVar.ОкончаниеПериодаБазы) Then
+      Message("Файлы из старых (закрытых) баз не будут выгружены на FTP!","!");
+      Exit 1;
+    EndIf;
+    ИмяВып:="Modules\FreeForms\ВнутренниеОбработки\УниверсальнаяВыгрузкаЗагрузка\FtpPut.exe";
+    //FtpPut.exe: <login>:<pass>@<ftpsite> <path> <okFlagFile> <localpath\localmask> [DeleteFiles=1] [SOCKSServerAddr:SOCKSServerPort[:UserName:Password]]
+    //ВыложитьНаFTP: <user>:<password>@<ftpURL> [<FtpFolder\>] [<SOCKsProxyServer>:<ProxyPort>]
+  
+    If Form.оБезОтправки.Value=0 Then
+      Стр2:=лВычислитьВыражение(лнFTP);
+      Стр1:=TearStr(Стр2," ");
+      If Стр2="" Then
+        Стр2:="\";
+      EndIf;
+      Стр3:="";
+      If Pos(" ",Стр2)>0 Then
+        Стр3:=Стр2;
+        Стр2:=TearStr(Стр3," ");
+      EndIf;
+      Папка:=GetPath(Имя);
+      СтрФлаг:=Папка+"TempFlagFile.flg";
+      File.DeleteFile(СтрФлаг);
+      СтрВып:=Trim(ИмяВып)+" "+Стр1+" """+Стр2+""" """+СтрФлаг+""" """+Имя+""" 0"+?(Стр3="",""," "+Стр3);
+      Message("Выгрузка на FTP с параметрами: "+СтрВып,"I");
+      SysExec(СтрВып,1);
+      If not File.DoesFileExist(СтрФлаг) Then
+        Message("Неудачная попытка отправки файла """+Имя+""" на FTP! Проверьте наличие доступа к FTP, правильность указания пароля или обратитесь к администратору!","!");
+        Exit 0;
+      EndIf;
+      File.DeleteFile(СтрФлаг);
+    EndIf;  
+  ElseIf лнEmail<>"" Then
+    If not isEmpty(DBVar.ОкончаниеПериодаБазы) Then
+      Message("Файлы из старых (закрытых) баз не будут отосланы по электронной почте!","!");
+      Exit 1;
+    EndIf;
+    ИмяВып:="Modules\FreeForms\ВнутренниеОбработки\УниверсальнаяВыгрузкаЗагрузка\blat.exe";
+    Стр1:=лВычислитьВыражение(лнEmail);
+    СтрВып:=Trim(ИмяВып)+" "+Стр1+" -attach """+Имя+"""";
+    
+    If Form.оБезОтправки.Value=0 Then
+      Message("Отсылка на электронную почту с параметрами: "+СтрВып,"I");
+      SysExec(СтрВып,1);
+    EndIf;  
+  EndIf;
+  Exit 1;
+EndFunction      
+
+
+
+
+
+Function ВыгрузитьДокументыПоСтрокам(Tx,ByRef Index,ТРез)
+  If (лнИмяДок="")Or(IsEmpty(Struct.Doc(лнИмяДок))) Then
+    Message("Ошибка при выгрузке документов! Не указан (или указан неверно) тип документа!","!");
+    Exit 0;
+  EndIf;
+  СпКО:=List.Create();
+  лнКОДок0:=лнКОДок;
+  If лнКОДок0<>"" Then
+    If IsEmpty(Struct.Doc(лнИмяДок).Props("КодОперации")) Then
+      Message("Ошибка при выгрузке документов! У документов типа "+лнИмяДок+" нет реквизита КодОперации!","!");
+      Exit 0;
+    EndIf;
+    While лнКОДок0<>"" Do
+      Стр:=Trim(TearStr(лнКОДок0,","));
+      If Стр="" Then
+        Continue;
+      EndIf;
+      If isEmpty(Struct.Enum("ко"+лнИмяДок).Values(Стр)) Then
+        Message("Ошибка при выгрузке документов! Перечисление КодОперации документа "+лнИмяДок+" не содержит кода "+Стр+"!","!");
+        Exit 0;
+      EndIf;
+      СпКО.Add(Enum.Get("ко"+лнИмяДок+"."+Стр));
+    EndDo;  
+  EndIf;
+  
+  оК:=спНастройки.GetByName("оК");
+  оД:=спНастройки.GetByName("оД");
+  оН:=спНастройки.GetByName("оН");
+  оСк:=спНастройки.GetByName("оСк");
+  оМг:=спНастройки.GetByName("оМг");
+  оЮЛ:=спНастройки.GetByName("оЮЛ");
+  
+  Message("Выгрузка документов "+лнИмяДок+?(лнКОДок<>"","/"+лнКОДок)+"...");
+  
+  КДата:=BegOfDay(КонДата)+1;
+  НачДата:=BegOfDay(НачДата);
+  ТЗ:="зСтатус:=Doc."+лнИмяДок+".@Status;Condition(зСтатус>1);зДата:=BegOfDay(Doc."+лнИмяДок+".DocDate);Condition((зДата>=НачДата)And(зДата<КДата));"+_NEWLINE+
+  ?(not isEmpty(оЮЛ),"зЮЛ:=Doc."+лнИмяДок+".ЮрЛицо;Condition(зЮЛ IN оЮЛ.Get(1));Condition(зЮЛ NOT IN оЮЛ.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оМг),"зМг:=Doc."+лнИмяДок+".Магазин;Condition(зМг IN оМг.Get(1));Condition(зМг NOT IN оМг.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оК),"зК:=Doc."+лнИмяДок+".Контрагент;Condition(зК IN оК.Get(1));Condition(зК NOT IN оК.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оД),"зД:=Doc."+лнИмяДок+".Договор;Condition(зД IN оД.Get(1));Condition(зД NOT IN оД.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оСк),"зСк:=Doc."+лнИмяДок+".Склад;Condition(зСк IN оСк.Get(1));Condition(зСк NOT IN оСк.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оН),"зН:=Doc."+лнИмяДок+".Номенклатура.Номенклатура;Condition(зН IN оН.Get(1));Condition(зН NOT IN оН.Get(2));"+_NEWLINE)+
+  "Док:=Doc."+лнИмяДок+";"+_NEWLINE+
+  ?(СпКО.Size()>0,"зКО:=Doc."+лнИмяДок+".КодОперации;Condition(зКО IN СпКО);"+_NEWLINE)+
+  "Group Док;"; 
+  
+  З:=Query.Create();
+  З.Execute(ТЗ,2);
+  З.First();
+  ТабДокументы:=З.ResultTable;
+  
+  If not isEmpty(лнИсполнитьПередВыгрузкой) Then
+    Try
+      Exec(лнИсполнитьПередВыгрузкой);
+    Except
+      ТипОшибки:=PeekError(1);
+      ТипОшибки:=Trim(TearStr(ТипОшибки," at "));
+      ТипОшибки:=Number(Mid(ТипОшибки,2));
+      If ТипОшибки=41 Then  //Пользовательская ошибка
+        Message(PopError(4),"!");
+      Else
+        Message(PopError(),"!");
+        Message("Ошибка возникла при вычислении выражения:");
+        Message(лнИсполнитьПередВыгрузкой);
+      EndIf;        
+      Exit 0;
+    EndTry;
+  EndIf;
+  
+  If лнОдинДокументНаФайл=1 Then
+    ТРез0:=ТРез.ToString();
+  EndIf;  
+  
+  НомерСтрокиВсего:=0;
+  СтрРаздел:=ПропуститьДоСледующегоРаздела(Tx,Index);
+  СтрРаздел2:=СтрРаздел;
+  Index2:=Index;
+  ТабДокументы.Select();
+  While ТабДокументы.Next() Do
+    aDoc:=ТабДокументы.Док;
+    НомерСтроки:=0;
+    
+    If тПроверкаКорректностиВыгрузки.Size()>0 Then
+      тПроверкаКорректностиВыгрузки.Select();
+      While тПроверкаКорректностиВыгрузки.Next() Do
+        Фл:=0;
+        Try
+          Фл:=Number(Eval(тПроверкаКорректностиВыгрузки.Условие));
+        Except
+          Message(PopError(),"!");
+          Message("Ошибка возникла при вычислении выражения "+тПроверкаКорректностиВыгрузки.Условие+"! Пожалуйста, исправьте шаблон условия, прежде чем продолжать выгрузку!","!");
+          Exit 0;
+        EndTry;
+        If Фл Then
+          Message(лВычислитьВыражение(тПроверкаКорректностиВыгрузки.Сообщение),"!");
+          Exit 0;
+        EndIf;
+      EndDo;      
+    EndIf;
+    
+    СтрРаздел:=СтрРаздел2;
+    Index:=Index2;
+    If лнОдинДокументНаФайл=1 Then
+      //Для каждого документа свой файл
+      ТРез:=Text.Create(1);
+      ТРез.AddString(ТРез0);
+      
+      СтрРаздел:=ПропуститьДоСледующегоРаздела(Tx,Index);
+      If СтрРаздел="@FILEHEADER@" Then
+        Index:=Index+1;
+        If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@FILEHEADER@") Then
+          Exit 0;
+        EndIf;
+        СтрРаздел:=ПропуститьДоСледующегоРаздела(Tx,Index);
+      EndIf;
+      
+      If СтрРаздел="@HEADER@" Then
+        Index:=Index+1;
+        If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@HEADER@") Then
+          Exit 0;
+        EndIf;
+        СтрРаздел:=ПропуститьДоСледующегоРаздела(Tx,Index);
+      EndIf;
+    Else
+      If СтрРаздел="@HEADER@" Then
+        Index:=Index+1;
+        If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@HEADER@") Then
+          Exit 0;
+        EndIf;
+        СтрРаздел:=ПропуститьДоСледующегоРаздела(Tx,Index);
+      EndIf;
+    EndIf;
+    
+    If лнПартии=1 Then
+      //Номенклатура,Количество,СтавкаНДС,Сумма,СуммаНДС,Партия
+      aTab:=aDoc.LineParts("Номенклатура").Copy();
+      aTab.Group("Номенклатура,СтавкаНДС","Количество,Сумма");
+      aLP:=aDoc.LoadStorage("ОстаткиТМЦ");
+      aLP.AddColumn("Цена",,"Number");
+      aLP.AddColumn("Сумма",,"Number");
+      aLP.AddColumn("СтавкаНДС");
+      aLP.AddColumn("СуммаНДС",,"Number");
+      //Заполним новые столбцы
+      aLP.Select();
+      While aLP.Next() Do
+        If aTab.FindAndGoto(aLP.Номенклатура,,"Номенклатура")>0 Then
+          aLP.Сумма:=Round(aTab.Сумма/aTab.Количество*aLP.Количество,2);
+          aLP.Цена:=Round(aTab.Сумма/aTab.Количество,2);
+          aLP.СтавкаНДС:=aTab.СтавкаНДС;
+          aLP.СуммаНДС:=Round(aLP.Сумма*глКоэффНДС(aTab.СтавкаНДС),2);
+        EndIf;
+      EndDo;
+    Else
+      //Номенклатура,Количество,СтавкаНДС,Сумма,СуммаНДС
+      aLP:=aDoc.LineParts("Номенклатура").Copy();
+      aLP.Select();
+      While aLP.Next() Do
+        aLP.СуммаНДС:=Round(aLP.Сумма*глКоэффНДС(aLP.СтавкаНДС),2);
+      EndDo;
+    EndIf;
+    
+    If _And(лнОтниматьВозвраты=1,aDoc.DBName()="Реализация") Then
+      aList:=aDoc.LoadLinkedDocuments(1);
+      For i:=1 To aList.Size() Do
+        bDoc:=aList.Get(i);
+        If bDoc.DBName()="ВозвратОтПокупателя" Then
+          If bDoc.Status()<2 Then
+            Continue;
+          EndIf;
+          If лнПартии=1 Then
+            bTab:=bDoc.LineParts("Номенклатура").Copy();
+            bTab.Group("Номенклатура","Количество,Сумма");
+            bLP:=bDoc.LoadStorage("ОстаткиТМЦ");
+            bLP.Select();
+            While bLP.Next() Do
+              For аПроход:=0 To 1 Do
+                aLP.CurLine:=0;
+                While _And(Round(bLP.Количество,6)>0,?(аПроход=0,aLP.LocateAndGoto("Номенклатура,Партия",bLP.Номенклатура,bLP.Партия)>0,aLP.FindAndGoto(bLP.Номенклатура,,"Номенклатура")>0)) Do
+                  If bTab.FindAndGoto(bLP.Номенклатура,,"Номенклатура")=0 Then
+                    Continue 3;//assert
+                  EndIf;
+                
+                  Чл:=Min(bLP.Количество,aLP.Количество);
+                  См:=Round(bTab.Сумма/bTab.Количество*Чл,2);
+                  bTab.Сумма:=bTab.Сумма-См;
+                  bTab.Количество:=bTab.Количество-Чл;
+                  If Round(bTab.Количество,6)=0 Then
+                    bTab.Remove(bTab.CurLine);
+                  EndIf;
+                  bLP.Количество:=bLP.Количество-Чл;
+                  aLP.Количество:=aLP.Количество-Чл;
+                  aLP.Сумма:=Max(0,aLP.Сумма-См);
+                  If Round(aLP.Количество,6)=0 Then
+                    aLP.Remove(aLP.CurLine);
+                  EndIf;
+                  aLP.CurLine:=0;
+                EndDo;
+              EndDo;  
+            EndDo;
+          Else
+            bTab:=bDoc.LineParts("Номенклатура").Copy();
+            bTab.Group("Номенклатура","Количество,Сумма");
+            bTab.Select();
+            While bTab.Next() Do
+              While _And(Round(bTab.Количество,6)>0,aLP.FindAndGoto(bTab.Номенклатура,,"Номенклатура")>0) Do
+                Чл:=Min(bTab.Количество,aLP.Количество);
+                См:=Round(bTab.Сумма/bTab.Количество*Чл,2);
+                bTab.Сумма:=bTab.Сумма-См;
+                bTab.Количество:=bTab.Количество-Чл;
+                aLP.Количество:=aLP.Количество-Чл;
+                aLP.Сумма:=Max(0,aLP.Сумма-См);
+                If Round(aLP.Количество,6)=0 Then
+                  aLP.Remove(aLP.CurLine);
+                EndIf;
+              EndDo;
+            EndDo;
+          EndIf;
+        EndIf;
+      EndDo;
+    EndIf;
+    
+    //Удалить лишние строки (фильтр по номенклатуре)
+    If not isEmpty(оН) Then
+      i:=0;
+      While i<aLP.Size() Do
+        i:=i+1;
+        aLP.CurLine:=i;
+        If оН.Get(1).Size()>0 Then
+          If not оН.Get(1).Contains(aLP.Номенклатура) Then
+            aLP.Remove(i);
+            i:=i-1;
+            Continue;
+          EndIf;
+        EndIf;
+        If оН.Get(2).Size()>0 Then
+          If оН.Get(2).Contains(aLP.Номенклатура) Then
+            aLP.Remove(i);
+            i:=i-1;
+            Continue;
+          EndIf;
+        EndIf;
+      EndDo;  
+    EndIf;
+    If aLP.Size()=0 Then
+      Message("Пропустили документ: "+aDoc+" (документ не содержит строк)...","I");
+      Continue;
+    EndIf;
+    
+    If СтрРаздел="@BODY@" Then
+      Index:=Index+1;
+      aLP.Select();
+      While aLP.Next() Do
+        Index0:=Index;
+        НомерСтроки:=НомерСтроки+1;
+        НомерСтрокиВсего:=НомерСтрокиВсего+1;
+        If not ВыгрузитьПростойБлок(Tx,Index0,ТРез,"@BODY@") Then
+          Exit 0;
+        EndIf;
+        Form.StatusText(ТРез.Size());
+      EndDo;
+      Index:=Index0;
+    EndIf;  
+    
+    Стр:=ПропуститьДоСледующегоРаздела(Tx,Index,"@BODY@");
+    If Стр="@FOOTER@" Then
+      Index:=Index+1;
+      If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@FOOTER@") Then
+        Exit 0;
+      EndIf;
+    EndIf;
+    
+    If лнОдинДокументНаФайл=1 Then
+      //Для каждого документа свой файл
+      Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+      If Стр="@FILEFOOTER@" Then
+        Index:=Index+1;
+        If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@FILEFOOTER@") Then
+          Exit 0;
+        EndIf;
+      EndIf;
+    
+      ФайлВыгрузки:=ПапкаВыгрузки+лВычислитьВыражение(лнИмяФайла);
+      If not ОкончаниеВыгрузки(ТРез,ФайлВыгрузки) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+    
+    Message("Выгружен документ: "+aDoc,"I");
+  EndDo;
+    
+  Index:=Index2;
+  Message("Было выгружено "+НомерСтрокиВсего+" строк!");
+  Exit 1;
+EndFunction
+
+Function ВыгрузитьАнализПродажБезСтрок(Tx,ByRef Index,ТРез,лнТипВыгрузки);
+  Message("Выгрузка продаж (по строкам)...");
+  оН:=спНастройки.GetByName("оН");
+  оСк:=спНастройки.GetByName("оСк");
+  оК:=спНастройки.GetByName("оК");
+  оД:=спНастройки.GetByName("оД");
+  оМг:=спНастройки.GetByName("оМг");
+  оЮЛ:=спНастройки.GetByName("оЮЛ");
+  
+  ТЗ:="Period From НачДата to КонДата;
+  |зС:=Storage.ДвижениеТМЦ.Сумма;
+  |зС0:=Storage.ДвижениеТМЦ.Себестоимость;
+  |зК0:=Storage.ДвижениеТМЦ.Количество;
+  |зН:=Storage.ДвижениеТМЦ.Номенклатура;
+  |зМрТип:=Storage.ДвижениеТМЦ.ТипЗаписи;Condition(зМрТип<4);
+  |зМрТУ:=Storage.ДвижениеТМЦ.ТипУчета;Condition(зМрТУ=0);
+  |зТипАкт:=Storage.ДвижениеТМЦ.Договор.@Parent.ТипАктива;Condition(зТипАкт<>3);
+  |Документ:=Storage.ДвижениеТМЦ.@LINK;
+  |зСм:=SUM(?(зМрТип<2,зС,0));
+  |зСм0:=SUM(?(зМрТип<2,зС0,0));
+  |зКл:=SUM(?(зМрТип<2,зК0,0));
+  |зСмП:=SUM(?(зМрТип>1,-зС,0));
+  |зСмП0:=SUM(?(зМрТип>1,-зС0,0));
+  |зКлП:=SUM(?(зМрТип>1,-зК0,0));"+
+  ?(not isEmpty(оН),"Condition(зН IN оН.Get(1));Condition(зН NOT IN оН.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оСк),"зСк:=Storage.ДвижениеТМЦ.Склад;Condition(зСк IN оСк.Get(1));Condition(зСк NOT IN оСк.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оК),"зК:=Storage.ДвижениеТМЦ.Договор.@Parent;Condition(зК IN оК.Get(1));Condition(зК NOT IN оК.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оД),"зД:=Storage.ДвижениеТМЦ.Договор;Condition(зД IN оД.Get(1));Condition(зД NOT IN оД.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оМг),"зМг:=Storage.ДвижениеТМЦ.Склад.Магазин;Condition(зМг IN оМг.Get(1));Condition(зМг NOT IN оМг.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оЮЛ),"зЮЛ:=Storage.ДвижениеТМЦ.Договор.ЮрЛицо;Condition(зЮЛ IN оЮЛ.Get(1));Condition(зЮЛ NOT IN оЮЛ.Get(2));"+_NEWLINE)+
+  "Group Документ;";
+  
+  З:=Query.Create();
+  З.Execute(ТЗ);
+  
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+  If Стр="@HEADER@" Then
+    Index:=Index+1;
+    If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@HEADER@") Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+  Index2:=Index;
+  НомерСтроки:=0;
+  If Стр="@BODY@" Then
+    While З.Next(1) Do
+      aDoc:=З.Документ;
+      
+      If лнТипВыгрузки=5 Then
+        If Pos(","+aDoc.DBName()+",",",Реализация,ВозвратОтПокупателя,ПоступлениеТМЦ,")=0 Then
+          Continue;
+        EndIf;
+      ElseIf лнТипВыгрузки=4 Then
+        If Pos(","+aDoc.DBName()+",",",Реализация,ВозвратОтПокупателя,ПоступлениеТМЦ,ВозвратПоставщику")=0 Then
+          Continue;
+        EndIf;
+      EndIf;      
+      
+      НомерСтроки:=НомерСтроки+1;
+      Index:=Index2;
+      Index:=Index+1;
+      If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@BODY@") Then
+        Exit 0;
+      EndIf;
+      Form.StatusText(ТРез.Size());
+    EndDo;
+  EndIf;  
+  
+  Index:=Index2;
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index,"@BODY@");
+  If Стр="@FOOTER@" Then
+    Index:=Index+1;
+    If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@FOOTER@") Then
+      Exit 0;
+    EndIf;
+  EndIf;
+
+  Message("Было выгружено "+НомерСтроки+" строк!");
+  Exit 1;
+EndFunction
+
+Function  ВыгрузитьАнализПродажПоСтрокам(Tx,ByRef Index,ТРез,лнТипВыгрузки);
+  Message("Выгрузка продаж (по строкам)...");
+  оН:=спНастройки.GetByName("оН");
+  оСк:=спНастройки.GetByName("оСк");
+  оК:=спНастройки.GetByName("оК");
+  оД:=спНастройки.GetByName("оД");
+  оМг:=спНастройки.GetByName("оМг");
+  оЮЛ:=спНастройки.GetByName("оЮЛ");
+  
+  ТЗ:="Period From НачДата to КонДата;
+  |зС:=Storage.ДвижениеТМЦ.Сумма;
+  |зС0:=Storage.ДвижениеТМЦ.Себестоимость;
+  |зК0:=Storage.ДвижениеТМЦ.Количество;
+  |зН:=Storage.ДвижениеТМЦ.Номенклатура;
+  |зМрТип:=Storage.ДвижениеТМЦ.ТипЗаписи;Condition(зМрТип<4);
+  |зМрТУ:=Storage.ДвижениеТМЦ.ТипУчета;Condition(зМрТУ=0);
+  |зТипАкт:=Storage.ДвижениеТМЦ.Договор.@Parent.ТипАктива;Condition(зТипАкт<>3);
+  |Документ:=Storage.ДвижениеТМЦ.@LINK;
+  |зСм:=SUM(?(зМрТип<2,зС,0));
+  |зСм0:=SUM(?(зМрТип<2,зС0,0));
+  |зКл:=SUM(?(зМрТип<2,зК0,0));
+  |зСмП:=SUM(?(зМрТип>1,-зС,0));
+  |зСмП0:=SUM(?(зМрТип>1,-зС0,0));
+  |зКлП:=SUM(?(зМрТип>1,-зК0,0));"+
+  ?(not isEmpty(оН),"Condition(зН IN оН.Get(1));Condition(зН NOT IN оН.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оСк),"зСк:=Storage.ДвижениеТМЦ.Склад;Condition(зСк IN оСк.Get(1));Condition(зСк NOT IN оСк.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оК),"зК:=Storage.ДвижениеТМЦ.Договор.@Parent;Condition(зК IN оК.Get(1));Condition(зК NOT IN оК.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оД),"зД:=Storage.ДвижениеТМЦ.Договор;Condition(зД IN оД.Get(1));Condition(зД NOT IN оД.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оМг),"зМг:=Storage.ДвижениеТМЦ.Склад.Магазин;Condition(зМг IN оМг.Get(1));Condition(зМг NOT IN оМг.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оЮЛ),"зЮЛ:=Storage.ДвижениеТМЦ.Договор.ЮрЛицо;Condition(зЮЛ IN оЮЛ.Get(1));Condition(зЮЛ NOT IN оЮЛ.Get(2));"+_NEWLINE)+
+  "Group Документ,зН;";
+  
+  З:=Query.Create();
+  З.Execute(ТЗ);
+  
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+  If Стр="@HEADER@" Then
+    Index:=Index+1;
+    If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@HEADER@") Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+  Index2:=Index;
+  НомерСтроки:=0;
+  If Стр="@BODY@" Then
+    While З.Next(1) Do
+      aDoc:=З.Документ;
+      
+      If лнТипВыгрузки=5 Then
+        If Pos(","+aDoc.DBName()+",",",Реализация,ВозвратОтПокупателя,ПоступлениеТМЦ,")=0 Then
+          Continue;
+        EndIf;
+      ElseIf лнТипВыгрузки=4 Then
+        If Pos(","+aDoc.DBName()+",",",Реализация,ВозвратОтПокупателя,ПоступлениеТМЦ,ВозвратПоставщику")=0 Then
+          Continue;
+        EndIf;
+      EndIf;      
+      
+      While З.Next(2) Do
+        НомерСтроки:=НомерСтроки+1;
+        Номенклатура:=З.зН;
+        Сумма:=З.зСм+З.зСмП;
+        Количество:=З.зКл+З.зКлП;
+        Себестоимость:=З.зСм0+З.зСмП0;
+        
+        Index:=Index2;
+        Index:=Index+1;
+        If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@BODY@") Then
+          Exit 0;
+        EndIf;
+        Form.StatusText(ТРез.Size());
+      EndDo;  
+    EndDo;
+  EndIf;  
+  
+  Index:=Index2;
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index,"@BODY@");
+  If Стр="@FOOTER@" Then
+    Index:=Index+1;
+    If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@FOOTER@") Then
+      Exit 0;
+    EndIf;
+  EndIf;
+
+  Message("Было выгружено "+НомерСтроки+" строк!");
+  Exit 1;
+EndFunction
+
+Function ВыгрузитьАнализПродажОбщий(Tx,ByRef Index,ТРез)
+  Message("Выгрузка продаж (общий)...");
+  оН:=спНастройки.GetByName("оН");
+  оСк:=спНастройки.GetByName("оСк");
+  оК:=спНастройки.GetByName("оК");
+  оД:=спНастройки.GetByName("оД");
+  оМг:=спНастройки.GetByName("оМг");
+  оЮЛ:=спНастройки.GetByName("оЮЛ");
+  
+  ТЗ:="Period From НачДата to КонДата;
+  |зС:=Storage.ДвижениеТМЦ.Сумма;
+  |зС0:=Storage.ДвижениеТМЦ.Себестоимость;
+  |зК0:=Storage.ДвижениеТМЦ.Количество;
+  |зН:=Storage.ДвижениеТМЦ.Номенклатура;
+  |зМрТип:=Storage.ДвижениеТМЦ.ТипЗаписи;Condition(зМрТип<2);
+  |зМрТУ:=Storage.ДвижениеТМЦ.ТипУчета;Condition(зМрТУ=0);
+  |зТипАкт:=Storage.ДвижениеТМЦ.Договор.@Parent.ТипАктива;Condition(зТипАкт<>3);
+  |зСм:=SUM(зС);
+  |зСм0:=SUM(зС0);
+  |зКл:=SUM(зК0);"+
+  ?(not isEmpty(оН),"Condition(зН IN оН.Get(1));Condition(зН NOT IN оН.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оСк),"зСк:=Storage.ДвижениеТМЦ.Склад;Condition(зСк IN оСк.Get(1));Condition(зСк NOT IN оСк.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оК),"зК:=Storage.ДвижениеТМЦ.Договор.@Parent;Condition(зК IN оК.Get(1));Condition(зК NOT IN оК.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оД),"зД:=Storage.ДвижениеТМЦ.Договор;Condition(зД IN оД.Get(1));Condition(зД NOT IN оД.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оМг),"зМг:=Storage.ДвижениеТМЦ.Склад.Магазин;Condition(зМг IN оМг.Get(1));Condition(зМг NOT IN оМг.Get(2));"+_NEWLINE)+
+  ?(not isEmpty(оЮЛ),"зЮЛ:=Storage.ДвижениеТМЦ.Договор.ЮрЛицо;Condition(зЮЛ IN оЮЛ.Get(1));Condition(зЮЛ NOT IN оЮЛ.Get(2));"+_NEWLINE)+
+  "Group зН;";
+  
+  З:=Query.Create();
+  З.Execute(ТЗ);
+  
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+  If Стр="@HEADER@" Then
+    Index:=Index+1;
+    If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@HEADER@") Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+  Index2:=Index;
+  НомерСтроки:=0;
+  If Стр="@BODY@" Then
+    While З.Next(1) Do
+      НомерСтроки:=НомерСтроки+1;
+      Номенклатура:=З.зН;
+      Сумма:=З.зСм;
+      Количество:=З.зКл;
+      Себестоимость:=З.зСм0;
+      
+      Index:=Index2;
+      Index:=Index+1;
+      If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@BODY@") Then
+        Exit 0;
+      EndIf;
+      Form.StatusText(ТРез.Size());
+    EndDo;
+  EndIf;  
+  
+  Index:=Index2;
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index,"@BODY@");
+  If Стр="@FOOTER@" Then
+    Index:=Index+1;
+    If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@FOOTER@") Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  Message("Было выгружено "+НомерСтроки+" строк!");
+  Exit 1;
+EndFunction
+
+Function ВыгрузитьВедомостьПоТМЦ(Tx,ByRef Index,ТРез)
+  Message("Выгрузка остатков...");
+  оН:=спНастройки.GetByName("оН");
+  оСк:=спНастройки.GetByName("оСк");
+  //оЮЛ:=спНастройки.GetByName("оЮЛ");
+  
+  ТЗ:="Period From НачДата To КонДата;
+  |День:=Storage.ОстаткиТМЦ.@DAY;
+  |зСк:=Storage.ОстаткиТМЦ.Склад;
+  |зН:=Storage.ОстаткиТМЦ.Номенклатура;
+  |зКлОН:=BegTotals(Количество);
+  |зКлОК:=EndTotals(Количество);
+  |зКлОПр:=Income(Количество);
+  |зКлОРс:=Expense(Количество);"+
+  ?(not isEmpty(оСк),"Condition(зСк IN оСк.Get(1));Condition(зСк NOT IN оСк.Get(2));")+
+  ?(not isEmpty(оН),"Condition(зН IN оН.Get(1));Condition(зН NOT IN оН.Get(2));")+
+  ?(лнВыгружатьПоДням=1,"Group День;")+"Group зН;";
+  З:=Query.Create();
+  З.Execute(ТЗ);
+  
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+  If Стр="@HEADER@" Then
+    Index:=Index+1;
+    If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@HEADER@") Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+  Index2:=Index;
+  НомерСтроки:=0;
+  If Стр="@BODY@" Then
+    If лнВыгружатьПоДням=1 Then
+      While З.Next(1) Do
+        ТекДата:=З.День;
+        While З.Next(2) Do
+          НомерСтроки:=НомерСтроки+1;
+          Номенклатура:=З.зН;
+          КоличествоНачало:=З.зКлОН;
+          КоличествоКонец:=З.зКлОК;
+          КоличествоПриход:=З.зКлОПр;
+          КоличествоРасход:=З.зКлОРс;
+          
+          Index:=Index2;
+          Index:=Index+1;
+          If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@BODY@") Then
+            Exit 0;
+          EndIf;
+        EndDo;  
+      EndDo;
+    Else
+      While З.Next(1) Do
+        НомерСтроки:=НомерСтроки+1;
+        Номенклатура:=З.зН;
+        КоличествоНачало:=З.зКлОН;
+        КоличествоКонец:=З.зКлОК;
+        КоличествоПриход:=З.зКлОПр;
+        КоличествоРасход:=З.зКлОРс;
+        
+        Index:=Index2;
+        Index:=Index+1;
+        If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@BODY@") Then
+          Exit 0;
+        EndIf;
+        Form.StatusText(ТРез.Size());
+      EndDo;
+    EndIf;  
+  EndIf;  
+  
+  Index:=Index2;
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index,"@BODY@");
+  If Стр="@FOOTER@" Then
+    Index:=Index+1;
+    If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@FOOTER@") Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  Message("Было выгружено "+НомерСтроки+" строк!");
+  Exit 1;
+EndFunction
+
+
+Function ВыгрузитьСписокНоменклатуры(Tx,ByRef Index,ТРез)
+  Message("Выгрузка списка номенклатуры...");
+  
+  оН:=спНастройки.GetByName("оН");
+  ТЗ:="зСтатус:=Ref.тмцНоменклатура.@Status;Condition(зСтатус<>1);
+  |зН:=Ref.тмцНоменклатура;
+  |Condition(зН IN оН.Get(1));
+  |Condition(зН NOT IN оН.Get(2));
+  |Group зН;";
+  
+  З:=Query.Create();
+  З.Execute(ТЗ,2);
+  
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+  If Стр="@HEADER@" Then
+    Index:=Index+1;
+    If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@HEADER@") Then
+      Exit 0;
+    EndIf;
+  EndIf;
+
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+  Index2:=Index;
+  НомерСтроки:=0;
+  If Стр="@BODY@" Then
+    While З.Next(1) Do
+      НомерСтроки:=НомерСтроки+1;
+      Номенклатура:=З.зН;
+      
+      Index:=Index2;
+      Index:=Index+1;
+      If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@BODY@") Then
+        Exit 0;
+      EndIf;
+    EndDo;
+  EndIf;  
+  
+  Index:=Index2;
+  Стр:=ПропуститьДоСледующегоРаздела(Tx,Index,"@BODY@");
+  If Стр="@FOOTER@" Then
+    Index:=Index+1;
+    If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@FOOTER@") Then
+      Exit 0;
+    EndIf;
+    Form.StatusText(ТРез.Size());
+  EndIf;
+  
+  Message("Было выгружено "+НомерСтроки+" строк!");
+  Exit 1;
+EndFunction
+
+
+Function ПроизвестиВыгрузкуТела(Tx,ByRef Index,ТРез)
+  If лнТипВыгрузки=0 Then
+    Exit ВыгрузитьДокументыПоСтрокам(Tx,Index,ТРез);
+  ElseIf лнТипВыгрузки=1 Then
+    Exit ВыгрузитьВедомостьПоТМЦ(Tx,Index,ТРез);
+  ElseIf лнТипВыгрузки=2 Then
+    Exit ВыгрузитьАнализПродажОбщий(Tx,Index,ТРез);
+  ElseIf лнТипВыгрузки=3 Then
+    Exit ВыгрузитьСписокНоменклатуры(Tx,Index,ТРез);
+  ElseIf (лнТипВыгрузки=4)Or(лнТипВыгрузки=5) Then
+    Exit ВыгрузитьАнализПродажПоСтрокам(Tx,Index,ТРез,лнТипВыгрузки);
+  ElseIf (лнТипВыгрузки=6)Or(лнТипВыгрузки=7) Then
+    Exit ВыгрузитьАнализПродажБезСтрок(Tx,Index,ТРез,лнТипВыгрузки);
+  Else
+    Message("Неизвестный или невыбранный тип выгрузки ("+лнТипВыгрузки+")!","!");
+    Exit 0;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+
+
+Function Выгрузить()
+  Шаблон:=спНастройки.GetByName("Шаблон");
+  If not File.DoesFileExist(Шаблон) Then
+    Message("Не найден файл шаблона "+Шаблон+"!","!");
+    Exit;
+  EndIf;
+  спДопСвойства:=List.Create();
+  оК:=спНастройки.GetByName("оК");
+  
+  If (спНастройки.GetByName("ТолькоОдинКонтрагент")=1)And(not isEmpty(оК)) Then
+    If (оК.Get(1).Size()<>1)Or(оК.Get(2).Size()<>0) Then
+      Message("Для этой выгрузки необходимо выбрать одного контрагента!","!");
+      Exit 0;
+    EndIf;
+    If оК.Get(1).Get(1).IsFolder() Then
+      Message("Для этой выгрузки необходимо выбрать одного контрагента (не папку)!","!");
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  
+  ПапкаВыгрузки:=спНастройки.GetByName("ПапкаВыгрузки");
+  If (ПапкаВыгрузки="?")or(ПапкаВыгрузки="") Then
+    If not SelectFolderDialog(ПапкаВыгрузки,"Выберите каталог для выгрузки:") Then
+      Exit 1;
+    EndIf;
+    ПапкаВыгрузки:=AddBackSlash(ПапкаВыгрузки);
+    If not File.DoesPathExist(ПапкаВыгрузки) Then
+      File.CreateDirectory(ПапкаВыгрузки);
+      If not File.DoesPathExist(ПапкаВыгрузки) Then
+        Message("Невозможно создать папку выгрузки: "+ПапкаВыгрузки+"!","!");
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  
+  If Number(спНастройки.GetByName("ОчиститьПапкуПередВыгрузкой"))=1 Then
+    ОчиститьКаталог(ПапкаВыгрузки,"Очистка каталога...");
+  EndIf;
+  
+  Tx:=Text.Create(1);
+  Tx.Load(Шаблон,0);
+  
+  Index:=1;
+  While Index<=Tx.Size() Do
+    Стр:=Tx.GetLine(Index);
+    If (Left(Стр,1)=";")Or(Стр="") Then
+      Index:=Index+1;
+      Continue;
+    EndIf;
+    
+    If Left(Стр,1)<>"[" Then
+      Index:=Index+1;
+      Continue;
+    EndIf;
+  
+    лнИмяФайла:="";
+    лнFTP:="";
+    лнEmail:="";
+    лнТипВыгрузки:=-1;
+    лнИмяДок:="";
+    лнКОДок:="";
+    лнЗапуститьФайлПослеВыгрузки:="";
+    лнОдинДокументНаФайл:=0;
+    лнОдинКонтрагент:=0;
+    лнUTF8:=0;
+    лнПартии:=0;
+    лнОтниматьВозвраты:=0;
+    лнВыгружатьПоДням:=0;
+    лнИсполнитьПередВыгрузкой:="";
+    тПроверкаКорректностиВыгрузки:=Tab.Create("Условие,Сообщение");
+    ТРез:=Text.Create(1);
+    aVars:=List.Create();
+    
+    СтрПер:="";
+    While Index<=Tx.Size() Do
+      Стр:=Tx.GetLine(Index);
+      If (Left(Стр,1)=";")Or(Стр="") Then
+        Index:=Index+1;
+        Continue;
+      EndIf;
+      If Стр="!!!CHECKPASS!!!" Then
+        Стр2:="";
+        Index:=Index+1;
+        While Index<=Tx.Size() Do
+          Стр:=Tx.GetLine(Index);
+          If Стр="!!!CHECKPASS!!!" Then
+            Index:=Index+1;
+            Break;
+          EndIf;
+          Стр2:=?(Стр2="","",Стр2+_NEWLINE)+Стр;
+          Index:=Index+1;
+        EndDo;
+        лнИсполнитьПередВыгрузкой:=Стр2;
+      ElseIf Стр="!!!EXECUTE!!!" Then
+        Стр2:="";
+        Index:=Index+1;
+        While Index<=Tx.Size() Do
+          Стр:=Tx.GetLine(Index);
+          If Стр="!!!EXECUTE!!!" Then
+            Index:=Index+1;
+            Break;
+          EndIf;
+          Стр2:=?(Стр2="","",Стр2+_NEWLINE)+Стр;
+          Index:=Index+1;
+        EndDo;
+        Try
+          If Стр2<>"" Then
+            Exec(Стр2);
+          EndIf;  
+        Except
+          ТипОшибки:=PeekError(1);
+          ТипОшибки:=Trim(TearStr(ТипОшибки," at "));
+          ТипОшибки:=Number(Mid(ТипОшибки,2));
+          If ТипОшибки=41 Then  //Пользовательская ошибка
+            Message(PopError(4),"!");
+          Else
+            Message(PopError(),"!");
+            Message("Ошибка возникла при вычислении выражения:");
+            Message(Стр2);
+          EndIf;        
+          Exit 0;
+        EndTry;
+        Continue;
+      EndIf;
+      СтрЗнач:=Стр;
+      
+      СтрПер:=UpperCase(TearStr(СтрЗнач,"="""));
+      If Right(СтрЗнач,1)="""" Then
+        СтрЗнач:=Mid(СтрЗнач,1,Length(СтрЗнач)-1);
+      EndIf;
+      If СтрПер="ИМЯФАЙЛА" Then
+        лнИмяФайла:=СтрЗнач;
+      ElseIf СтрПер="ТИПВЫГРУЗКИ" Then
+        лнТипВыгрузки:=Number(СтрЗнач);
+      ElseIf СтрПер="ВЫЛОЖИТЬНАFTP" Then
+        лнFTP:=Trim(СтрЗнач);
+      ElseIf СтрПер="ОТОСЛАТЬПОЭЛЕКТРОННОЙПОЧТЕ" Then
+        лнEmail:=Trim(СтрЗнач);
+      ElseIf СтрПер="ТИПДОКУМЕНТОВ" Then
+        лнИмяДок:=СтрЗнач;
+      ElseIf СтрПер="КОДОПЕРАЦИИ" Then
+        лнКОДок:=СтрЗнач;
+      ElseIf СтрПер="ОДИНДОКУМЕНТНАФАЙЛ" Then
+        лнОдинДокументНаФайл:=Number(СтрЗнач);
+      ElseIf СтрПер="КОНВЕРТИРОВАТЬВUTF8" Then
+        лнUTF8:=Number(СтрЗнач);
+      ElseIf СтрПер="ВЫГРУЖАТЬПОПАРТИЯМ" Then
+        лнПартии:=Number(СтрЗнач);
+      ElseIf СтрПер="ОТНИМАТЬВОЗВРАТЫОТРЕАЛИЗАЦИЙ" Then
+        лнОтниматьВозвраты:=Number(СтрЗнач);
+      ElseIf СтрПер="ВЫГРУЖАТЬПОДНЯМ" Then
+        лнВыгружатьПоДням:=Number(СтрЗнач);
+      ElseIf СтрПер="ЗАПУСТИТЬФАЙЛПОСЛЕВЫГРУЗКИ" Then
+        лнЗапуститьФайлПослеВыгрузки:=СтрЗнач;
+      ElseIf СтрПер="КОНВЕРТИРОВАТЬCRLFВLF" Then
+        лнКонвертироватьПереводСтроки:=Number(СтрЗнач);
+      ElseIf Pos("@",Стр)=1 Then
+        Break;
+      EndIf;
+      Index:=Index+1;
+    EndDo;
+    
+    If лнИмяФайла="" Then
+      Message("В файле шаблона, отсутствует имя файла для выгрузки!","!");
+      Exit 0;
+    EndIf;
+    
+    СтрПер:=Tx.GetLine(Index);
+    If СтрПер="@CONDITIONS@" Then
+      Index:=Index+1;
+      While Index<=Tx.Size() Do
+        Стр:=Tx.GetLine(Index);
+        If (Left(Стр,1)=";")Or(Стр="") Then
+          Index:=Index+1;
+          Continue;
+        EndIf;
+        If Стр="@CONDITIONS@" Then
+          Index:=Index+1;
+          Break;
+        EndIf;
+        тПроверкаКорректностиВыгрузки.AddLine("Условие,Сообщение",TearStr(Стр,"|"),Стр);
+        Index:=Index+1;
+      EndDo;
+    EndIf;
+    
+    Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+    If Стр="@FILEHEADER@" Then
+      Index:=Index+1;
+      If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@FILEHEADER@") Then
+        Exit 0;
+      EndIf;
+    EndIf;
+    
+    Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+    If not ПроизвестиВыгрузкуТела(Tx,Index,ТРез) Then
+      Exit 0;
+    EndIf;
+    
+    Стр:=ПропуститьДоСледующегоРаздела(Tx,Index);
+    If Стр="@FILEFOOTER@" Then
+      Index:=Index+1;
+      If not ВыгрузитьПростойБлок(Tx,Index,ТРез,"@FILEFOOTER@") Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  
+    ФайлВыгрузки:="";
+    If (лнТипВыгрузки<>0)or(лнОдинДокументНаФайл<>1) Then
+      ФайлВыгрузки:=ПапкаВыгрузки+лВычислитьВыражение(лнИмяФайла);
+    EndIf;  
+    
+    If (лнОдинДокументНаФайл<>1)Or(лнТипВыгрузки<>0) Then
+      If not ОкончаниеВыгрузки(ТРез,ФайлВыгрузки) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+    
+  EndDo;
+  
+  Message("Выгрузка завершена успешно!","I");
+  Exit 1;
+EndFunction
+
+Function OnExecute(СпУстановки)
+  Выгрузить();
+EndFunction
+
+Function ИсправитьПериод()
+  ТипПериода:=спНастройки.GetByName("ОграничитьПериод");
+  If ТипПериода=0 Then
+    Exit;
+  ElseIf ТипПериода=1 Then //Неделя
+    НачДата:=Min(BegOfWeek(НачДата),BegOfWeek(Date()));
+    КонДата:=Min(EndOfWeek(НачДата),Date());
+  ElseIf ТипПериода=2 Then //Месяц
+    НачДата:=Min(BegOfMonth(НачДата),BegOfMonth(Date()));
+    КонДата:=Min(EndOfMonth(НачДата),Date());
+  ElseIf ТипПериода=3 Then //Год
+    НачДата:=Min(BegOfYear(НачДата),BegOfYear(Date()));
+    КонДата:=Min(EndOfYear(НачДата),Date());
+  ElseIf ТипПериода=4 Then //День
+    НачДата:=КонДата;
+  EndIf;
+  If Form.Type=0 Then
+    Form.НачДата.Value:=НачДата;
+    Form.КонДата.Value:=КонДата;
+  EndIf;
+EndFunction
+
+Function ЗапретитьДоступ(Фл)
+    If Form.Type=0 Then
+      Form.cPeriod.isDisabled:=Фл;
+      Form.пЮрЛицо.isDisabled:=Фл;
+      Form.пМагазин.isDisabled:=Фл;
+      Form.пКонтрагент.isDisabled:=Фл;
+      Form.пДоговор.isDisabled:=Фл;
+      Form.пНоменклатура.isDisabled:=Фл;
+      Form.пСклад.isDisabled:=Фл;
+      Form.оЮЛ.isDisabled:=Фл;
+      Form.оМг.isDisabled:=Фл;
+      Form.оК.isDisabled:=Фл;
+      Form.оД.isDisabled:=Фл;
+      Form.оН.isDisabled:=Фл;
+      Form.оСк.isDisabled:=Фл;
+      
+      Form.тПараметр.isInvisible:=isEmpty(ДополнительныйСписок);
+      Form.оПараметр.isInvisible:=isEmpty(ДополнительныйСписок);
+    EndIf;
+EndFunction
+
+
+Function ОбновитьНастройкуИзФильтров()
+  Function ОбновитьНайстроку(СтрИмя)
+    оФильтр:=спНастройки.GetByName(СтрИмя);
+    If isEmpty(оФильтр) Then
+      спНастройки.SetByName(СтрИмя,List.Create(List.Create(),List.Create()));
+      оФильтр:=спНастройки.GetByName(СтрИмя);
+    EndIf;
+    оФильтр.Get(1).Clear();
+    оФильтр.Get(2).Clear();
+    Form.Control(СтрИмя).Value.Get(1).CopyTo(оФильтр.Get(1));
+    Form.Control(СтрИмя).Value.Get(2).CopyTo(оФильтр.Get(2));
+  EndFunction  
+
+
+  ОбновитьНайстроку("оЮЛ");
+  ОбновитьНайстроку("оМг");
+  ОбновитьНайстроку("оК");
+  ОбновитьНайстроку("оД");
+  ОбновитьНайстроку("оН");
+  ОбновитьНайстроку("оСк");
+
+  НачДата:=BegOfDay(Form.НачДата.Value);
+  КонДата:=BegOfDay(Form.КонДата.Value);
+  ИсправитьПериод();
+EndFunction
+
+Function ОбновитьФильтрыИзНастройки()
+  Function ОбновитьФильтр(СтрИмя)
+    оФильтр:=спНастройки.GetByName(СтрИмя);
+    Form.Control(СтрИмя).Value.Get(1).Clear();
+    Form.Control(СтрИмя).Value.Get(2).Clear();
+    If not isEmpty(оФильтр) Then
+      оФильтр.Get(1).CopyTo(Form.Control(СтрИмя).Value.Get(1));
+      оФильтр.Get(2).CopyTo(Form.Control(СтрИмя).Value.Get(2));
+    EndIf;  
+  EndFunction  
+
+  оТипы:=Form.оТипы.Value;
+  ФлСтрока:=оТипы.SelectedLine;
+  If ФлСтрока>0 Then
+    ФлСтрока:=оТипы.Get(ФлСтрока);
+    ЗапретитьДоступ(0);
+  Else
+    ЗапретитьДоступ(1);
+  EndIf;
+  оТипы.Clear();
+  СпТипы.CopyTo(оТипы);
+  ФлСтрока:=оТипы.Find(ФлСтрока);
+  If ФлСтрока>0 Then
+    оТипы.SelectedLine:=ФлСтрока;
+  EndIf;
+  
+  ОбновитьФильтр("оЮЛ");
+  ОбновитьФильтр("оМг");
+  ОбновитьФильтр("оК");
+  ОбновитьФильтр("оД");
+  ОбновитьФильтр("оН");
+  ОбновитьФильтр("оСк");
+  
+  НачДата:=BegOfDay(Form.НачДата.Value);
+  КонДата:=BegOfDay(Form.КонДата.Value);
+EndFunction;
+
+
+Function ПолучитьНастройку(Путь,Умолч="",Ошибка="")
+  Result:=Уст.GetData(Путь,Умолч);
+  If _And(Result=Умолч,Ошибка<>"") Then
+    Message("Для данного типа выгрузки "+Ошибка+" ("+Путь+"), обратитесь к администратору!","!");
+  EndIf;
+EndFunction
+
+Function ДобавитьСписок(Стр,ВидСпр,Сп)
+  While Стр<>"" Do
+    Код:=TearStr(Стр,",");
+    aEl:=DB("Ref."+ВидСпр,"Code",Код);
+    If not isEmpty(aEl) Then
+      Сп.Get(1).Add(aEl);
+    EndIf;
+  EndDo;
+EndFunction
+
+
+Function ЗаполнитьНастройки(ФлСтрока)
+  спНастройки:=List.Create();
+  If isEmpty(ФлСтрока) Then
+    ЗапретитьДоступ(1);
+    Exit;
+  EndIf;
+  Путь:=СпТипы.Get(ФлСтрока);
+  ДополнительныйСписок:=Trim(ПолучитьНастройку(Путь+"\ДополнительныйСписок","",""));
+  ЗапретитьДоступ(0);
+  
+  ПапкаВыгрузки:=Trim(ПолучитьНастройку(Путь+"\ПапкаВыгрузки","",""));
+  If Pos("TEMP\",uppercase(ПапкаВыгрузки))=1 Then
+    ПапкаВыгрузки:=AddBackSlash(AddBackSlash(GetTempDirectory())+Mid(ПапкаВыгрузки,6));
+    File.CreateDirectory(ПапкаВыгрузки);
+  ElseIf (ПапкаВыгрузки<>"")And(ПапкаВыгрузки<>"?") Then
+    ПапкаВыгрузки:=AddBackSlash(ПапкаВыгрузки);
+    If not File.DoesPathExist(ПапкаВыгрузки) Then
+      File.CreateDirectory(ПапкаВыгрузки);
+      If not File.DoesPathExist(ПапкаВыгрузки) Then
+        Message("Внимание! Невозможно создать папку выгрузки: "+ПапкаВыгрузки+"!","!");
+      EndIf;
+    EndIf;
+  EndIf;
+  спНастройки.SetByName("ПапкаВыгрузки",ПапкаВыгрузки);
+
+  If not isEmpty(ДополнительныйСписок) Then
+    Form.тПараметр.isInvisible:=0;
+    Form.оПараметр.isInvisible:=0;
+    Form.оПараметр.Value.Clear();
+    Form.оПараметр.Value.FromString(ДополнительныйСписок,",");
+    Form.оПараметр.Value.SelectedLine:=1;
+  Else
+    Form.тПараметр.isInvisible:=1;
+    Form.оПараметр.isInvisible:=1;
+  EndIf;
+  
+  оЮЛ:=List.Create(List.Create(),List.Create());
+  оМг:=List.Create(List.Create(),List.Create());
+  оН:=List.Create(List.Create(),List.Create());
+  оСк:=List.Create(List.Create(),List.Create());
+  оК:=List.Create(List.Create(),List.Create());
+  оД:=List.Create(List.Create(),List.Create());
+  спНастройки.SetByName("оЮЛ",оЮЛ);
+  спНастройки.SetByName("оМг",оМг);
+  спНастройки.SetByName("оН",оН);
+  спНастройки.SetByName("оСк",оСк);
+  спНастройки.SetByName("оК",оК);
+  спНастройки.SetByName("оД",оД);
+  
+  нсШаблон:=ПолучитьНастройку(Путь+"\Шаблон","","не выбран файл шаблона");
+  ДобавитьСписок(ПолучитьНастройку(Путь+"\Номенклатура",""),"тмцНоменклатура",оН);
+  ДобавитьСписок(ПолучитьНастройку(Путь+"\Магазин",""),"рознМагазины",оМг);
+  ДобавитьСписок(ПолучитьНастройку(Путь+"\ЮрЛицо",""),"общЮридическиеЛица",оЮЛ);
+  ДобавитьСписок(ПолучитьНастройку(Путь+"\Склад",""),"общСклады",оСк);
+  ДобавитьСписок(ПолучитьНастройку(Путь+"\Контрагент",""),"кнтКонтрагенты",оК);
+  ДобавитьСписок(ПолучитьНастройку(Путь+"\Договор",""),"кнтДоговоры",оД);
+  
+  спНастройки.SetByName("ОчиститьПапкуПередВыгрузкой",Number(ПолучитьНастройку(Путь+"\ОчиститьПапкуПередВыгрузкой","1")));
+  спНастройки.SetByName("ТолькоОдинКонтрагент",Number(ПолучитьНастройку(Путь+"\ТолькоОдинКонтрагент","0")));
+  ТипПериода:=lowercase(ПолучитьНастройку(Путь+"\ОграничитьПериод",""));
+  If ТипПериода="week" Then
+    ТипПериода:=1;
+  ElseIf ТипПериода="day" Then
+    ТипПериода:=4;
+  ElseIf ТипПериода="month" Then
+    ТипПериода:=2;
+  ElseIf ТипПериода="year" Then
+    ТипПериода:=3;
+  Else
+    ТипПериода:=0;
+  EndIf;
+  спНастройки.SetByName("ОграничитьПериод",ТипПериода);
+  спНастройки.SetByName("Шаблон","Modules\FreeForms\ВнутренниеОбработки\УниверсальнаяВыгрузкаЗагрузка\"+нсШаблон);
+  
+  ИсправитьПериод();
+EndFunction
+
+Function OnAfterPeriodChange()
+  ОбновитьНастройкуИзФильтров();
+  ИсправитьПериод();
+EndFunction
+
+Function OnOpen()
+  СтрВнеш:=Trim(Param);
+  ФлВыгрузить:=0;
+  If СтрВнеш<>"" Then
+    ФлВыгрузить:=1;
+    Result:=0;
+  EndIf;
+  СпТипы:=List.Create();
+  спНастройки:=List.Create();
+  
+  Уст:=Ini.Create();
+  Уст.AddFromFile("Modules\FreeForms\ВнутренниеОбработки\УниверсальнаяВыгрузкаЗагрузка\УстановкиВыгрузки.ini",1);
+  
+  For iLoop:=1 To Уст.ComponentsInBranch("") Do
+    Путь:=Уст.GetComponentByNumberName("",iLoop);
+    If not Уст.IsBranch(Путь) Then
+      Continue;
+    EndIf;
+    
+    База:=Уст.GetData(Путь+"\ПрефиксИБ","");
+    If _And(База<>"",pos(","+Trim(DBVar.ПрефиксИБ)+",",","+База+",")=0) Then
+      Continue;
+    EndIf;
+    Описание:=Уст.GetData(Путь+"\Описание","");
+    СпТипы.Add(Путь,Описание);
+  EndDo;
+  ФлСтрока:=СпТипы.Find(СтрВнеш);
+  If ФлСтрока=0 Then
+    If ФлВыгрузить Then
+      Raise "Невозможно найти настройку "+СтрВнеш+" для выгрузки";
+      Exit;
+    EndIf;
+    СтрВнеш:="";
+  EndIf;  
+  ЗаполнитьНастройки(ФлСтрока);
+  
+  If ФлВыгрузить Then
+    If Выгрузить()=0 Then
+      Raise "Выгрузка "+СтрВнеш+" завершена неудачно!";
+    EndIf;
+  EndIf;
+EndFunction
+

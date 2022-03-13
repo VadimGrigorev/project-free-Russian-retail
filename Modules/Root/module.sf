@@ -1,0 +1,2480 @@
+//Глобальные (root) модули загружаются при старте системы. Загрузка начинается с модуля "module" и продолжается в алфавитном порядке.
+//Переменные и функции, объявленные с постфиксом export, будут доступны в любых других модулях в любых потоках системы.
+//Модуль может содержать специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+//Переменные общего назначения
+Var глПользователь Export;                        //Пользователь (эл. справочника общПользователи)
+Var глРаботаетРобот Export;                       //Флаг разрешения административных полномочий
+Var глСрвОтвет Export;                            //Таблица отложенного ответа при обмене документами на сервере
+Var глКоличествоЗнаковВОтчетах Export;            //Количество знаков после запятой в отчетах
+Var глМаксимальныйПериодРасчетаДебиторскойЗадолж Export; //Документы старше этого срока всегда считаются просроченными (оптимизация)
+Var глОснВалюта Export;                           //Основная валюта
+Var флНеДелитьНаОсновныеИБазовыеВДокументах Export; //Копия переменной для оптимизации
+Var флЦентральнаяБаза Export;                     //Копия переменной для оптимизации
+Var флРазрешитьЗатратыПоНачислению Export;        //Копия переменной для оптимизации
+Var глТаймерПерезагрузки Export;                  //Таймер до перезагрузки программы для сервера распред. базы -- каждую ночь в 00:30
+Var глОбработкаСинхронизацииАктивна Export;       //Для некоторых режимов, чтобы не было возможности запустить обработку второй раз, работает только для singlethreaded режима
+
+
+Function глФРМЧл(Чл,Нуль="0") Export
+  Exit FormatNumber(Чл,Нуль="0"," ",глКоличествоЗнаковВОтчетах);
+EndFunction
+
+Function глФРМ(Чл,Нуль="0") Export
+  Exit FormatNumber(Чл,Нуль="0","'",2);
+EndFunction
+
+Function глЕстьРеквизитДокумента(ИмяРеквизита,ВидДокумента) Export
+  Exit not isEmpty(Struct.Doc(ВидДокумента).Props(ИмяРеквизита));
+EndFunction
+
+Function глЕстьРеквизитСправочника(ИмяРеквизита,ВидСправочника) Export
+  Exit not isEmpty(Struct.Ref(ВидСправочника).Props(ИмяРеквизита));
+EndFunction
+
+//aForm -- вызов из документов для запрета доступности
+Function глДатаОплаты(Док,Договор,aForm=0) Export
+
+  If aForm<>0 Then
+    If Договор.Selected()<>0 Then
+      If Pos("@"+Док.DBName()+"@","@Реализация@ВозвратПоставщику@ВыпискаБанкаРасход@РКО@РеализацияПрочее@")>0 Then
+        If Договор.Parent().ТипАктива<>0 Then
+          aForm.ДатаОплаты.isDisabled:=1;
+          aForm.тОплатаДо.isDisabled:=1;
+        Else
+          aForm.ДатаОплаты.isDisabled:=0;
+          aForm.тОплатаДо.isDisabled:=0;
+        EndIf;
+      ElseIf Договор.Parent().ТипАктива=0 Then
+        aForm.ДатаОплаты.isDisabled:=1;
+        aForm.тОплатаДо.isDisabled:=1;
+      Else
+        aForm.ДатаОплаты.isDisabled:=0;
+        aForm.тОплатаДо.isDisabled:=0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  Exit Док.DocDate+Договор.ГлубинаКредита;
+EndFunction
+
+
+Function глЗаголовокФильтра(спФильтр) Export
+  If TypeStr(спФильтр)<>"LIST" Then
+    Exit ""+спФильтр;
+  Else
+    If спФильтр.Size()=0 Then
+      Exit "";
+    EndIf;
+    If TypeStr(спФильтр.Get(1))="LIST" Then
+      Стр:="";
+      Сп1:=спФильтр.Get(1);
+      If Сп1.Size()=1 Then
+        Стр:=""+Сп1.Get(1);
+      ElseIf Сп1.Size()>1 Then
+        Стр:="Выбрано "+Сп1.Size();
+      EndIf;
+      If спФильтр.Size()>1 Then
+        If TypeStr(спФильтр.Get(2))="LIST" Then
+          Сп1:=спФильтр.Get(2);
+          If Сп1.Size()=1 Then
+            Стр:=?(Стр="","Кроме ",Стр+", кроме ")+Сп1.Get(1);
+          ElseIf Сп1.Size()>1 Then
+            Стр:=?(Стр="","Кроме ",Стр+", кроме ")+Сп1.Size();
+          EndIf;
+        EndIf;
+      EndIf;
+      Exit Стр;
+    ElseIf спФильтр.Size()=1 Then
+      Exit ""+спФильтр.Get(1);
+    Else
+      Exit "Выбрано "+спФильтр.Size();
+    EndIf;
+  EndIf;
+EndFunction
+
+//TODO: не работает с префиксами более одного символа
+Function глНайтиПоКоду(СпрИмя,ByVal Код,Родитель=0) Export
+  а:=DB("Ref."+СпрИмя);
+  Пр:=Left(Код,1);
+  Пр:=?(Пр>"9",Пр,"");
+  Код:=?(Trim(Пр)<>"",Mid(Код,2),Код);
+  
+  Стр:=Struct.Ref(СпрИмя).Props("Code").DataType;
+  If Pos("STRING.",Стр)=1 Then
+    TearStr(Стр,"STRING.");
+    Дл:=Number(Стр);
+    КодСНулями:=Right("000000000000000000"+Trim(Код),Дл-Length(Пр));
+  Else
+    КодСНулями:=Код;
+  EndIf;
+  
+  If ?(Родитель=0,а.Find("Code",Пр+КодСНулями),а.Find("@Parent,Code",Родитель,Пр+КодСНулями)) Then
+    Exit а;
+  ElseIf ?(Родитель=0,а.Find("Code","0"+КодСНулями),а.Find("@Parent,Code",Родитель,"0"+КодСНулями)) Then
+    Exit а;
+  ElseIf ?(Родитель=0,а.Find("Code",Trim(DBVar.ПрефиксИБ)+КодСНулями),а.Find("@Parent,Code",Родитель,Trim(DBVar.ПрефиксИБ)+КодСНулями)) Then
+    Exit а;
+  EndIf;
+  Exit 0;
+EndFunction
+
+Function глКоэффНДС(НДС,НДСВЦене=1) Export
+  If НДСВЦене=1 Then
+    If НДС=Enum.СтавкиНДС.БезНДС Then
+      Exit 0;
+    ElseIf НДС=Enum.СтавкиНДС.НДС0 Then
+      Exit 0;
+    ElseIf НДС=Enum.СтавкиНДС.НДС10 Then
+      Exit 10/110;
+    ElseIf НДС=Enum.СтавкиНДС.НДС18 Then
+      Exit 18/118;
+    ElseIf НДС=Enum.СтавкиНДС.НДС20 Then
+      Exit 20/120;
+    EndIf;
+  Else
+    If НДС=Enum.СтавкиНДС.БезНДС Then
+      Exit 0;
+    ElseIf НДС=Enum.СтавкиНДС.НДС0 Then
+      Exit 0;
+    ElseIf НДС=Enum.СтавкиНДС.НДС10 Then
+      Exit 10/100;
+    ElseIf НДС=Enum.СтавкиНДС.НДС18 Then
+      Exit 18/100;
+    ElseIf НДС=Enum.СтавкиНДС.НДС20 Then
+      Exit 20/100;
+    EndIf;
+  EndIf;
+  Exit 0;
+EndFunction
+
+//Удаленные:=1 -- все, 0 -- обраб. и не обраб, -1 -- только обработанные
+//           2 -- все, но сначала обработанные, потом не обраб. и только затем удаленные
+Function глНайтиПодчиненныйПоВиду(Док,ВидДок,Удаленные=0,КромеДок=0) Export
+  If Док.Selected()<=0 Then
+    Exit 0;
+  EndIf;
+  
+  bDoc:=0;
+  а:=Док.LoadLinkedDocuments(1);
+  For i:=1 To а.Size() Do 
+    aDoc:=а.Get(i);
+    If aDoc=КромеДок Then
+      Continue;
+    EndIf;
+    If aDoc.DBName()=ВидДок Then
+      If Удаленные=2 Then
+        If aDoc.Status()>1 Then
+          Exit aDoc;
+        EndIf;
+        If aDoc.Status()=0 Then
+          If _Or(bDoc=0,bDoc.Status()=1) Then
+            bDoc:=aDoc;
+          EndIf;
+        ElseIf bDoc=0 Then
+          bDoc:=aDoc;
+        EndIf;
+      ElseIf aDoc.Status()=1 Then
+        If Удаленные=1 Then
+          Exit aDoc;
+        EndIf;
+      ElseIf aDoc.Status()<2 Then
+        If Удаленные>-1 Then
+          Exit aDoc;
+        EndIf;
+      Else
+        Exit aDoc;
+      EndIf;
+    EndIf;
+  EndDo;
+  Exit bDoc;
+EndFunction
+
+//Функция вызывается при окончании работы системы до закрытия GUI.
+Function OnSystemExit()
+  If ProgramMode()=1 Then
+    If AskQuestion("Закончить работу с системой?",Q_QUESTION+Q_YESNO,R_YES)=R_NO Then
+      Result:=0;
+      Exit;
+    EndIf;
+  EndIf;
+EndFunction
+
+Function глПредставлениеАдреса(Адрес,флФорма=0) Export
+  а:=Trim(Адрес);
+  While Pos(",,",а)>0 Do
+    а:=Replace(а,",,",",");
+  EndDo;
+  While Left(а,1)="," Do
+    а:=Mid(а,2);
+  EndDo;
+  While Right(а,1)="," Do
+    а:=Left(а,Length(а)-1);
+  EndDo;
+  If (флФорма)And(а="") Then
+    Exit "<не указан>";
+  Else
+    Exit а;
+  EndIf;  
+EndFunction
+
+Function глПредставлениеУдостоверения(Стр,ByRef Строка1="",ByRef Строка2="",флФорма=0) Export
+  Стр:=Trim(Стр);
+  If Стр="" Then
+    If флФорма Then
+      Exit "<не указано>";
+    Else
+      Exit "";
+    EndIf;  
+  Else
+    Вид:=Trim(TearStr(Стр,","));
+    Серия:=Trim(TearStr(Стр,","));
+    Номер:=Trim(TearStr(Стр,","));
+    ДатаВыдачи:=Trim(TearStr(Стр,","));
+    КемВыдан:=Trim(TearStr(Стр,","));
+    Строка1:=Trim(Вид+?(Серия="",""," серия "+Серия)+?(Номер="",""," № "+Номер));
+    Строка2:=Trim(?(ДатаВыдачи="","",ДатаВыдачи)+?(КемВыдан="",""," "+КемВыдан));
+    Exit Строка1+?(Строка2="",""," выдан ")+Строка2;
+  EndIf;
+EndFunction
+
+//Важно: Интервал в секундах
+Function глПроверитьВремяВРасписании(Расписание,ПрошлыйЗапуск,Интервал) Export
+  //<ДатаВремя1>,<ДатаВремя2>...
+  //ДатаВремя: [[<ТипДня>]<День>:]<Часы>:<Минуты>
+  //  или <КаждыеXМинут>
+  //ТипДня: d,m(умолч),y
+  ТекДата:=Date();
+  Минуты:=GetHour(ТекДата)*60+GetMinute(ТекДата);
+  If Number(Интервал)<=0 Then
+    Интервал:=1800;
+  EndIf;
+  
+  While Расписание<>"" Do
+    Стр:=Trim(TearStr(Расписание,","));
+    If Стр="" Then
+      Continue;
+    EndIf;
+    If Pos(":",Стр)=0 Then //Каждые X минут
+      If Number(Стр)<=0 Then
+        Continue;
+      EndIf;
+      If _Or(isEmpty(ПрошлыйЗапуск),GetPeriod(ПрошлыйЗапуск,ТекДата,4)>Number(Стр)*60) Then
+        Exit 1;
+      EndIf;
+    EndIf;
+    If _And(not isEmpty(ПрошлыйЗапуск),GetPeriod(ПрошлыйЗапуск,ТекДата,4)<=Интервал) Then
+      Continue;
+    EndIf;
+    
+    //d6:05:00
+    СтрДень:="";
+    Стр1:=TearStr(Стр,":"); //05:00
+    If Pos(":",Стр)>0 Then
+      СтрДень:=Стр1;
+      СтрЧас:=TearStr(Стр,":");
+      СтрМин:=Стр;
+    Else
+      СтрЧас:=Стр1;
+      СтрМин:=Стр;
+    EndIf;
+    //Проверяем день
+    If СтрДень<>"" Then
+      Буква:=Uppercase(Left(СтрДень,1));
+      If (Буква="D")or(Буква="M")or(Буква="Y") Then
+        СтрДень:=Mid(СтрДень,2);
+      Else
+        Буква:="M";
+      EndIf;
+      ЧлДень:=Number(СтрДень);
+      If ЧлДень<=0 Then
+        Continue;
+      EndIf;
+      If Буква="D" Then
+        If DayOfWeek(ТекДата)<>ЧлДень Then
+          Continue;
+        EndIf;
+      ElseIf Буква="M" Then
+        If GetDay(ТекДата)<>ЧлДень Then
+          Continue;
+        EndIf;
+      Else
+        If DayOfYear(ТекДата)<>ЧлДень Then
+          Continue;
+        EndIf;
+      EndIf;
+    EndIf;
+    //Проверяем время
+    ЧлМинуты:=Number(СтрЧас)*60+Number(СтрМин);
+    
+    //ЧлМинуты -- время расписания
+    //Минуты -- текущее время
+    If (Минуты>=ЧлМинуты)And((Минуты-ЧлМинуты)*60<Интервал) Then
+      Exit 1;
+    EndIf;
+  EndDo;
+  Exit 0;
+EndFunction
+
+Function глЗапуститьЗадачу(аЭл,Модуль,АргументМодуля,СценарийДляИсполнения) Export
+  Фл:=0;
+  Try
+    If Trim(СценарийДляИсполнения)<>"" Then
+      Exec(СценарийДляИсполнения);
+    ElseIf Trim(Модуль)<>"" Then
+      If Trim(АргументМодуля)="" Then
+        АргументМодуля:="!";
+      EndIf;
+      Message("Модуль: "+GetFileName(RemoveBackslash(Модуль))+?(АргументМодуля="","",", аргумент: "+АргументМодуля),"I");
+      LoadModule(0,Модуль,Trim(АргументМодуля),0,"Module","Form");
+    EndIf;
+    Фл:=1;
+  Except
+    Message("Ошибка при выполнении расписания ("+аЭл+"): "+PopError(),"!");
+  EndTry;
+  Exit Фл;
+EndFunction
+
+//Необходимо запускать через определенные промежутки времени, не содержит паузу
+Function глСерверВыполненияЗаданий(ByRef спПараметры=0) Export
+  Try
+    if isEmpty(спПараметры) Then
+      спПараметры:=List.Create();
+      спПараметры.SetByName("Проверка",0);
+    EndIf;
+    Проверка:=спПараметры.GetByName("Проверка");
+    стрИмя:=Uppercase(LogonName);
+    If _Or(isEmpty(Проверка),GetPeriod(Проверка,Date(),4)>120) Then
+      //Обновляем или заполняем таблицу заданий
+      аРасписания:=List.Create();
+      aList:=Ref.общРасписаниеЗапускаОбработок.Load(0,"@Status",0);
+      For i:=1 To aList.Size() Do
+        аЭл:=aList.Get(i);
+        If (Trim(аЭл.УчетнаяЗапись)<>"")and(Uppercase(аЭл.УчетнаяЗапись)<>стрИмя) Then
+          Continue;
+        EndIf;
+        аРасписания.Add(аЭл);
+      EndDo;
+      спПараметры.SetByName("Проверка",Date());
+      спПараметры.SetByName("Расписания",аРасписания);
+    EndIf;
+    аРасписания:=спПараметры.GetByName("Расписания");
+    For i:=1 To аРасписания.Size() Do
+      If DBIsStringMutexLocked("ОстановитьСервисныйПоток")>0 Then
+        Exit;
+      EndIf;
+    
+      аЭл:=аРасписания.Get(i);
+      if аЭл.флОтключено=1 Then
+        Continue;
+      EndIf;
+      
+      ФлЗапуск:=0;
+      aTab:=аЭл.LineParts("Расписание");
+      aTab.Select();
+      While aTab.Next() Do
+        If aTab.флОтключено=0 Then
+          If глПроверитьВремяВРасписании(aTab.РасписаниеЗапуска,aTab.ПоследнийЗапуск,aTab.ИнтервалЗапускаСекунд) Then
+            ФлЗапуск:=1;
+            Break;
+          EndIf;
+        EndIf;  
+      EndDo;
+      If not ФлЗапуск Then
+        Continue;
+      EndIf;
+      
+      //Запускаем после обновления элемента
+      If аЭл.Lock() Then
+        Try
+          аРасписания.Set(i,аЭл);
+          аЭл.Reload();
+          If (Trim(аЭл.УчетнаяЗапись)="")Or(Uppercase(аЭл.УчетнаяЗапись)=стрИмя) Then
+            aTab:=аЭл.LineParts("Расписание");
+            
+            ФлЗапуск:=0;
+            ФлУспешно:=1;
+            ТекущееВремя:=Date();
+            aTab.Select();
+            While aTab.Next() Do
+              If aTab.флОтключено<>0 Then
+                Continue;
+              EndIf;
+              If not глПроверитьВремяВРасписании(aTab.РасписаниеЗапуска,aTab.ПоследнийЗапуск,aTab.ИнтервалЗапускаСекунд) Then
+                Continue;
+              EndIf;
+              ФлЗапуск:=1;
+              //Запуск задачи
+              If not IsExecutingInSeparateThread Then
+                Message("Запуск задачи: "+аЭл.Name+"."+aTab.Описание,"I");
+              EndIf;
+              ТекущееВремяЛок:=Date();
+              ФлУспешноЛок:=глЗапуститьЗадачу(аЭл,aTab.Модуль,aTab.АргументМодуля,aTab.СценарийДляИсполнения);
+              ТекущееВремяЛок2:=Date();
+              If ФлУспешноЛок Then
+                aTab.ПоследнийУспешныйЗапуск:=ТекущееВремяЛок;
+              EndIf;
+              ФлУспешно:=ФлУспешно*ФлУспешноЛок;
+              aTab.ПоследнийЗапуск:=ТекущееВремяЛок;
+              aTab.ВремяИсполненияПоследнее:=GetPeriod(ТекущееВремяЛок,ТекущееВремяЛок2,5);
+              aTab.ВремяИсполненияОбщее:=aTab.ВремяИсполненияОбщее+aTab.ВремяИсполненияПоследнее;
+              aTab.КоличествоЗапусков:=aTab.КоличествоЗапусков+1;
+              If not IsExecutingInSeparateThread Then
+                Message("Задача "+аЭл.Name+"."+aTab.Описание+" завершена "+?(ФлУспешноЛок,"успешно","с ошибками"),"I");
+              EndIf;
+              
+              If DBIsStringMutexLocked("ОстановитьСервисныйПоток")>0 Then
+                ФлУспешно:=0;
+                Break;
+              EndIf;
+            EndDo;
+            
+            If ФлЗапуск Then
+              If ФлУспешно Then
+                аЭл.ПоследнийУспешныйЗапуск:=ТекущееВремя;
+              EndIf;
+              аЭл.ПоследнийЗапуск:=ТекущееВремя;
+              аЭл.Save();
+            EndIf;
+            If DBIsStringMutexLocked("ОстановитьСервисныйПоток")>0 Then
+              Exit;
+            EndIf;
+          EndIf;  
+        Finally
+          аЭл.Unlock();
+        EndTry;
+      EndIf;  
+    EndDo;
+  Except
+    Message(PopError(),"!");
+  EndTry;  
+EndFunction
+
+Function глЗапуститьОбменСЦентральнойБазой()
+  оКаталог="Modules\FreeForms\Автозагрузка\Периодические\";
+  оКаталогТемп:="Temp\РаспределеннаяБаза\";
+  File.CreateDirectory(оКаталогТемп);
+  Имя:="Remote.ini";Удалить:=1;
+  If not File.DoesFileExist(оКаталогТемп+Имя) Then
+    Удалить:=0;
+    Стр="!REMOTE#1";
+  Else
+    Т=Text.Create();
+    Т.Load(оКаталогТемп+Имя);
+    Стр:=UpperCase(Т.GetLine(1));
+  EndIf;
+  LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\РаспределеннаяБаза\ОбработкаОбменаКлиент",Стр);
+  If Удалить=1 Then
+    File.DeleteFile(оКаталог+Имя);
+  EndIf;
+EndFunction
+
+//спЗадания -- внутренняя переменная оптимизации, инициализируемая нулем
+//Счетчик -- счетчик 100 мс., инициализируется нулем
+//Результат: 0 -- ОК
+//           1 -- 
+Function глВыполнениеЗаданийИВыгрузокЕГАИС(ByRef спЗадания,Счетчик) Export //Запускается 1 раз в 100 мс.
+  Try
+    If Счетчик%10=0 Then
+      глСерверВыполненияЗаданий(спЗадания);
+    EndIf;
+    
+    If DBIsStringMutexLocked("ПриостановкаВыгрузокЕГАИС")=0 Then
+      ExecuteFunction("глВыполнениеВыгрузокЕГАИС",0,Счетчик);
+    EndIf;
+  Except
+  EndTry;
+EndFunction
+
+Function глСерверВыполненияВнутреннихОбработок()
+  Message("Для ручного перезапуска консоли нажмите Ctrl+Shift+R...");
+  спЗадания:=0;
+  ФлСчетчик:=0;
+  While 0=0 Do
+    глРаботаетРобот:=1;
+    глОбработкаСинхронизацииАктивна:=0;
+    If (CurHour()=0)And(CurMinute()<15)And(глТаймерПерезагрузки=0) Then
+      глТаймерПерезагрузки:=Date();
+    EndIf;
+    If глТаймерПерезагрузки<>0 Then
+      If GetPeriod(глТаймерПерезагрузки,Date(),3)>30 Then
+        RestartProgram(1);
+        Exit;
+      EndIf;
+    EndIf;
+    If _And(IsKeyComboActive("Ctrl+Shift+R"),ThreadCount()=1) Then
+      Message("Ctrl+Shift+R: инициирование перезапуска консоли...");
+      RestartProgram(1);
+      Exit;
+    EndIf;
+    If _And(IsKeyComboActive("Ctrl+Shift+E"),ThreadCount()=1) Then
+      глЗапуститьОбменСЦентральнойБазой();
+    EndIf;
+    ФлСчетчик:=ФлСчетчик+1;
+    глВыполнениеЗаданийИВыгрузокЕГАИС(спЗадания,ФлСчетчик);
+    Sleep(100);
+  EndDo;    
+EndFunction
+
+Function глСерверРаспределеннойБазыЦиклОжидания()
+  Message("Для ручного запуска обработки справочников синхронизации нажмите Shift+S...");
+  спЗадания:=0;
+  ФлСекунда:=0;
+  While 0=0 Do
+    глРаботаетРобот:=1;
+    глОбработкаСинхронизацииАктивна:=0;
+    If (CurHour()=0)And(CurMinute()<15)And(глТаймерПерезагрузки=0) Then
+      глТаймерПерезагрузки:=Date();
+    EndIf;
+    If глТаймерПерезагрузки<>0 Then
+      If GetPeriod(глТаймерПерезагрузки,Date(),3)>30 Then
+        RestartProgram(1);
+        Exit;
+      EndIf;
+    EndIf;
+    If _And(IsKeyComboActive("Ctrl+Shift+R"),ThreadCount()=1) Then
+      Message("Ctrl+Shift+R: инициирование перезапуска консоли...");
+      RestartProgram(1);
+      Exit;
+    EndIf;
+    If _And(IsKeyComboActive("Shift+S"),ThreadCount()=1) Then
+      Message("Запуск модуля обработки справочников...","I");
+      Try
+        глОбработкаСинхронизацииАктивна:=1;
+        LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\РаспределеннаяБаза\ОбработкаСправочниковСинхронизации","!",0,"Module","Form");
+        глОбработкаСинхронизацииАктивна:=0;
+      Except
+        Стр:=PopError();
+        If Стр<>"" Then
+          Message(Стр,"!");
+        EndIf;  
+      EndTry;  
+    EndIf;
+    ФлСекунда:=ФлСекунда+1;
+    If ФлСекунда>3 Then
+      глСерверВыполненияЗаданий(спЗадания);
+      ФлСекунда:=0;
+    EndIf;  
+    Sleep(250);
+  EndDo;    
+EndFunction
+
+
+//Сервер распределенной базы
+Function OnUsr1Connection(ConnObj,ParamStr,FList)
+  Try
+    If ParamStr="CLIENTTOCENTRALEXCHANGE" Then //Обмен из периферийной базы
+      If _Or(ThreadCount()>1,глОбработкаСинхронизацииАктивна=1) Then
+        ConnObj.SendCmd("BUSY");
+        ConnObj.Disconnect();
+        Exit;
+      EndIf;
+      ConnObj.SendCmd("OK  ");
+      aList:=List.Create();
+      aList.Add(ConnObj,"Object");
+      //Рассчитано на консольный режим
+      Try
+        глОбработкаСинхронизацииАктивна:=1;
+        LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\РаспределеннаяБаза\ОбработкаОбменаСервер",aList,0,"Module","Form");
+      Finally
+        глОбработкаСинхронизацииАктивна:=0;
+        If not isEmpty(PeekError(2)) Then
+          Стр:=PopError();
+          If Стр<>"" Then
+            Message(Стр,"!");
+          EndIf;  
+          SuppressException();
+        EndIf;    
+      EndTry;  
+      Exit;
+    EndIf;
+    
+    //Неизвестный режим, разрываем связь
+    ConnObj.SendCmd("BAD ");
+    ConnObj.Disconnect();
+  Except
+    Message(PopError(),"!");
+  EndTry;
+EndFunction
+
+Function глИсправитьНаименованиеНоменклатуры(Эл,флПапка=0) Export
+  Стр:=Trim(Эл.Name);
+  
+  If isEmpty(Стр) Then
+    Box("Наименование не может быть пустым!",Q_STOP);
+    Exit 0;
+  EndIf;
+
+  //"
+  If Mid(Стр,1,1)="""" Then
+    Стр0:="Наименование не должно начинаться с кавычек, если вы пытаетесь ввести строку, типа: ""Солнечное"" масло, исправьте порядок слов на правильный: масло ""Солнечное""!";
+    If not глРаботаетРобот Then
+      Эл.Name:="";
+      Box(Стр0,Q_STOP);
+      Exit 0;
+    Else
+      Message(Стр0,"!");
+    EndIf;
+  EndIf;
+  
+  //Цифры
+  If not флПапка Then
+    а:=Mid(Стр,1,1);
+    If (а>="0")And(а<="9") Then
+      Стр0:="Наименование не должно начинаться с цифр, если вы пытаетесь ввести строку, типа: 0,5л масло ""Солнечное"", исправьте порядок слов на правильный: масло ""Солнечное"" 0,5л!";
+      If not глРаботаетРобот Then
+        Эл.Name:="";
+        Box(Стр0,Q_STOP);
+        Exit 0;
+      Else
+        Message(Стр0,"!");
+      EndIf;
+    EndIf;
+  EndIf;  
+  
+  //Регистр - разрешить большой регистр в начале слов и для слов <=3 букв
+  Фл:=0;Дл:=Length(Стр);
+  а:=1;
+  While а<=Дл Do
+    б:=Mid(Стр,а,1);
+    If LowerCase(б)<>UpperCase(б) Then
+      Фл:=Фл+1;
+      If Фл>1 Then
+        If (Фл=2)And(а<Дл) Then
+          Фл2:=1;
+          If а+1<Дл Then
+            //До трех букв
+            б2:=Mid(Стр,а+2,1);
+            If LowerCase(б2)<>UpperCase(б2) Then
+              Фл2:=0;
+            EndIf;
+          EndIf;
+          
+          //Все буквы должны иметь один регистр
+          If (Фл2=1)And(UpperCase(Mid(Стр,а-1,3))=Mid(Стр,а-1,3)) Then
+            а:=а+2;//Пропускаем это слово
+            Continue;
+          EndIf;
+        ElseIf (а=Дл)And(Фл<4) Then
+          а:=а+1;
+          Continue;
+        EndIf;
+        Стр:=Mid(Стр,1,а-1)+LowerCase(б)+Mid(Стр,а+1,Дл);
+      ElseIf а<Дл Then
+        б2:=Mid(Стр,а+1,1);
+        If LowerCase(б2)<>UpperCase(б2) Then
+          Стр:=Mid(Стр,1,а-1)+UpperCase(б)+Mid(Стр,а+1,Дл);
+        EndIf;
+      EndIf;
+    Else
+      Фл:=0;
+    EndIf;
+    а:=а+1;
+  EndDo;
+  Эл.Name:=Стр;
+  
+  Exit 1;
+EndFunction
+
+//УдалитьПрефиксы=0-нет,-1-да,x-оставить x-вый по порядку
+//Объект--документ или эл. справочника
+Function глНомерБезНулей(Объект,УдалитьПрефиксы=-1) Export
+  If isEmpty(Объект) Then 
+    Exit "";
+  EndIf;
+  
+  If TypeStr(Объект)<>"STRING" Then 
+    if DBTypeStr(Объект)="DOC" Then
+      Номер:=Объект.DocNum;
+    Elseif DBTypeStr(Объект)="REF" Then
+      Номер:=Объект.Code;
+    Else
+      Exit "";
+    EndIf;
+  Else
+    Номер:=Trim(Объект);
+  EndIf;
+  
+  If Pos("/",Номер)>0 Then
+    а:=Pos("/",Номер);
+    б:=Str(Number(Mid(Номер,а+1)));
+    If УдалитьПрефиксы<0 Then
+      Exit б;
+    Else
+      Exit Left(Номер,а)+б;
+    EndIf;
+  EndIf;
+  
+  а:=1;
+  While Mid(Номер,а,1)>"9" Do
+    а:=а+1;
+    If а>Length(Номер) Then
+      Exit Номер;
+    EndIf;
+  EndDo;
+  
+  Преф:="";
+  If а>1 Then
+    Преф:=Left(Номер,а-1);
+    Номер:=Mid(Номер,а);
+  EndIf;
+  Номер:=Str(Number(Номер));
+  Exit ?(УдалитьПрефиксы=0,Преф+Номер,?(УдалитьПрефиксы=-1,Номер,Mid(Преф,УдалитьПрефиксы,1)+Номер));
+EndFunction
+
+Function глИсправитьНаименованиеКонтрагента(Эл) Export
+  //"
+  Стр:=Trim(Эл.Name);
+  If Pos("""",Стр)>0 Then
+    Стр0:="Представление не должно содержать кавычек, используйте кавычки в имени для печати!";
+    If not глРаботаетРобот Then
+      Эл.Name:="";
+      Box(Стр0,Q_STOP);
+      Exit 0;
+    Else
+      Message(Стр0,"!");
+    EndIf;
+  EndIf;
+  
+  //Первое слово
+  Стр2:=Стр;
+  стрПерв:=LowerCase(TearStr(Стр2," "));
+  If Pos(","+стрПерв+",",",ооо,общество,оао,ип,индивидуальный,чп,зао,райпо,районное,муп,сп,фирма,")>0 Then
+    Стр0:="Представление не должно начинаться с типа организации, если вы пытаетесь ввести строку, типа: ООО Солнце, исправьте порядок слов на правильный: Солнце ООО!";
+    If not глРаботаетРобот Then
+      Эл.Name:="";
+      Box(Стр0,Q_STOP);
+      Exit 0;
+    Else
+      Message(Стр0,"!");
+    EndIf;
+  EndIf;
+  
+  //Регистр - разрешить большой регистр в начале слов и для слов <=3 букв
+  Фл:=0;Дл:=Length(Стр);
+  а:=1;
+  While а<=Дл Do
+    б:=Mid(Стр,а,1);
+    If LowerCase(б)<>UpperCase(б) Then
+      Фл:=Фл+1;
+      If Фл>1 Then
+        If (Фл=2)And(а<Дл) Then
+          Фл2:=1;
+          If а+1<Дл Then
+            //До трех букв
+            б2:=Mid(Стр,а+2,1);
+            If LowerCase(б2)<>UpperCase(б2) Then
+              Фл2:=0;
+            EndIf;
+          EndIf;
+          
+          //Все буквы должны иметь один регистр
+          If (Фл2=1)And(UpperCase(Mid(Стр,а-1,3))=Mid(Стр,а-1,3)) Then
+            а:=а+2;//Пропускаем это слово
+            Continue;
+          EndIf;
+        ElseIf (а=Дл)And(Фл<4) Then
+          а:=а+1;
+          Continue;
+        EndIf;
+        Стр:=Mid(Стр,1,а-1)+LowerCase(б)+Mid(Стр,а+1,Дл);
+      ElseIf а<Дл Then
+        б2:=Mid(Стр,а+1,1);
+        If LowerCase(б2)<>UpperCase(б2) Then
+          Стр:=Mid(Стр,1,а-1)+UpperCase(б)+Mid(Стр,а+1,Дл);
+        EndIf;
+      EndIf;
+    Else
+      Фл:=0;
+    EndIf;
+    а:=а+1;
+  EndDo;
+  If Эл.Name<>Стр Then
+    Эл.Name:=Стр;
+  EndIf;  
+  
+  Exit 1;
+EndFunction
+
+//СтрМеню="Пункт 1@Пункт 2"...
+//Возвращает Поз и ИмяЗначения, если необходимо
+//ТипВыбора: 0 -- окно, 1 -- комбо к фокусу, 2 -- комбо к курсору.
+Function глВыполнитьВыборВМеню(СтрМеню,ByRef ИмяЗнач=0,ТипВыбора=1,пЗаголовок="") Export
+  If СтрМеню="" Then
+    Exit 0;
+  EndIf;
+  а:=List.Create();
+  а.FromString(СтрМеню,"@");
+  Поз:=а.Select(ИмяЗнач,ТипВыбора,пЗаголовок);
+  Exit Number(Поз);
+EndFunction
+
+Function глСовместимостьПодчиненногоФильтра(ЭлВладелец,ЭлПодчин) Export
+  If isEmpty(Form.ControlByName(ЭлВладелец))+isEmpty(Form.ControlByName(ЭлПодчин))>0 Then
+    Exit;
+  EndIf;
+  аВлад:=Form.ControlByName(ЭлВладелец).Value;
+  аПодч:=Form.ControlByName(ЭлПодчин).Value;
+  If _Or(typestr(аПодч)<>"LIST",аПодч.Size()=0) Then
+    Exit;
+  EndIf;
+  If _And(аПодч.Size()=1,аПодч.Get(1).Size()=0) Then
+    Exit;
+  EndIf;
+  If _And(аПодч.Size()>1,аПодч.Get(1).Size()+аПодч.Get(2).Size()=0) Then
+    Exit;
+  EndIf;
+  Фл:=0;
+  If _Or(typestr(аВлад)<>"LIST",аВлад.Size()=0) Then
+    Фл:=1;
+  ElseIf _And(аВлад.Size()=1,аВлад.Get(1).Size()<>1) Then
+    Фл:=1;
+  ElseIf _And(аВлад.Size()>1,_Or(аВлад.Get(1).Size()<>1,аВлад.Get(2).Size()>0)) Then
+    Фл:=1;
+  Else
+    ВладЭл:=аВлад.Get(1).Get(1);
+    Сп:=аПодч.Get(1);
+    For i:=1 To Сп.Size() Do
+      аЭл:=Сп.Get(i);
+      If аЭл.Parent()<>ВладЭл Then
+        Фл:=1;
+        Break;
+      EndIf;
+    EndDo;
+    If (аПодч.Size()>1)And(Фл=0) Then
+      Сп:=аПодч.Get(2);
+      For i:=1 To Сп.Size() Do
+        аЭл:=Сп.Get(i);
+        If аЭл.Parent()<>ВладЭл Then
+          Фл:=1;
+          Break;
+        EndIf;
+      EndDo;
+    EndIf;
+  EndIf;
+
+  If Фл Then
+    аПодч.Get(1).Clear();
+    If аПодч.Size()>1 Then
+      аПодч.Get(2).Clear();
+    EndIf;
+  EndIf;
+EndFunction
+
+//ИмяЭл -- Имя элемента диалога с фильтром,
+//ТолькоВыбор=1 -- без мультифильтра
+//Фрм -- имя формы справочника
+//СписокВладельца -- внешний фильтр, если присутствует только один элемент, можно выбрать из справочника обычным способом, иначе только сложным подбором
+//Возвращает 1 если были изменения.
+Function глВыбратьРежимРаботыФильтра(ВидСпр,ИмяЭл,ТолькоВыбор=0,Фрм="SelectForm",СписокВладельца=0,ВыборБезВладельца=0) Export
+
+  Function _ВыбратьОдинЭлемент(aList0,флПеречисление,КонтВФрм)
+    aList:=aList0.Get(1);
+    а:=0;
+    If aList.Size()>0 Then
+      а:=aList.Get(1);
+    EndIf;
+    
+    If флПеречисление Then
+      If ВидСпр="" Then
+        ВидСпр:=SelectDataType("ENUM","Выберите перечисление");
+        If isEmpty(ВидСпр) Then
+          Exit;
+        EndIf;
+        TearStr(ВидСпр,".");
+      EndIf;
+    
+      bList:=List.Create();
+      For б:=1 to Struct.Enum(ВидСпр).Values.Count() Do
+        bList.Add(Enum.GetByIndex(ВидСпр,б));
+      EndDo;
+      If bList.Select(б,0,"Введите значение перечисления:")=0 Then
+        Exit 0;
+      EndIf;
+      if aList0.Size()>1 Then
+        aList0.Get(2).Clear();
+      EndIf;
+      aList.Clear();
+      aList.Add(б);
+      Exit 1;
+    EndIf;
+    
+    If ВидСпр="" Then
+      ВидСпр:=SelectDataType("REF","Выберите справочник");
+      If isEmpty(ВидСпр) Then
+        Exit;
+      EndIf;
+      TearStr(ВидСпр,".");
+    EndIf;
+    
+    б:=SelectObject("Ref."+ВидСпр,КонтВФрм,0,"Module",Фрм,а,,,3);
+    If not isEmpty(б) Then
+      if aList0.Size()>1 Then
+        aList0.Get(2).Clear();
+      EndIf;
+      aList.Clear();
+      aList.Add(б);
+      Exit 1;
+    EndIf;  
+    Exit 0;
+  EndFunction  
+
+
+  флПеречисление:=Pos("ENUM",ВидСпр)=1;
+  If флПеречисление Then
+    TearStr(ВидСпр,"ENUM.");
+  EndIf;
+  If Pos("REF",ВидСпр)=1 Then
+    TearStr(ВидСпр,"REF.");
+  EndIf;
+  
+  If TypeStr(ИмяЭл)="LIST" Then
+    aList0:=ИмяЭл;
+  Else
+    aList0:=Form.Control(ИмяЭл).Value;
+  EndIf;  
+  КонтВФрм:=0;
+  If СписокВладельца<>0 Then
+    If СписокВладельца.Size()=1 Then
+      КонтВФрм:=СписокВладельца.Get(1);
+    ElseIf (ТолькоВыбор=1)And(ВыборБезВладельца=0) Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If ТолькоВыбор=1 Then
+    Exit _ВыбратьОдинЭлемент(aList0,флПеречисление,КонтВФрм);
+  EndIf;
+  
+  Зн:=глВыполнитьВыборВМеню("Очистить@Выбрать@Выбрать множество",,2);
+  If Зн>0 Then    
+    If Зн=1 Then
+      aList0.Get(1).Clear();
+      if aList0.Size()>1 Then
+        aList0.Get(2).Clear();
+      EndIf;
+      Exit 1;
+    ElseIf Зн=2 Then
+      If (СписокВладельца<>0)And(КонтВФрм=0)And(ВыборБезВладельца=0) Then
+        Box("Для выбора подчиненного элемента, необходимо выбрать владельца!",Q_STOP);
+        Exit 0;
+      EndIf;
+      Exit _ВыбратьОдинЭлемент(aList0,флПеречисление,КонтВФрм);
+    Else
+      aList:=List.Create();
+      aList.Add(?(флПеречисление,1,0),"Перечисление");
+      aList.Add(ВидСпр,"Справочник");
+      aList.Add(aList0,"Фильтр");
+      aList.Add(Фрм,"Форма");
+      aList.Add(Form.ThisForm(),"Form");
+      aList.Add(КонтВФрм,"Владелец");
+      LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\Мультифильтр",aList,0,"Module","Form");
+      Exit Number(aList.GetByName("Ответ"));
+    EndIf;
+  EndIf;
+  
+  Exit 0;
+EndFunction
+
+//искКф - искать с указанным коэффициентом
+Function глПолучитьШтрихкод(зН,флEAN=1,ByRef Кф=0,искКф=0) Export
+  б:=Ref.тмцШтрихкоды;
+  Стр:="";
+  Кф:=0;
+  б.Select("@Parent,@Status,<>Name",зН,0,"");
+  While б.Next() Do
+    Стр2:=Trim(б.Name);
+    If флEAN=1 Then
+      If _Or(_And(Length(Стр2)<>13,Length(Стр2)<>8),not ContainsOnlyCharacters(Стр2,"0123456789")) Then
+        Continue;
+      EndIf;
+    EndIf;
+    If (искКф<>0)And(искКф=б.Коэффициент) Then
+      Стр:=Trim(б.Name);
+      Кф:=б.Коэффициент;
+      Break;
+    EndIf;
+    If (Number(б.флОсновной)=1)And(искКф=0) Then
+      Стр:=Trim(б.Name);
+      Кф:=б.Коэффициент;
+      Break;
+    EndIf;
+    If б.Коэффициент=1 Then
+      Стр:=Trim(б.Name);
+      Кф:=б.Коэффициент;
+    EndIf;
+  EndDo;
+  Exit ?(Стр="",0,Стр);
+EndFunction
+
+//TODO: Упрощенная процедура, не работает с деревьями с более чем одним корнем.
+Function глНайтиКорень(Док,Сп=0) Export
+  If Сп=0 Then
+    Сп:=List.Create();
+  EndIf;
+  If Сп.Find(Док)>0 Then
+    Exit Док;
+  EndIf;
+  Сп.Add(Док);
+  а:=Док.LoadLinkedDocuments(0);
+  If а.Size()=0 Then
+    Exit Док;
+  EndIf;
+  Exit глНайтиКорень(а.Get(1),Сп);
+EndFunction
+
+
+
+Function глПроверитьОстаткиПоДоговору(Дог,Стр,БезАдм=0,Тихо=0) Export
+  О:=Storage.Взаиморасчеты.Gross1("Сумма",,0,"Договор",Дог);
+  О2:=Storage.КомиссионныеТМЦ.Gross1("Количество",,0,"Договор",Дог);
+  О3:=Storage.ОстаткиТМЦЭкспедиция.Gross1("Количество",,0,"Экспедитор",Дог.Parent());
+  О4:=Storage.ПодотчетныеОперации.Gross1("Количество",,0,"ПодотчетноеЛицо",Дог.Parent());
+  О5:=Storage.ПодотчетныеОперации.Gross1("Сумма",,0,"ПодотчетноеЛицо",Дог.Parent());
+  If (О<>0)Or(О2<>0)Or(О3<>0)Or(О4<>0)Or(О5<>0) Then
+    If Тихо Then
+      Exit 1;
+    EndIf;
+    If (глПользователь.общиеАдминистратор)And(not БезАдм) Then
+      If AskQuestion("Взаиморасчеты, расчеты по комиссионном ТМЦ, остатки по подотчету или остатки в экспедиции с контрагентом по договору "+
+          Дог+" не закрыты! Вы действительно хотите "+Стр+"?",Q_QUESTION+Q_YESNO)<>R_YES Then
+        Exit 0;
+      EndIf;
+    Else
+      Box("Взаиморасчеты или расчеты по комиссионном ТМЦ, остатки по подотчету или остатки в экспедиции с контрагентом по договору "+
+          Дог+" не закрыты! Пока сальдо по всем расчетам договора не станет равным нулю, "+Стр+" нельзя!",Q_STOP);
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  оВид:=Enum.ВидыГашений.НеВозвращен;
+  оКО:=Enum.коДоверенность.НаДеньги;
+  Фл:=Doc.Доверенность;
+  Фл:=Фл.Find("КодОперации,ДоверенноеЛицо,ВидГашения,<>@Status",оКО,Дог.Parent(),оВид,1);
+  If Фл Then
+    If Тихо=1 Then
+      Exit 1;
+    EndIf;
+    If (глПользователь.общиеАдминистратор)And(not БезАдм) Then
+      If AskQuestion("За данным контрагентом числятся не погашенные доверенности! Вы действительно хотите "+Стр+"?",Q_QUESTION+Q_YESNO)<>R_YES Then
+        Exit 0;
+      EndIf;
+    Else
+      Box("За данным контрагентом числятся не погашенные доверенности! Пока они не будут погашены, "+Стр+" нельзя!",Q_STOP);
+      Exit 0;
+    EndIf;
+  EndIf;
+  Exit 1;
+EndFunction
+
+
+
+Function OnMark(Element,Mark,ByRef AllowAction) Export
+  AllowAction:=1;
+  If pos("DB.JOURNAL.",typestr(Element))=1 Then
+    Element:=Element.LinkedObject();
+  EndIf;
+  If pos("DB.REF.",typestr(Element))<>1 Then
+    Exit;
+  EndIf;
+  If (Mark=0)And((Element.DBName()="кнтКонтрагенты")Or(Element.DBName()="кнтДоговоры"))And(not глПользователь.общиеАдминистратор) Then
+    Box("Чтобы отменить удаление этого клиента обратитесь к кредитному администратору!",Q_STOP);
+    AllowAction:=0;
+    Exit;
+  ElseIf (глПользователь.общиеАдминистратор)And(Mark=1) Then
+    If AskQuestion("Удалить элемент (да) или открыть обработку физического удаления элементов (нет)?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\УдалениеЭлементовСправочника",Element,0,"Module","Form");      
+      AllowAction:=0;
+      Exit;
+    EndIf;
+  ElseIf (not глПользователь.общиеАдминистратор)And(Element.DBName()="общПользователи") Then
+    Box("Вам нельзя изменять элементы этого справочника!",Q_STOP);
+    AllowAction:=0;
+    Exit;
+  EndIf;
+  
+  If Mark=1 Then
+    If Element.DBName()="кнтДоговоры" Then
+      AllowAction:=глПроверитьОстаткиПоДоговору(Element,"удалить договор");
+    ElseIf Element.DBName()="цТипыЦен" Then
+      aEl:=Ref.кнтДоговоры;
+      if aEl.Find("ТипЦен",Element) Then
+        Box("Существуют договоры с контрагентами, в которых указан данный тип цен. Прежде чем удалять его, пожалуйста, "+
+          "измените тип цен во всех таких договорах!",Q_STOP);
+        AllowAction:=0;
+        Exit;
+      EndIf;
+      aEl:=Ref.цОтклоненияОтТиповЦен;
+      if aEl.Find("ТипЦен",Element) Then
+        Box("Существуют отклонения от типов цен в договорах с указанием данного типа цен (например договор "+aEl.Parent()+" контрагента "+
+          aEl.Parent().Parent()+"). Прежде чем удалять его, пожалуйста, "+
+          "удалите или измените все такие отклонения!",Q_STOP);
+        AllowAction:=0;
+        Exit;
+      EndIf;
+    ElseIf Element.DBName()="кнтКонтрагенты" Then
+      If Element.IsFolder() Then
+        Box("Нельзя удалять группы этого справочника!",Q_STOP);
+        If not глРаботаетРобот Then
+          AllowAction:=0;
+          Exit;
+        EndIf;
+      EndIf;
+      а:=Ref.кнтДоговоры;
+      а.Select("@Parent",Element);
+      While а.Next() Do
+        If not глПроверитьОстаткиПоДоговору(а,"удалить контрагента") Then
+          AllowAction:=0;
+          Exit;
+        EndIf;
+      EndDo;
+    ElseIf Element.DBName()="тмцНоменклатура" Then
+      If Element.IsFolder() Then
+        Box("Нельзя удалять группы этого справочника!",Q_STOP);
+        If not глРаботаетРобот Then
+          AllowAction:=0;
+          Exit;
+        EndIf;
+      EndIf;
+    EndIf;
+  EndIf;
+EndFunction
+
+
+//Вид справочника подбора, Внешний список значений
+Function глСложныйПодбор(СпрВид,оСпис,БезГрупп=1) Export
+
+  Function _ДобавитьРодителей(Сп,Вид0,стрНули,стрВлад)
+    //стрНули: 0Parent[..Вид].0Parent[..Вид] ...
+    Чл:=Struct.Ref(Вид0).Parents.Count();
+    For i:=1 To Чл Do
+      Ид:=Struct.Ref(Вид0).Parents(i).Name;
+      Сп.Add(стрНули+".."+Ид,стрВлад+" => Справочник "+Struct.Ref(Вид0).Parents(i).Caption);
+      If Struct.Ref(Вид0).Parents(i).Parents.Count()>0 Then
+        _ДобавитьРодителей(Сп,Ид,стрНули+?(Чл>1,".."+Ид)+".0Parent",стрВлад+?(Чл>1," (Справочник."+Ид+")")+".Родитель");
+      EndIf;
+    EndDo;
+  EndFunction
+
+  флДокумент:=Pos("DOC.",СпрВид)=1;
+  If флДокумент Then
+    TearStr(СпрВид,"DOC.");
+  EndIf;
+  
+  ТипРаботы:=0;
+  а:=List.Create();
+  а.Add(0,"Добавить в список");
+  а.Add(1,"Оставить входящие в оба списка");
+  а.Add(2,"Удалить из списка");
+  If not флДокумент Then
+    а.Add(3,"(!) Добавить все элементы");
+    а.Add(4,"(!) Добавить все удаленные элементы");
+  EndIf;  
+  If а.Select(ТипРаботы,1)=0 Then
+    Exit;
+  EndIf;
+  
+  If ТипРаботы=3 Then
+    оСпис.Clear();
+    аСпр:=DB("Ref."+СпрВид);
+    aList:=аСпр.LoadEx(0,1);
+    aList.CopyTo(оСпис);
+    Exit;
+  ElseIf ТипРаботы=4 Then
+    оСпис.Clear();
+    аСпр:=DB("Ref."+СпрВид);
+    aList:=аСпр.LoadEx(0,1,,"@STATUS","1");
+    aList.CopyTo(оСпис);
+    Exit;
+  EndIf;
+  
+  Сп:=List.Create();
+  If not флДокумент Then
+    Сп.Add("00","Подбор из отчета");
+  EndIf;  
+  Вид0:=СпрВид;
+  стрНули:="0Parent";
+  //стрНули: 0Parent[..Вид].0Parent[..Вид] ...
+  стрВлад="Родитель";
+  If not флДокумент Then
+    _ДобавитьРодителей(Сп,Вид0,стрНули,стрВлад);
+  EndIf;  
+  
+  СпН:=List.Create();
+  If not флДокумент Then
+    For а:=1 to Struct.Ref(СпрВид).Props.Count() Do
+      Тип:=Struct.Ref(СпрВид).Props(а).DataType;
+      Ид:=Struct.Ref(СпрВид).Props(а).Name;
+      Тип1:=TearStr((Struct.Ref(СпрВид).Props(а).DataType),".");
+      If Pos(Тип1+"@","REF@ENUM@STRING@NUMBER@DATE@ANY@")>0 Then
+        If СпН.GetByName(Тип1)<>1 Then
+          СпН.SetByName(Тип1,1);
+          Сп.Add(Тип1+"!!!"," ");
+        EndIf;
+        Тип2:=Replace(Replace(Replace(Тип,"REF.","Справочник "),"ENUM.","Перечисление "),"DOC.","Документ ");
+        Тип2:=Replace(Replace(Replace(Тип2,"STRING.","Строка "),"NUMBER.","Число "),"DATE.","Дата ");
+        Сп.Add(Тип+"@"+Ид,Ид+" => "+Тип2);
+      EndIf;
+    EndDo;
+  Else
+    For а:=1 to Struct.Doc(СпрВид).Props.Count() Do
+      Тип:=Struct.Doc(СпрВид).Props(а).DataType;
+      Ид:=Struct.Doc(СпрВид).Props(а).Name;
+      Тип1:=TearStr((Struct.Doc(СпрВид).Props(а).DataType),".");
+      If Pos(Тип1+"@","REF@ENUM@STRING@NUMBER@DATE@ANY@")>0 Then
+        If СпН.GetByName(Тип1)<>1 Then
+          СпН.SetByName(Тип1,1);
+          Сп.Add(Тип1+"!!!"," ");
+        EndIf;
+        Тип2:=Replace(Replace(Replace(Тип,"REF.","Справочник "),"ENUM.","Перечисление "),"DOC.","Документ ");
+        Тип2:=Replace(Replace(Replace(Тип2,"STRING.","Строка "),"NUMBER.","Число "),"DATE.","Дата ");
+        Сп.Add(Тип+"@"+Ид,Ид+" => "+Тип2);
+      EndIf;
+    EndDo;
+  EndIf;  
+  Сп.Sort(0);
+  
+  Знч:=0;
+  Поз:=Сп.Select(Знч,0,"Выберите источник отбора:");
+  If Поз=0 Then
+    Exit;
+  EndIf;
+  
+  If Pos("0Parent",Знч)>0 Then
+    //Знч: 0Parent[..Вид].0Parent[..Вид] ... -> Рекв: @Parent[..Ref.Вид].@Parent[..Ref.Вид] ...
+    Отбор:="REF."+Struct.Ref(СпрВид).Parents(1).Name;
+    Вид0:=СпрВид;
+    Рекв:="";
+    While Pos("0Parent",Знч)=1 Do
+      Рекв:=Рекв+?(Рекв<>"",".")+"@Parent";
+      TearStr(Знч,"0Parent");
+      if Left(Знч,2)=".." Then
+        TearStr(Знч,"..");
+        Вид0:=TearStr(Знч,".");
+        Рекв:=Рекв+"..Ref."+Вид0;
+        Отбор:="REF."+Вид0;
+      EndIf;
+    EndDo;
+  ElseIf Pos("!!!",Знч)>0 Then
+    Exit;
+  ElseIf Знч="00" Then
+    б:=List.Create();
+    б.SetByName("ВидСправочника",СпрВид);
+    б.SetByName("Список",оСпис);
+    б.SetByName("Режим",ТипРаботы);
+    б.SetByName("Форма",Form.ThisForm());
+    LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\ПодборИзОтчета",б);
+    Exit;
+  Else
+    Отбор:=TearStr(Знч);
+    Рекв:=TearStr(Знч);
+  EndIf;
+  
+  ФлМульти:=(Pos(",",Отбор)>0)Or(Отбор="ANY")Or(Отбор="REF")Or(Отбор="ENUM");
+  If ФлМульти Then
+    Отбор:=SelectDataType(Тип,"Выберите тип данных фильтра:");
+    If Отбор="" Then
+      Exit;
+    EndIf;
+  EndIf;
+  
+  Тип:=Отбор;
+  Тип:=TearStr(Тип,".");
+  СтрВид:=Отбор;
+  Отбор:=0;
+  While 1 Do
+    ТипРавенства:="=";
+    а:=List.Create();
+    а.Add("=","Соответствует значению");
+    а.Add(">","Больше значения");
+    а.Add("<","Меньше значения");
+    
+    If Тип="REF" Then
+      а:=SelectObject(СтрВид,0,0,"Module","SelectForm",Отбор,,,3);      
+      If isEmpty(а) Then
+        Exit;
+      EndIf;
+      Отбор:=а;
+    ElseIf Тип="ENUM" Then
+      а:=List.Create();
+      TearStr(СтрВид,".");
+      For б:=1 to Struct.Enum(СтрВид).Values.Count() Do
+        а.Add(Enum.GetByIndex(СтрВид,б));
+      EndDo;
+      If а.Select(Отбор,0,"Введите значение реквизита "+Рекв+":")=0 Then
+        Exit;
+      EndIf;
+    ElseIf Тип="STRING" Then
+      If not AskString(Отбор,"Введите значение реквизита "+Рекв+":") Then
+        Exit;
+      EndIf;
+    ElseIf Тип="NUMBER" Then
+      If а.Select(ТипРавенства,0,"Условие отбора:")=0 Then
+        Exit;
+      EndIf;
+      If not AskNumber(Отбор,"Введите значение реквизита "+Рекв+":",15,3) Then
+        Exit;
+      EndIf;
+    ElseIf Тип="DATE" Then
+      If а.Select(ТипРавенства,0,"Условие отбора:")=0 Then
+        Exit;
+      EndIf;
+      Отбор:=Date();
+      Отбор:=AskDate(Отбор,"Введите значение реквизита "+Рекв+":",1);
+      If isEmpty(Отбор) Then
+        Exit;
+      EndIf;
+    EndIf;
+    
+    If _And(not флДокумент,Struct.Ref(СпрВид).HasFolders) Then
+      ТЗ:="Эл:=Ref."+СпрВид+";
+      |ОтбЭл:=Ref."+СпрВид+"."+Рекв+";"+
+      ?(БезГрупп=1,"флГруппа:=Ref."+СпрВид+".@IsFolder;Condition(флГруппа=0);")+
+      ?(Тип="REF","Condition(ОтбЭл IN Отбор);","Condition(ОтбЭл"+ТипРавенства+"Отбор);")+
+      "Group Эл;";
+    Else
+      ТипЗап:=?(флДокумент,"Doc.","Ref.");
+      ТЗ:="Эл:="+ТипЗап+СпрВид+";
+      |ОтбЭл:="+ТипЗап+СпрВид+"."+Рекв+";"+
+      ?(Тип="REF","Condition(ОтбЭл IN Отбор);","Condition(ОтбЭл"+ТипРавенства+"Отбор);")+
+      "Group Эл;";
+    EndIf;  
+    З:=Query.Create();
+    aTab:=З.Execute(ТЗ,0);
+    MassLoadObjects(aTab,,,,2);
+  
+    аДоб:=0;
+    аУд:=0;
+    ФлТаб:=?(TypeStr(оСпис)="LIST",0,1);
+    оСпис.Lock();
+    Try
+      aTab.Select();
+      While aTab.Next() Do
+        Эл:=aTab.Эл;
+        If ТипРаботы=0 Then
+          If ФлТаб=1 Then
+            If оСпис.Find(Эл,,"Номенклатура")=0 Then
+              оСпис.AddLine("Номенклатура",Эл);
+              аДоб:=аДоб+1;
+            EndIf;
+          Else
+            If оСпис.Find(Эл)=0 Then
+              оСпис.Add(Эл);
+              аДоб:=аДоб+1;
+            EndIf;
+          EndIf;
+        ElseIf ТипРаботы=2 Then
+          If ФлТаб=1 Then
+            If оСпис.Find(Эл,,"Номенклатура")>0 Then
+              оСпис.Remove(оСпис.CurLine);
+              аУд:=аУд+1;
+            EndIf;
+          Else
+            i:=оСпис.Find(Эл);
+            If i>0 Then
+              оСпис.Remove(i);
+              аУд:=аУд+1;
+            EndIf;
+          EndIf;
+        EndIf;
+      EndDo;
+      
+      If ТипРаботы=1 Then
+        в:=List.Create();
+        If ФлТаб=1 Then
+          оСпис.Select();
+          While оСпис.Next() Do
+            If aTab.Find(оСпис.Номенклатура,,"Эл")=0 Then
+              в.Add(оСпис.Номенклатура);
+            EndIf;
+          EndDo;
+          For i:=1 to в.Size() Do
+            If оСпис.Find(в.Get(i),,"Номенклатура")>0 Then
+              оСпис.Remove(оСпис.CurLine);
+              аУд:=аУд+1;
+            EndIf;
+          EndDo;
+        Else
+          For i:=1 to оСпис.Size() Do
+            If aTab.Find(оСпис.Get(i),,"Эл")=0 Then
+              в.Add(оСпис.Get(i));
+            EndIf;
+          EndDo;
+          For i:=1 to в.Size() Do
+            i2:=оСпис.Find(в.Get(i));
+            If i2>0 Then
+              оСпис.Remove(i2);
+              аУд:=аУд+1;
+            EndIf;  
+          EndDo;
+        EndIf;
+      EndIf;
+    Finally
+      оСпис.Unlock();
+    EndTry;
+    Box("Добавлено "+аДоб+" элементов, удалено "+аУд+" элементов!",Q_INFORMATION);
+    
+    If Тип<>"REF" Then
+      Exit;
+    EndIf;
+  EndDo;
+EndFunction
+
+//Функция вызывается после OnSystemStart для консольного клиента. При завершении работы функции, консольный клиент закрывается.
+Function OnConsoleWork()
+  If Left(LogonName(),7)="worksrv" Then //worksrvXXX
+    глСерверВыполненияВнутреннихОбработок();
+  ElseIf Left(LogonName(),7)="control" Then //control???
+    //Запуск отчетов для пересчета кредитов и пр. -- одиночный запуск, не основанный на общРасписаниеЗапускаОбработок
+    ДобавкаИндекс:=Trim(Mid(LogonName(),8,1));
+    глРаботаетРобот:=1;
+    оКаталог:="Modules\FreeForms\Автозагрузка\Периодические\";
+    оКаталогТемп:="Temp\Pool\";
+    File.CreateDirectory(оКаталогТемп);
+    
+    Удалить:=1;
+    Имя="TempOrders"+ДобавкаИндекс+".ctl";
+    If not File.DoesFileExist(оКаталог+Имя) Then
+      Имя:="Orders.ctl";
+      Удалить:=0;
+      If not File.DoesFileExist(оКаталог+Имя) Then
+        Exit;
+      EndIf;
+    EndIf;
+    
+    Т:=Text.Create();
+    Т.Load(оКаталог+Имя);
+    For i:=1 to Т.Size() Do
+      
+      ИмяОтчета:=Trim(Т.GetLine(i));
+      If Left(ИмяОтчета,1)=";" Then
+        Continue;
+      EndIf;
+      If ИмяОтчета="" Then
+        Continue;
+      EndIf;
+      
+      Делитель:=1;КлИБ:="";
+      If Pos(":",ИмяОтчета)>0 Then
+        Делитель:=Number(Left(ИмяОтчета,Pos(":",ИмяОтчета)-1));
+        ИмяОтчета:=Mid(ИмяОтчета,Pos(":",ИмяОтчета)+1);
+        If Pos(":",ИмяОтчета)>0 Then
+          КлИБ:=TearStr(ИмяОтчета,":");
+        EndIf;
+      EndIf;
+      ПростоеИмя:=Replace(Replace(ИмяОтчета,"\","_"),":","_");
+      If КлИБ<>"" Then
+        If Pos(Trim(DBVar.ПрефиксИБ)+",",КлИБ+",")=0 Then
+          Continue;
+        EndIf;
+      EndIf;
+      
+      //Найдем отчет в пуле.
+      If Делитель>1 Then
+        Т2:=Text.Create();
+        ФайлВПуле:=оКаталогТемп+ПростоеИмя+".tmp";
+        If not File.DoesFileExist(ФайлВПуле) Then
+          Т2.AddString("1");
+          Т2.Save(ФайлВПуле);
+        EndIf;
+        If File.DoesFileExist(ФайлВПуле) Then
+          Т2.Load(ФайлВПуле);
+          Осталось:=Number(Т2.GetLine(1));
+          If Осталось<=1 Then
+            Т2.Clear();
+            Т2.AddString(Str(Делитель));
+            Т2.Save(ФайлВПуле);
+          Else
+            Т2.Clear();
+            Т2.AddString(Осталось-1);
+            Т2.Save(ФайлВПуле);
+            Continue;
+          EndIf;
+        EndIf;
+      EndIf;
+      
+      Параметр:="!";
+      //Выбираем параметр
+      If Pos("@",ИмяОтчета)>0 Then
+        Параметр:=ИмяОтчета;
+        ИмяОтчета:=TearStr(Параметр);
+      EndIf;
+      
+      Try
+        Message("Автозапуск: "+ИмяОтчета+", делитель: "+Делитель);
+        LoadModule(0,ИмяОтчета,Параметр);
+      Except
+        Message("Отчет "+ИмяОтчета+" найти не удалось!","!");
+      EndTry;
+    EndDo;
+    
+    If Удалить=1 Then
+      File.DeleteFile(оКаталог+Имя);
+    EndIf;
+    
+    Result:=0;
+    Exit;
+    
+  //Сервер обмена распред. базы  
+  ElseIf LowerCase(Left(LogonName(),9))="remotesrv" Then
+    If глПользователь.общиеАдминистратор=0 Then
+      глПользователь.общиеАдминистратор=1;
+      Try
+        глПользователь.Save();
+      Except
+        Result:=0;
+        Exit;
+      EndTry;
+    EndIf;
+    глСерверРаспределеннойБазыЦиклОжидания();
+  //Клиент обмена распред. базы -- одиночный запуск
+  ElseIf LowerCase(Left(LogonName(),9))="remotecln" Then
+    глЗапуститьОбменСЦентральнойБазой();
+    Result:=0;
+    Exit;
+  EndIf;
+EndFunction
+
+//Функция вызывается при старте системы после инициализации GUI.
+Function OnSystemStart()
+  глРаботаетРобот:=0;
+  
+  Спр:=Ref.общПользователи;
+  If Спр.Find("Идентификатор,@ISFOLDER",LogonName(),0)=0  Then
+    Спр.New();
+    Спр.Идентификатор:=LogonName();
+    Спр.Name:=LogonName();
+    If IsDBAdministrator()>1 Then
+      For i:=1 to Struct.Ref("общПользователи").Props.Count() Do
+        If Struct.Ref("общПользователи").Props(i).DataType="NUMBER.1.0" Then
+          Спр.SetValue(Struct.Ref("общПользователи").Props(i).Name,1);
+        EndIf;
+      EndDo;
+    EndIf;
+    Спр.Save();
+    Message("Пользователь зарегистрирован в справочнике пользователей.");
+  EndIf;
+    
+  глПользователь:=Спр;
+  GlobalDefaultSystemFont(глПользователь.стрШрифтПоУмолчанию);
+
+  If глПользователь.Status()=1 Then
+    Box("Вам нельзя пользоваться программой, так как ваш элемент справочника пользователи был удален! Пожалуйста, обратитесь к администратору системы!",Q_STOP);
+    CloseProgram;
+    Exit;
+  EndIf;
+
+  ФлПустаяБаза:=0;
+  If Trim(DBVar.ПрефиксИБ)="" Then
+    ФлПустаяБаза:=1;
+    If AskQuestion("Возможно, информационная база не заполнена, запустить обработку начального запуска для заполнения основных справочников?",Q_YESNO+Q_QUESTION)=R_YES Then
+      try
+        LoadModule(1,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\ОбработкаНачальногоЗапуска",,,"Module","Form");
+      Except
+      EndTry;
+    EndIf;
+  EndIf;
+  
+  //Проверка того, что пользователь зашел в программу не под своим логином, если логин Windows не совпадает с логином пользователя
+  //If _And(UpperCase(глПользователь.Идентификатор)<>Uppercase(UserName),IsDBAdministrator()=0,ProgramMode()=1) Then
+  //  //TODO: Найти пользователя по UserName и подставлять, как объект
+  //  Logs.Write("Пользователь "+UserName+" зашел под "+глПользователь.Идентификатор,,"НАРУШЕНИЯ");
+  //  Message("Вы зашли под пользователем "+глПользователь.Идентификатор+", возможное нарушение зафиксировано!","!");
+  //EndIf;
+  If _And(not ФлПустаяБаза,IsDBAdministrator()>0,ProgramMode()=1,DBVar.ЗапускатьЗадачуЕГАИСВВизуальномКлиенте<>1) Then
+    aList:=GetAccountNames();
+    If aList.Find("worksrv")=0 Then
+      Message("На сервере не найден консольный пользователь ""worksrv"", который должен быть запущен в рабочей базе данных, иначе некоторые автоматические процессы не будут работать!","!");
+    EndIf;
+  EndIf;
+  
+  глКоличествоЗнаковВОтчетах:=DBVar.КоличествоЗнаковВОтчетах;
+  глКоличествоЗнаковВОтчетах:=?(глКоличествоЗнаковВОтчетах=0,3,глКоличествоЗнаковВОтчетах);
+  глКоличествоЗнаковВОтчетах:=?(глКоличествоЗнаковВОтчетах<0,0,глКоличествоЗнаковВОтчетах);
+  
+  
+  ShowControlPanel("Розница");
+  
+  оКаталог:="Temp\Автозагрузка\ПриЗапускеСистемы\";
+  File.CreateDirectory(оКаталог);
+  If File.DoesFileExist(оКаталог+"Orders.ctl") Then
+    Т:=Text.Create();
+    Т.Load(оКаталог+"Orders.ctl");
+    For i:=1 to Т.Size() Do
+      ИмяФайла:=Trim(Т.GetLine(i));
+      If Left(ИмяФайла,1)=";" Then
+        Continue;
+      EndIf;
+      If ИмяФайла="" Then
+        Continue;
+      EndIf;
+      ИмяФайла:=?(Pos("\",ИмяФайла)>0,ИмяФайла,оКаталог+ИмяФайла);
+      Try
+        SysExec(ИмяФайла);
+      Except EndTry;
+    EndDo;
+  EndIf;
+  
+  If LowerCase(Left(LogonName(),9))<>"remotesrv" Then
+    //Предупреждение при работе с глобальной базой
+    If DBVar.ЦентральнаяБаза=1 Then
+      а:=Ref.рбУдаленныеБазы;
+      aList:=а.Load(0,"<>Предупреждение","");
+      For i:=1 To aList.Size() Do
+        MsgBox("База с префиксом "+Trim(aList.Get(i).ПрефиксБазы)+": "+aList.Get(i).Предупреждение,Q_INFORMATION);
+      EndDo;
+      
+      Стр:="";
+      а:=Ref.рбУдаленныеБазы;
+      а.Select("@STATUS",0);
+      While а.Next() Do
+        If Trim(а.ПрефиксБазы)<>Trim(DBVar.ПрефиксИБ) Then
+          If BegOfDay(Date(а.ПоследнийОбмен))<CurDate()-3 Then
+            Стр:=Стр+?(Стр<>"",_NEWLINE,"")+"В базе с префиксом "+Trim(а.ПрефиксБазы)+" обмен не происходил уже более 3-х дней!";
+          EndIf;
+        EndIf;
+      EndDo;
+      If Стр<>"" Then
+        If isEmpty(DBVar.ОкончаниеПериодаБазы) Then
+          Стр:=Стр+_NEWLINE+"Информация устарела, возможны неверные данные!";
+          MsgBox(Стр);
+        EndIf;  
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  If IsDBAdministrator()=2 Then
+    СтрИмя:="";
+    СтрОшибка:="";
+    аДата:=0;
+    If QueryScheduledBackupFailure(СтрИмя,СтрОшибка,аДата) Then
+      Message("Внимание! При выполнении резервного копирования на сервере была найдена ошибка!","!");
+      Message("Последний раз это произошло "+FormatDate(аДата,"dd.mm.YYYY hh:tt:ss")+" с протоколом "+СтрИмя+", ошибка: "+СтрОшибка+"!","!");
+    EndIf;
+  EndIf;
+EndFunction
+
+//Только при ИНТЕРАКТИВНОЙ записи
+Function глПриЗаписиЭлементаСправочника(Эл,Тихо=0) Export
+  If Эл.Selected()>0 Then
+    а:=DB(Эл.DBType()+"."+Эл.DBName());
+    If а.Find("@ELEMENT",Эл) Then
+      If а.Code<>Эл.Code Then
+        Эл.Code:=а.Code;
+      EndIf;
+    EndIf;  
+  EndIf;
+  if not IsEmpty(Struct.Ref(Эл.DBName()).Props("Name")) Then
+    if not isEmpty(Form.Control("cName")) Then
+      Form.cName.UpdateValue();
+    EndIf;  
+    If IsBlankString(Эл.Name) Then
+      Box("Наименование элемента не может быть пустым!",Q_STOP);
+      Try
+        Form.cName.SetFocus();
+      Except
+      EndTry;
+      Result:=0;
+      Exit;
+    EndIf;
+  EndIf;
+  Result:=1;
+EndFunction;
+
+Function глОткрытьФормуСправочника(Вид,ИмяФормы="SelectForm",ИмяМодуля="Module",Арг1=0,Арг2=0) Export
+  LoadModule(1,"Ref."+Вид,Арг1,Арг2,ИмяМодуля,ИмяФормы);
+EndFunction;
+
+
+Function глМенюШтрихкодов(Эл) Export
+  If _Or(IsEmpty(Эл),Эл.IsFolder()) Then
+    Exit;
+  EndIf;
+  If Эл.Selected()<1 Then
+    Box("Сначала, пожалуйста, запишите элемент справочника!",Q_STOP);
+    Exit;
+  EndIf;
+  Стр:="Открыть справочник штрихкодов...@Добавить штрихкод...";
+  
+  Сп:=List.Create();
+  б:=Ref.тмцШтрихкоды;
+  aList:=б.Load(0,"@Parent,@Status",Эл,0);
+  For i:=1 to aList.Size() Do
+    б:=aList.Get(i);
+    Стр:=Стр+?(i=1,"@-","")+"@"+?(Number(б.флОсновной)=1,"(+) ","")+Trim(б.Name)+?(б.Коэффициент=1,"",", кф: "+б.Коэффициент);
+    Сп.Add(б);
+  EndDo;
+  а:=глВыполнитьВыборВМеню(Стр);
+  If а=1 Then
+    LoadModule(1,"Ref.тмцШтрихкоды",Эл,,"Module","SelectForm");
+  ElseIf а=2 Then
+    б.New();
+    б.Parent(Эл);
+    OpenObject(б,0,1);
+  ElseIf а>3 Then
+    а:=Сп.Get(а-3);
+    OpenObject(а,0,1);
+  EndIf;
+EndFunction
+
+Function глДополнительныеСвойства(Эл) Export
+  If _Or(IsEmpty(Эл),Эл.Selected()<1) Then
+    Box("Сначала, пожалуйста, запишите элемент справочника!",Q_STOP);
+    Exit;
+  EndIf;
+  aList:=List.Create();
+  aList.Add("Открыть справочник свойств...");
+  aList.Add("-");
+  Вид:=Эл.DBName();Ид:=Enum.Get("ВидыСправочниковСДопСвойствами."+Вид);
+  If IsEmpty(Ид)=1 Then
+    Exit;
+  EndIf;
+  
+  а:=Ref.общТипыДополнительныхСвойств;
+  aTypes:=а.Load(0,"ВидСправочника,@Status",Ид,0);
+  If aTypes.Size()=0 Then
+    Exit;
+  EndIf;
+  
+  ТЗн:=Tab.Create("Вид,Эл");
+  б:=Ref.общДополнительныеСвойства;
+  б:=б.Load(0,"Элемент,->ТипСвойства,@STATUS",Эл,aTypes,0);
+  For i:=1 to б.Size() Do
+    ТЗн.AddLine("Эл,Вид",б.Get(i),б.Get(i).ТипСвойства);
+  EndDo;
+
+  For i:=1 to aTypes.Size() Do
+    а:=aTypes.Get(i);
+    Стр:=Trim(а.Name)+"=";
+    If ТЗн.FindAndGoto(а,,"Вид") Then
+      Стр:=Стр+Trim(ТЗн.Эл.Name);
+    EndIf;
+    aList.Add(Стр);
+  EndDo;
+  
+  а:=Number(aList.Select(,1));
+  If а=1 Then
+    LoadModule(1,"Ref.общДополнительныеСвойства",Эл);
+  ElseIf а>2 Then
+    а:=aTypes.Get(а-2);
+    If ТЗн.FindAndGoto(а,,"Вид") Then
+      б:=ТЗн.Эл;
+    Else
+      б:=Ref.общДополнительныеСвойства;
+      б.New();
+      б.ТипСвойства:=а;
+      б.Элемент:=Эл;
+    EndIf;
+    Стр:=б.Name;
+    If AskString(Стр,"Введите значение",100) Then
+      б.Name:=Стр;
+      б.Save();
+    EndIf;
+  EndIf;  
+EndFunction
+
+Function глПолучитьКодИзЧисла(Вид,Код) Export
+  Длина:=Struct.Ref(Вид).Props("Code").DataType;
+  if Pos("STRING.",Длина)=0 Then
+    Exit Код;
+  EndIf;
+  tearStr(Длина,"STRING.");
+  Длина:=Number(Длина);
+  If Длина=0 Then
+    Exit Код;
+  EndIf;
+  Exit RepeatStr("0",Длина-Length(Код))+Код;
+EndFunction
+
+//TODO: Почти одинаковый с глНайтиЦену
+Function глНайтиЦенуТипаЦен(Н,ТипЦен,ДатаЦены,ByRef элЦ=0) Export
+  элЦ:=Ref.цЦены;
+  If элЦ.Find("@Parent,ТипЦен",Н,ТипЦен) Then
+    Exit элЦ.GetValue("Цена",ДатаЦены);
+  EndIf;
+  элЦ:=0;
+  Exit 0;
+EndFunction
+
+Function глНайтиЦену(зН,зТЦ,ДатаЦены,ByRef ЭлементЦены=0) Export
+  ЭлементЦены:=Ref.цЦены;
+  If ЭлементЦены.Find("@Parent,ТипЦен",зН,зТЦ) Then
+    зЦ:=Max(зН.ЦенаМинимальнаяПродажная,ЭлементЦены.GetValue("Цена",ДатаЦены),0);
+    Exit ?(зН.ЦенаМаксимальнаяПродажная>0,Min(зН.ЦенаМаксимальнаяПродажная,зЦ),зЦ);
+  EndIf;
+  ЭлементЦены:=0;
+  Exit 0;
+EndFunction
+
+//ТабОптимизация: Индекс, Цена
+Function глПолучитьОсновнуюЦену(Н,Склад,пДата,флТихо=0,ТабОптимизация=0) Export
+  Result:=0;
+  If not флЦентральнаяБаза Then
+    If Склад.рзТипЦенПоступления.Selected()<>0 Then
+      If ТабОптимизация<>0 Then
+        Индекс:=Н.Code+"@"+пДата;
+        If not ТабОптимизация.FindAndGoto(Индекс,,"Индекс",1) Then
+          пЦ:=глНайтиЦенуТипаЦен(Н,Склад.рзТипЦенПоступления,пДата);
+          ТабОптимизация.AddLineSorted("Индекс","Индекс,Цена",Индекс,пЦ);
+        EndIf;
+        Exit ТабОптимизация.Цена;
+      EndIf;
+    
+      Exit глНайтиЦенуТипаЦен(Н,Склад.рзТипЦенПоступления,пДата);
+    EndIf;
+  Else
+    Преф:=Trim(Склад.рбПрефиксУдаленнойБазы);
+    If Преф<>"" Then
+      аЦ:=Ref.рбОсновныеЦены;
+      If ТабОптимизация<>0 Then
+        Индекс:=Преф+"@"+Н.Code+"@"+пДата;
+        If not ТабОптимизация.FindAndGoto(Индекс,,"Индекс",1) Then
+          пЦ:=0;
+          If аЦ.Find("@Parent,рбПрефиксУдаленнойБазы",Н,Преф) Then
+            пЦ:=аЦ.GetValue("Цена",пДата);
+          EndIf;
+          ТабОптимизация.AddLineSorted("Индекс","Индекс,Цена",Индекс,пЦ);
+        EndIf;
+        Exit ТабОптимизация.Цена;
+      EndIf;
+      
+      If not аЦ.Find("@Parent,рбПрефиксУдаленнойБазы",Н,Преф) Then
+        Exit 0;
+      Else
+        Exit аЦ.GetValue("Цена",пДата);
+      EndIf;
+    EndIf;
+  EndIf;
+EndFunction
+
+Function ДатаЗапретаСТочкиЗренияПолномочий(aEl,флФорсировать=0) Export;
+  If (Pos(aEl.DBName()+"@",глПользователь.ДокументыДляБезграничногоРедактирования)>0)Or(глПользователь.бухГлавныйБухгалтер)Or(флФорсировать=1) Then
+    Exit BegOfDay(Max(Date(DBVar.ДатаГлобальногоЗапрета),aEl.ЮрЛицо.ДатаЗапрета));
+  EndIf;
+  Exit BegOfDay(Date(DBVar.ДатаЗапретаРедактирования));
+EndFunction
+
+
+Function глПроверитьВозможностьИзмененияДокумента(aEl,флФорсировать=0) Export
+  If (aEl.ФлагОбмена=9)And(not глРаботаетРобот) Then
+    Message("Документы, выгруженные из удаленной базы, не разрешается изменять в данной!","!");
+    Exit 0;
+  EndIf;
+  Вид:=aEl.DBName();
+  If _And(глЕстьРеквизитДокумента("Склад",Вид),aEl.Склад.флЗапретитьЛюбыеНовыеДокументы=1,not глРаботаетРобот) Then
+    Message("Нельзя создавать или изменять документы по складам, которые находятся в другой базе или запрещены к изменению!","!");
+    Exit 0;
+  EndIf;
+  If _And(глЕстьРеквизитДокумента("СкладПолучатель",Вид),aEl.СкладПолучатель.флЗапретитьЛюбыеНовыеДокументы=1,not глРаботаетРобот) Then
+    Message("Нельзя создавать или изменять документы по складам, которые находятся в другой базе или запрещены к изменению!","!");
+    Exit 0;
+  EndIf;
+  If _And(глЕстьРеквизитДокумента("Контрагент",Вид),Trunc(aEl.Контрагент.Folder().флЗапреты/32)%2=1,not глРаботаетРобот) Then
+    Message("Нельзя создавать или изменять документы по контрагентам, которые находятся в другой базе или запрещены к изменению!","!");
+    Exit 0;
+  EndIf;
+  If _And(not глРаботаетРобот,ProgramMode()=1,BegOfDay(aEl.DocDate)<=ДатаЗапретаСТочкиЗренияПолномочий(aEl,флФорсировать)) Then
+    Message("Нельзя изменять документы до даты запрета редактирования (документ "+aEl+")!","!");
+    Exit 0;
+  EndIf;
+  
+  Exit 1;  
+EndFunction
+
+Function глПодготовитьОшибкуОбработки() Export
+  Стр:=PeekError();
+  If Pos("(80 at",Стр)=1 Then
+    Exit PopError(4);
+  EndIf;
+  Exit PopError();
+EndFunction
+
+
+//Внимание: флБезПроверки -- игнорирует глобальную дату запрета! Опасно!!!
+Function глОбработать(aEl,флФорсировать=0,флБезПроверки=0) Export
+  If _Or(not флБезПроверки,DBVar.ИдетПеренесениеБазы) Then
+    If not глПроверитьВозможностьИзмененияДокумента(aEl,флФорсировать<>0) Then
+      Exit 0;
+    EndIf;
+  EndIf;  
+  
+  If aEl.Status()<0 Then
+    Try
+      aEl.Save();
+    Except
+      Exit 0;
+    EndTry
+  ElseIf aEl.Status()=1 Then
+    Message("Невозможно обработать удаленный документ!","!");
+    Exit 0;
+  EndIf;
+
+  Try
+    If TypeStr(флФорсировать)<>"LIST" Then
+      сп:=List.Create();
+      If флФорсировать<>0 Then
+        сп.SetByName("УровеньФорсирования",флФорсировать);
+        If флБезПроверки Then
+          сп.SetByName("ИгнорироватьГлобальнуюДатуЗапрета",1);
+        EndIf;  
+      EndIf;
+    Else
+      сп:=флФорсировать;
+    EndIf;  
+    If aEl.Publish(сп) Then
+      Exit 1;
+    EndIf;
+  Except
+    Message(глПодготовитьОшибкуОбработки(),"!");
+  EndTry;  
+  Exit 0;
+EndFunction
+
+Function глОтменитьОбработку(aEl,флФорсировать=0) Export
+  If not глПроверитьВозможностьИзмененияДокумента(aEl,флФорсировать<>0) Then
+    Exit 0;
+  EndIf;
+
+  Try
+    If TypeStr(флФорсировать)<>"LIST" Then
+      сп:=List.Create();
+      If флФорсировать<>0 Then
+        сп.SetByName("УровеньФорсирования",флФорсировать);
+      EndIf;
+    Else
+      сп:=флФорсировать;
+    EndIf;  
+    If aEl.Unpublish(сп) Then
+      If aEl.ФлагОбмена<>1 Then
+        aEl.ФлагОбмена:=1;
+        aEl.Save();
+      EndIf;
+      Exit 1;
+    EndIf;
+  Except
+    Message(глПодготовитьОшибкуОбработки(),"!");
+  EndTry;  
+  Exit 0;
+EndFunction
+
+Function глУдалить(aEl,флФорсированно=0) Export
+  If Pos("DB.DOC.",TypeStr(aEl))=1 Then
+    If _Or(not флФорсированно,DBVar.ИдетПеренесениеБазы) Then
+      If not глПроверитьВозможностьИзмененияДокумента(aEl,флФорсированно) Then
+        Exit 0;
+      EndIf;
+    ElseIf aEl.Status()>1 Then
+      If not глОтменитьОбработку(aEl,флФорсированно) Then
+        Exit 0;
+      EndIf;
+    EndIf;  
+  EndIf;  
+
+  Try
+    If aEl.Mark(1) Then
+      Exit 1;
+    EndIf;
+  Except
+    Message(PopError(),"!");
+  EndTry;  
+  Exit 0;
+EndFunction
+
+Function глОтменитьУдаление(aEl,флФорсировать=0) Export
+  If Pos("DB.DOC.",TypeStr(aEl))=1 Then
+    If not глПроверитьВозможностьИзмененияДокумента(aEl,флФорсировать) Then
+      Exit 0;
+    EndIf;
+  EndIf;  
+
+  Try
+    If aEl.Mark(0) Then
+      Exit 1;
+    EndIf;
+  Except
+  EndTry;  
+  Exit 0;
+EndFunction
+
+
+Function глЗаписать(ByVal О,Тихо=0,флБезПроверки=0,флФорсировать=0) Export
+  Тип:=Pos("DB.DOC.",TypeStr(О))=1;
+  If (Тип)And(_Or(not флБезПроверки,DBVar.ИдетПеренесениеБазы)) Then
+    If not глПроверитьВозможностьИзмененияДокумента(О,флФорсировать<>0) Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  //Запись
+  Удачно:=0;Попыток:=0;
+  While Удачно=0 Do
+    Удачно=1;
+    Try
+      О.Save();
+    Except
+      Удачно:=0;
+      СтрОш:=PopError();
+      Try
+        Message(СтрОш+", объект: "+О.DBName()+": "+О,"!");
+      Except
+        Message(СтрОш+", объект: "+TypeStr(О)+": "+О,"!");
+      EndTry;
+      If (Попыток>4)Or(Pos("заблокирован",LowerCase(СтрОш))>0) Then        
+        Break;
+      EndIf;
+      Form.StatusText("Повторная попытка записи объекта "+О+"...");
+      If Тихо=0 Then
+        Message("Пауза перед повторной попыткой записи (попытка: "+(Попыток+1)+")!","I");
+        Sleep(1000);
+      EndIf;
+      Попыток:=Попыток+1;
+    EndTry;
+  EndDo;
+  If (Тип+Удачно=2)And(глРаботаетРобот=0) Then
+    Logs.Write("Документ записан",О,"WRITE");
+  EndIf;
+  Exit Удачно;
+EndFunction
+
+//КореньСпр -- корневая папка (Если равна нулю -- найти автоматом)
+//ВидУдСпр -- справочник (Если ноль -- только найти корневую папку)
+//СпОптим -- список оптимизации (ноль -- не нужен)
+Function глНайтиКонтейнерСопоставления(ПрИБ,ВидУдСпр=0,СпОптим=0,КореньСпр=0,ВидСпр="рбНесинхронизированныеЭлементы",Тихо=0) Export
+  If КореньСпр=0 Then
+    а:=DB("Ref."+ВидСпр);
+    If not а.Find("Индекс","#"+Trim(ПрИБ)) Then
+      а.New(1);
+      а.Name:="База с префиксом "+Trim(ПрИБ);
+      а.Индекс:="#"+Trim(ПрИБ);
+      If not глЗаписать(а) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+    If ВидУдСпр=0 Then
+      Exit а;
+    EndIf;
+  EndIf;
+  If ВидУдСпр=0 Then
+    Exit 0;
+  EndIf;
+  
+  б:="";
+  If СпОптим<>0 Then
+    б:=СпОптим.GetByName(ВидУдСпр);
+  EndIf;
+  If Trim(б)<>"" Then
+    Exit б;
+  EndIf;
+  б:=DB("Ref."+ВидСпр);
+  If not б.Find("Индекс","#"+Trim(ПрИБ)+"#"+ВидУдСпр) Then
+    б.New(1);
+    б.Folder(?(КореньСпр=0,а,КореньСпр));
+    б.Name:="Справочник "+Struct.Ref(ВидУдСпр).Caption;
+    б.Индекс:="#"+Trim(ПрИБ)+"#"+ВидУдСпр;
+    If not глЗаписать(б) Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  If СпОптим<>0 Then
+    СпОптим.SetByName(ВидУдСпр,б);
+  EndIf;
+  Exit б;
+EndFunction
+
+
+Function глОбновитьКнопкиПериодическихРеквизитов(ФлОднаКнопка=0) Export
+  if not isEmpty(Form.Object) Then
+    НачДата:=Form.Object.BegPeriodDate();
+    КонДата:=Form.Object.EndPeriodDate();
+  Else
+    НачДата:=Form.BegPeriodDate();
+    КонДата:=Form.EndPeriodDate();
+  EndIf;  
+  If ФлОднаКнопка Then
+    Form.bPeriod.Caption:=""+КонДата;
+    If BegOfDay(Date)<>BegOfDay(КонДата) Then
+      Form.bPeriod.FontColor:=_CLR_RED;
+    Else
+      Form.bPeriod.FontColor:=_CLR_WINDOWTEXT;
+    EndIf;
+  Else
+    Form.bPeriodBeg.Caption:="c "+НачДата+" по";
+    Form.bPeriodEnd.Caption:=""+КонДата;
+    If BegOfDay(Date)<>BegOfDay(НачДата) Then
+      Form.bPeriodBeg.FontColor:=_CLR_RED;
+    Else
+      Form.bPeriodBeg.FontColor:=_CLR_WINDOWTEXT;
+    EndIf;
+    If BegOfDay(Date)<>BegOfDay(КонДата) Then
+      Form.bPeriodEnd.FontColor:=_CLR_RED;
+    Else
+      Form.bPeriodEnd.FontColor:=_CLR_WINDOWTEXT;
+    EndIf;
+  EndIf;  
+EndFunction;
+
+
+//Команда=0 - кнопка кнПериодНачДата, 1 - кнопка кнПериодКонДата, 2 - смена даты отображения для таблиц
+Function глРаботаСПериодическимиРеквизитами(Команда=0,Разрешение=0,ТолькоРекв="") Export
+  If Команда=0 Then
+    If глПользователь.бухБухгалтер=0 Then
+      Box("Вам не разрешено устанавливать значения ревизитов за период!",Q_STOP);
+      Exit;
+    EndIf;
+    if not isEmpty(Form.Object) Then
+      аДата:=Form.Object.BegPeriodDate();
+      бДата:=Form.Object.EndPeriodDate();
+    Else
+      аДата:=Form.BegPeriodDate();
+      бДата:=Form.EndPeriodDate();
+    EndIf;  
+    аДата:=AskDate(аДата,"Введите дату начала записи реквизитов:",1);
+    If аДата=0 Then
+      Exit;
+    EndIf;
+    If (аДата<Date()-62)And(not глПользователь.бухГлавныйБухгалтер) Then
+      Box("Вам запрещено менять значения реквизитов за дату, более раннюю, чем два месяца назад!",Q_STOP);
+      Exit;
+    EndIf;
+    If (бДата-аДата>62)And(not глПользователь.бухГлавныйБухгалтер) Then
+      Box("Вам запрещено менять значения реквизитов за промежуток, более чем два месяца!",Q_STOP);
+      Exit;
+    EndIf;
+    If аДата>бДата Then
+      бДата:=аДата;
+      Box("Дата начала изменения реквизитов не может быть больше даты отображения реквизитов! Дата отображения была изменена!",Q_WARNING);
+    EndIf;
+    Form.BegPeriodDate(аДата);
+    Form.EndPeriodDate(бДата);
+    GlobalBegPeriodDate(аДата);
+    GlobalEndPeriodDate(бДата);
+    if not isEmpty(Form.Object) Then
+      Form.Object.UsePeriod(аДата,бДата,0);
+    EndIf;  
+    глОбновитьКнопкиПериодическихРеквизитов();
+    If DoesFunctionExist("OnAfterFormPeriodChange",2) Then
+      ExecuteFunction("OnAfterFormPeriodChange",2);
+    EndIf;
+    Exit;
+  ElseIf Команда=2 Then
+    аДата:=Form.EndPeriodDate();
+    аДата:=AskDate(аДата,"Введите дату отображения реквизитов:",1);
+    If аДата=0 Then
+      Exit;
+    EndIf;
+    Фл:=Form.EndPeriodDate()<>аДата;
+    Form.BegPeriodDate(аДата);
+    Form.EndPeriodDate(аДата);
+    GlobalBegPeriodDate(аДата);
+    GlobalEndPeriodDate(аДата);
+    if not isEmpty(Form.Object) Then
+      Form.Object.UsePeriod(аДата,аДата,1);
+    EndIf;
+    глОбновитьКнопкиПериодическихРеквизитов(1);
+    If Фл Then
+      If DoesFunctionExist("OnAfterFormPeriodChange",2) Then
+        ExecuteFunction("OnAfterFormPeriodChange",2);
+      EndIf;
+    EndIf;  
+    Exit;
+  EndIf;
+  
+  if not isEmpty(Form.Object) Then
+    аДата:=Form.Object.EndPeriodDate();
+    бДата:=Form.Object.BegPeriodDate();
+  Else
+    аДата:=Form.EndPeriodDate();
+    бДата:=Form.BegPeriodDate();
+  EndIf;  
+  
+  а:=глВыполнитьВыборВМеню("Установить дату отображения реквизитов...@Установить период изменения периодических реквизитов...");
+  If а=0 Then
+    Exit;
+  EndIf;
+  If а=2 Then
+    If not AskPeriod(бДата,аДата,"Введите период изменения реквизитов:") Then
+      Exit;
+    EndIf;
+  EndIf;
+  If а=1 Then
+    аДата0:=аДата;
+    аДата:=AskDate(аДата,"Введите дату отображения реквизитов:",1);
+    If аДата=0 Then
+      Exit;
+    EndIf;
+    If BegOfDay(аДата0)=BegOfDay(бДата) Then
+      бДата:=аДата;
+    EndIf;
+  EndIf;
+
+  If бДата>аДата Then
+    бДата:=аДата;
+  EndIf;
+  If not глПользователь.бухБухгалтер Then
+    бДата:=аДата;
+  ElseIf (аДата-бДата>62)And(not глПользователь.бухГлавныйБухгалтер) Then
+    Box("Вам запрещено менять значения реквизитов за промежуток, более чем два месяца!",Q_STOP);
+    Exit;
+  EndIf;
+  Form.BegPeriodDate(бДата);
+  Form.EndPeriodDate(аДата);
+  GlobalBegPeriodDate(бДата);
+  GlobalEndPeriodDate(аДата);
+  if not isEmpty(Form.Object) Then
+    Form.Object.UsePeriod(бДата,аДата,1);
+  EndIf;  
+  If DoesFunctionExist("OnAfterFormPeriodChange",2) Then
+    ExecuteFunction("OnAfterFormPeriodChange",2);
+  EndIf;
+  глОбновитьКнопкиПериодическихРеквизитов();
+EndFunction
+
+
+
+//Возвращает строку ошибки, если невозможно заблокировать, если заблокировано возвращает пустую строку.
+//Принимает объект или список объектов
+Function глЗаблокировать(aEl,ФлВывестиОшибку=0) Export
+  аПольз:="";аМаш:="";аВремя:="";
+  If TypeStr(aEl)="LIST" Then
+    аОбъект:="";
+    If MassLockWithWait(aEl,0,1,0,аОбъект,аПольз,аМаш,аВремя) Then
+      Exit ?(ФлВывестиОшибку=0,"",1);
+    EndIf;
+    Стр:="Объект "+аОбъект+" заблокирован пользователем "+аПольз+" (компьютер "+аМаш+") "+FormatDate(аВремя,"D MMM YYYY в hh:tt:ss");
+  Else
+    If aEl.Lock(аПольз,аМаш,аВремя) Then
+      Exit ?(ФлВывестиОшибку=0,"",1);
+    EndIf;
+    Стр:="Объект "+aEl+" заблокирован пользователем "+аПольз+" (компьютер "+аМаш+") "+FormatDate(аВремя,"D MMM YYYY в hh:tt:ss");
+  Endif;
+  If ФлВывестиОшибку Then
+    Message(Стр,"!");
+    Exit 0;
+  EndIf;
+  Exit Стр;
+EndFunction
+
+
+Function глПолучитьЛицензиюКонтрагентаНаДату(пКнт,пДата,пТипЛиц=0,пТипЛиц2=0,пАдресДоставки=0,флЛюбая=0) Export
+  
+  пОснЛицКод:="";
+  If _And(not isEmpty(пАдресДоставки),pos("DB.REF",TypeStr(пАдресДоставки))=1) Then
+    а:=пАдресДоставки.GetValue("ОсновнаяЛицензия",пДата);
+    If а.Selected()<>0 Then
+      пОснЛицКод:=а.Code;
+    EndIf;
+  EndIf;
+  
+  аРез:=0;
+  а:=Ref.кнтЛицензииКонтрагентов;
+  а.Select("@Parent,@Status",пКнт,0);
+  While а.Next() Do
+    
+    If (пТипЛиц<>0)Or(пТипЛиц2<>0) Then
+      Фл:=0;
+      If (пТипЛиц<>0)And(пТипЛиц=а.ТипЛицензии) Then
+        Фл:=1;
+      ElseIf (пТипЛиц2<>0)And(пТипЛиц2=а.ТипЛицензии) Then
+        Фл:=1;
+      EndIf;
+      If Фл=0 Then
+        Continue;
+      EndIf;
+    EndIf;
+    
+    
+    
+    If (флЛюбая)Or((а.ДатаВыдачиЛицензии<=пДата)And(а.ДатаНачалаДействияЛицензии<=пДата)And(а.ДатаОкончанияДействияЛицензии>пДата)) Then
+      if (флЛюбая)And(а.ДатаНачалаДействияЛицензии>пДата) Then
+        Continue;
+      EndIf;
+      If аРез=0 Then
+        аРез:=а.Copy();
+      ElseIf (а.Code=пОснЛицКод)Or((пОснЛицКод="")And(аРез.ДатаВыдачиЛицензии<а.ДатаВыдачиЛицензии)) Then
+        аРез:=а.Copy();
+      EndIf;
+    EndIf;
+  EndDo;
+  Exit ?(аРез=0,GetNothing("Ref.кнтЛицензииКонтрагентов"),аРез);
+EndFunction
+
+Function OnSaveDBVar(DBVarName,NewDBVarValue,SavePeriodBeg,SavePeriodEnd)
+  If not глПользователь.общиеАдминистратор Then
+    Message("Вам запрещено изменять установки БД, обратитесь к администратору!","!");
+    Exit 1;
+  EndIf;
+  Exit 0;
+EndFunction
+
+
+Function глНайтиДокументПоНомеру(Вид,НомерДок,ДатаДок) Export
+  Дл:=Struct.Doc(Вид).Props("DocNum").DataType;
+  TearStr(Дл,"STRING.");
+  Дл:=Number(Дл);
+  If (Дл>0)And(Length(НомерДок)<>Дл) Then
+    Префикс:="";
+    While Pos(Left(НомерДок,1),"0123456789")=0 Do
+      Префикс:=Префикс+Left(НомерДок,1);
+      НомерДок:=Mid(НомерДок,2);
+    EndDo;
+    If Дл>Length(Префикс) Then
+      НомерДок:=Префикс+Right("000000000000000000"+Trim(НомерДок),Дл-Length(Префикс));
+    Else
+      НомерДок:=Right(Префикс,Дл);
+    EndIf;
+  EndIf;  
+  
+  аДок:=DB("Doc."+Вид);
+  If аДок.Find("DocNum,<DocDate,>=DocDate",НомерДок,EndOfYear(Date(ДатаДок))+1,BegOfYear(Date(ДатаДок))) Then
+    Exit аДок;
+  EndIf;
+  Exit 0;
+EndFunction
+
+Function глПолучитьИННПодразделения(ЮрЛицо,Магазин,ByRef ФлОбособлПодр=0) Export
+  ФлОбособлПодр:=0;
+  If _And(not isEmpty(Магазин),Магазин.Selected()<>0) Then
+    aTab:=ЮрЛицо.LineParts("ОбособленныеПодразделения");
+    If aTab.FindAndGoto(Магазин,,"Магазин")>0 Then
+      If not isEmpty(aTab.ИНН) Then
+        ФлОбособлПодр:=Trim(aTab.ИНН)<>Trim(ЮрЛицо.ИНН);
+        Exit aTab.ИНН;
+      EndIf;
+    EndIf;
+  EndIf;
+  Exit ЮрЛицо.ИНН;
+EndFunction
+
+Function глПолучитьАдресПодразделения(ЮрЛицо,Магазин) Export
+  If _And(not isEmpty(Магазин),Магазин.Selected()<>0) Then
+    aTab:=ЮрЛицо.LineParts("ОбособленныеПодразделения");
+    If aTab.FindAndGoto(Магазин,,"Магазин")>0 Then
+      If not isEmpty(aTab.ФактАдрес) Then
+        Exit aTab.ФактАдрес;
+      EndIf;
+    EndIf;
+  EndIf;
+  Exit ЮрЛицо.ФактАдрес;
+EndFunction
+
+Function глПолучитьСотрудниковПодразделения(ЮрЛицо,Магазин,Дата,ByRef Руководитель=132,ByRef ГлБухгалтер=132,ByRef Кассир=132) Export
+  If _And(not isEmpty(Магазин),Магазин.Selected()<>0) Then
+    aTab:=ЮрЛицо.LineParts("ОбособленныеПодразделения");
+    If aTab.FindAndGoto(Магазин,,"Магазин")>0 Then
+      If Руководитель<>132 Then
+        Руководитель:=ЮрЛицо.GetValue("ОбособленныеПодразделения."+aTab.CurLine+".Руководитель",Дата);
+      EndIf;
+      If ГлБухгалтер<>132 Then
+        ГлБухгалтер:=ЮрЛицо.GetValue("ОбособленныеПодразделения."+aTab.CurLine+".ГлБухгалтер",Дата);
+      EndIf;
+      If Кассир<>132 Then
+        Кассир:=ЮрЛицо.GetValue("ОбособленныеПодразделения."+aTab.CurLine+".Кассир",Дата);
+      EndIf;
+    EndIf;
+  EndIf;
+  If _And(Руководитель<>132,isEmpty(Руководитель)) Then
+    Руководитель:=ЮрЛицо.GetValue("Руководитель",Дата);
+  EndIf;  
+  If _And(ГлБухгалтер<>132,isEmpty(ГлБухгалтер)) Then
+    ГлБухгалтер:=ЮрЛицо.GetValue("ГлБухгалтер",Дата);
+  EndIf;  
+  If _And(Кассир<>132,isEmpty(Кассир)) Then
+    Кассир:=ЮрЛицо.GetValue("Кассир",Дата);
+  EndIf;  
+EndFunction
+
+Function OnDoubleClick(Таб)
+  If Таб.SelectionMode>1 Then
+    if Таб.SelectedObjects().Count()<1 Then
+      Exit;
+    EndIf;
+    Obj:=Таб.SelectedObjects().Get(1);
+    Сп:=Obj.Value;
+  Else
+    Сп:=Таб.Area(Таб.CurCol,Таб.CurLine,Таб.CurCol,Таб.CurLine).Value;
+  EndIf;  
+  If TypeStr(Сп)<>"LIST" Then
+    Exit;
+  EndIf;
+  If not isEmpty(Сп.GetByName("Module")) Then
+    Путь:=Сп.GetByName("Module");
+    Сп:=List.Create();
+    Сп.SetByName("Table",Таб);
+    Сп.SetByName("SimpleRootCall",1);
+    LoadModule(0,Путь,Сп,0,"Module","Form");
+  EndIf;
+EndFunction
+
+Function глПолучитьИмяУстановокПечатнойФормы(Таб) Export
+  Result:="";
+  Файл:=Uppercase(Таб.GetSourceName);  //MODULES\FREEFORMS\ПЕЧАТНЫЕФОРМЫ\ДОКУМЕНТ.РЕАЛИЗАЦИЯ\СЧЕТФАКТУРА\TABLE
+                                       //MODULES\FREEFORMS\УЧЕТНЫЕОТДЕЛЫ\АНАЛИТИЧЕСКИЕ\АНАЛИЗЫПРОДАЖ\АНАЛИЗПРОДАЖ\TABLE
+                                       
+  If pos("MODULES\FREEFORMS\",Файл)=0 Then
+    Exit;
+  EndIf;
+  //Сохраняем только для "стандартных" таблиц?
+  If Uppercase(GetFileName(Файл))<>"TABLE" Then
+    Exit;
+  EndIf;
+  TearStr(Файл,"MODULES\FREEFORMS\");
+  Result:=AddBackSlash(GetUserDirectory())+"УстановкиПечатныхФорм\"+Replace(Replace(RemoveBackSlash(GetPath(Файл)),"\","_"),".","_")+".set";
+EndFunction
+
+//Вызывается только при визуальной печати из таблицы. T.Print не вызывает это событие.
+Function OnBeforePrint(Таб)
+  Result:=1;
+  If Таб.PrintSettingsChanged Then
+    Файл:=глПолучитьИмяУстановокПечатнойФормы(Таб);
+    If isEmpty(Файл) Then
+      Exit;
+    EndIf;
+    aList:=List.Create();
+    aList.SetByName("Orientation",Таб.Printing.Orientation);
+    aList.SetByName("ScaleMode",Таб.Printing.ScaleMode);
+    aList.SetByName("Scale",Таб.Printing.Scale);
+    aList.SetByName("PageOptions",Таб.Printing.PageOptions);
+    aList.SetByName("Left",Таб.Printing.Fields.Left);
+    aList.SetByName("Right",Таб.Printing.Fields.Right);
+    aList.SetByName("Up",Таб.Printing.Fields.Up);
+    aList.SetByName("Down",Таб.Printing.Fields.Down);
+    aList.SetByName("Titles.Up",Таб.Printing.Titles.Up.Size);
+    aList.SetByName("Titles.Down",Таб.Printing.Titles.Down.Size);
+    ObjectToFile(aList,Файл);
+  EndIf;
+  If DoesFunctionExist("OnBeforePrintLocal",2) Then
+    ExecuteFunction("OnBeforePrintLocal",2);
+  EndIf;  
+EndFunction
+
+Function глОчиститьКаталог(Папка) Export;
+  Папка:=AddBackSlash(Папка);
+  Сп:=List.Create();
+  aFile:=File.Create();
+  aFile.FindOpen(Trim(Папка)+"*.*");
+  While aFile.FindNextFile()<>"" Do
+    Сп.Add(Trim(Папка)+aFile.FileName);
+  EndDo;
+  Фл:=1;
+  For i:=1 To Сп.Size() Do
+    If not File.DeleteFile(Trim(Сп.Get(i))) Then
+      Message("Не удается удалить файл "+Сп.Get(i)+"!","!");
+      Фл:=0;
+    EndIf;
+  EndDo;
+  Exit Фл;
+EndFunction
+
+глМаксимальныйПериодРасчетаДебиторскойЗадолж:=120;
+глТаймерПерезагрузки:=0;
+флНеДелитьНаОсновныеИБазовыеВДокументах:=Number(DBVar.флНеДелитьНаОсновныеИБазовыеВДокументах);
+флЦентральнаяБаза:=Number(DBVar.ЦентральнаяБаза);
+флРазрешитьЗатратыПоНачислению:=Number(DBVar.РазрешитьЗатратыПоНачислению);
+
+//Установка даты запрета
+If DBVar.ДатаЗапретаРедактирования<>BegOfDay(Date()-DBVar.СрокЗапрета) Then
+  Try
+    DBVar.ДатаЗапретаРедактирования:=BegOfDay(Date()-DBVar.СрокЗапрета);
+  Except
+  EndTry
+EndIf;

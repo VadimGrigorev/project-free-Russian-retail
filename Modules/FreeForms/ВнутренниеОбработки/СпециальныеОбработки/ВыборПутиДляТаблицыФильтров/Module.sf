@@ -1,0 +1,118 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var табНачальная Export;
+Var флТолькоЦифры Export;
+
+Function ПропуститьТип(аРекв,ByRef Тип)
+  If not аРекв.IsDBType Then
+    If _And(флТолькоЦифры,Pos("NUMBER",Тип)=0) Then
+      Exit 1;
+    EndIf;
+    Тип:=tearStr(Тип,".");
+  ElseIf Pos(".",Тип)=0 Then
+    //TODO: также принимать типы DOC, REF без указания вида
+    Exit 1;
+  ElseIf флТолькоЦифры Then
+    If Pos("ENUM.",Тип)>0 Then
+      Exit 1;
+    EndIf;
+  EndIf;
+  Exit 0;
+EndFunction
+
+Function _GetIconByType(пТип)
+  if пТип="STRING" Then
+    result:=127;
+  Elseif пТип="NUMBER" Then
+    result:=125;
+  Elseif пТип="DATE" Then
+    result:=126;
+  Elseif пТип="ANY" Then
+    result:=124;
+  Elseif pos("REF.",пТип)=1 Then
+    result:=103;
+  Elseif pos("DOC.",пТип)=1 Then
+    result:=141;
+  Elseif pos("ENUM.",пТип)=1 Then
+    result:=136;
+  Else
+    result:=0;
+  EndIf;
+EndFunction;
+
+Function ДобавитьТекущийОбъектКДереву(Leaf,aList,Путь0,ПутьИмя0,флВерхнийУровень=1)
+  Путь00:=Путь0;
+  //Совмещаем одинаковые по именам и типам реквизиты
+  aTab:=Tab.Create("Имя,ПИмя,Тип,Путь,ФлDB,Иконка");
+  ФлКаст:=(aList.Size()>1)And(not флВерхнийУровень);
+  For i:=1 To aList.Size() Do
+    Путь:=aList.Get(i);
+    If Путь="ANY" Then
+      Continue;//TODO: Разрешить использовать все возможные объекты?
+    EndIf;
+    if Путь00="" Then
+      Путь0:=Путь;
+    EndIf;
+    aObj:=DB(Путь).Struct;
+    
+    For j:=1 To aObj.Parents.Count() Do
+      Имя:="@PARENT";
+      if aObj.Parents.Count()>1 Then
+        Имя:=Имя+".."+aObj.Parents(j).DataType;
+      EndIf;
+      ПИмя:=aObj.Parents(j).Caption;
+      Тип:=aObj.Parents(j).DataType;
+      If ПропуститьТип(aObj.Parents(j),Тип) Then
+        Continue;
+      EndIf;
+      aTab.CurLine:=0;
+      If aTab.LocateAndGoto("Имя,Тип",Имя,Тип)>0 Then
+        aTab.Путь:=aTab.Путь+","+Путь0+?(ФлКаст,".."+Путь,"")+"."+Имя;
+        Continue;
+      EndIf;
+      //TODO: "ANY"?
+      aTab.AddLine("Имя,ПИмя,Тип,Путь,ФлDB,Иконка",Имя,ПИмя,Тип,Путь0+?(ФлКаст,".."+Путь,"")+"."+Имя,aObj.Parents(j).IsDBType,_GetIconByType(Тип));
+    EndDo;
+    
+    For j:=1 To aObj.Props.Count() Do
+      Имя:=aObj.Props(j).Name;
+      ПИмя:=aObj.Props(j).Caption;
+      Тип:=aObj.Props(j).DataType;
+      If ПропуститьТип(aObj.Props(j),Тип) Then
+        Continue;
+      EndIf;
+      aTab.CurLine:=0;
+      If aTab.LocateAndGoto("Имя,Тип",Имя,Тип)>0 Then
+        aTab.Путь:=aTab.Путь+","+Путь0+?(ФлКаст,".."+Путь,"")+"."+Имя;
+        Continue;
+      EndIf;
+      //TODO: "ANY"?
+      aTab.AddLine("Имя,ПИмя,Тип,Путь,ФлDB,Иконка",Имя,ПИмя,Тип,Путь0+?(ФлКаст,".."+Путь,"")+"."+Имя,aObj.Props(j).IsDBType,_GetIconByType(Тип));
+    EndDo;
+  EndDo;
+  
+  aTab.Sort("Иконка,ПИмя");
+  aTab.Select();
+  While aTab.Next() Do
+    Leaf.Add(List.Create(aTab.Путь,aTab.Тип,aTab.ФлDB,ПутьИмя0+?(ПутьИмя0<>"",".")+aTab.ПИмя),aTab.ПИмя,aTab.Иконка);
+  EndDo;
+EndFunction
+
+
+
+Function OnExecute()
+  aTree:=Form.MainTab.Value;
+  Сп:=aTree.SelectedValue;
+  If TypeStr(Сп)<>"LIST" Then
+    Exit;
+  EndIf;
+  If _And(флТолькоЦифры,aTree.Selected.Icon<>125) Then
+    Exit;
+  EndIf;
+  Param.SetByName("Ответ",1);
+  Param.SetByName("Путь",Сп.Get(1));
+  Param.SetByName("ПутьИмя",Сп.Get(4));
+  Form.Close(0);
+EndFunction;

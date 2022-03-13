@@ -1,0 +1,286 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Var флВидимостьПартий Export;
+
+Function ПересчитатьСтроку(aTab,Тип)
+    К:=aTab.Номенклатура.оснКоэффициент;
+    К:=?(К=0,1,К);
+    If Тип=1 Then
+      If Round(aTab.КоличествоФактическое,6)<>Round(aTab.КоличествоФактическоеВОсновных*К+aTab.КоличествоФактическоеВБазовых,6) Then
+        aTab.КоличествоФактическое:=aTab.КоличествоФактическоеВОсновных*К+aTab.КоличествоФактическоеВБазовых;
+      EndIf;
+    EndIf;
+    If Round(aTab.КоличествоФактическоеВОсновных,6)<>Round(Trunc(aTab.КоличествоФактическое/К),6) Then
+      aTab.КоличествоФактическоеВОсновных:=Trunc(aTab.КоличествоФактическое/К);
+    EndIf;
+    If Round(aTab.КоличествоФактическоеВБазовых,6)<>Round(aTab.КоличествоФактическое-aTab.КоличествоФактическоеВОсновных*К,6) Then
+      aTab.КоличествоФактическоеВБазовых:=aTab.КоличествоФактическое-aTab.КоличествоФактическоеВОсновных*К;
+    EndIf;
+    
+    MainTab:=Form.MainTab.Value;
+    If MainTab.Size()>=aTab.CurLine Then
+      MainTab.CurLine:=aTab.CurLine;
+      аНедостача:=?(MainTab.Количество-MainTab.КоличествоФактическое=0,"",MainTab.Количество-MainTab.КоличествоФактическое);
+      If Round(аНедостача,6)<>Round(MainTab.Недостача,6) Then
+        MainTab.Недостача:=аНедостача;
+      EndIf;
+    EndIf;  
+EndFunction
+
+Function OnCreateFromObject()
+  //Ввод на основании
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+EndFunction
+
+Function лкПересчитатьСтолбикиЕдиниц()
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("Номенклатура");
+  aTab.Select();
+  While aTab.Next() Do
+    ПересчитатьСтроку(aTab,0);
+  EndDo;
+EndFunction
+
+Function ПроверитьРазрешение()
+  aEl:=Form.Object;
+  If aEl.КодОперации=Enum.коАктПоСкладу.ИнвентаризацияПартий Then
+    Box("Для редактирования инвентаризации партий воспользуйтесь, пожалуйста, кнопкой ""Ред. партии"". Редактирование таких документов вручную не имеет смысла!",Q_STOP);
+    If not глРаботаетРобот Then
+      Exit 0;
+    EndIf;  
+  EndIf;
+  Exit 1;
+EndFunction
+
+Function ТолькоОбновитьКоличество(НачСтрока=0,КонСтрока=0)
+  aEl:=Form.Object;
+  Партии:=(1-Min(aEl.Склад.БезПартионногоУчета,1))*(1-aEl.флОстаткиБезРазрезаПоПартиям);
+  ФлИнвентаризацияПартий:=aEl.КодОперации=Enum.коАктПоСкладу.ИнвентаризацияПартий;
+  спН:=List.Create();
+  aTab:=aEl.LineParts("Номенклатура");
+  aTab.CurLine:=НачСтрока-1;
+  While aTab.Next() Do
+    If (aTab.CurLine>КонСтрока)And(КонСтрока>0) Then
+      Break;
+    EndIf;
+    спН.Add(aTab.Номенклатура);
+  EndDo;
+  
+  //НДата:=BegOfMonth(aEl.DocDate);
+  КДата:=BegOfDay(aEl.DocDate);
+  НДата:=КДата;
+  ТЗ:="Period From НДата to КДата;
+  |зН:=Storage.ОстаткиТМЦ.Номенклатура;
+  |зЮЛ:=Storage.ОстаткиТМЦ.ЮрЛицо;
+  |зПартия:=Storage.ОстаткиТМЦ.Партия;
+  |Condition(зН IN спН);
+  |зСк:=Storage.ОстаткиТМЦ.Склад;
+  |Condition(зСк=aEl.Склад);"+
+  ?(aEl.флОстаткиВРазрезеЮрЛица=0,"","Condition(зЮЛ=aEl.ЮрЛицо);")+
+  "зКл:=EndTotals(Количество);
+  |Group зН;"+
+  ?(not Партии,"","Group зПартия;");
+  З:=Query.Create();
+  З.Execute(ТЗ);
+  
+  aTab.CurLine:=НачСтрока-1;
+  While aTab.Next() Do
+    If (aTab.CurLine>КонСтрока)And(КонСтрока>0) Then
+      Break;
+    EndIf;
+    If not Партии Then
+      З.ResultTable.CurLine:=0;
+      If З.ResultTable.LocateAndGoto("@LEVEL,зН",1,aTab.Номенклатура)>0 then
+        aTab.Количество:=З.зКл;
+      EndIf;
+    ElseIf Партии Then
+      З.ResultTable.CurLine:=0;
+      If З.ResultTable.LocateAndGoto("@LEVEL,зН,зПартия",1,aTab.Номенклатура,aTab.Партия)>0 then
+        aTab.Количество:=З.зКл;
+      EndIf;
+    EndIf;
+    If aTab.Цена=0 Then
+      Цена:=глНайтиЦену(aTab.Номенклатура,aEl.ТипЦен,aEl.DocDate);
+      aTab.Цена:=Цена;
+      aTab.Сумма:=Цена*aTab.Количество;
+    EndIf;
+  EndDo;
+  
+  If Партии Then
+    aTab.Sort("Номенклатура,Партия");
+  EndIf;
+EndFunction
+
+Function ДобавитьЗапросом(флТипПодбора,оН=0,оТГ=0,ПустаяПартия=0)
+  aEl:=Form.Object;
+  Партии:=(1-Min(aEl.Склад.БезПартионногоУчета,1))*(1-aEl.флОстаткиБезРазрезаПоПартиям);
+  ФлИнвентаризацияПартий:=aEl.КодОперации=Enum.коАктПоСкладу.ИнвентаризацияПартий;
+  
+  //НДата:=BegOfMonth(aEl.DocDate);
+  КДата:=BegOfDay(aEl.DocDate);
+  НДата:=КДата;
+  ТЗ:="Period From НДата to КДата;
+  |зН:=Storage.ОстаткиТМЦ.Номенклатура;
+  |зЮЛ:=Storage.ОстаткиТМЦ.ЮрЛицо;
+  |зПартия:=Storage.ОстаткиТМЦ.Партия;"+
+  ?(ПустаяПартия=0,"","Condition(IsEmpty(зПартия));")+
+  "зТГ:=Storage.ОстаткиТМЦ.Номенклатура.ТоварнаяГруппа;"+
+  ?(оН=0,"","Condition(зН IN оН);")+
+  ?(оТГ=0,"","Condition(зТГ IN оТГ);")+
+  "зСк:=Storage.ОстаткиТМЦ.Склад;
+  |Condition(зСк=aEl.Склад);"+
+  ?(aEl.флОстаткиВРазрезеЮрЛица=0,"","Condition(зЮЛ=aEl.ЮрЛицо);")+
+  "зКл:=EndTotals(Количество);
+  |Group зН;"+
+  ?(not Партии,"","Group зПартия;");
+    
+  З2:=Query.Create();
+  З2.Execute(ТЗ);
+  
+  З:=З2;
+  If флТипПодбора=1 Then
+    ТЗ:="зН:=Ref.тмцНоменклатура;
+    |зСтатус:=Ref.тмцНоменклатура.@Status;
+    |зТГ:=Ref.тмцНоменклатура.ТоварнаяГруппа;
+    |Condition(зСтатус=0);"+
+    ?(оН=0,"","Condition(зН IN оН);")+
+    ?(оТГ=0,"","Condition(зТГ IN оТГ);")+
+    "Group зН;";
+  
+    З:=Query.Create();
+    З.Execute(ТЗ);
+  EndIf;
+  
+  aTab:=aEl.LineParts("Номенклатура");
+  While З.Next(1) Do
+    If not Партии Then
+      If aTab.FindAndGoto(З.зН,,"Номенклатура")=0 Then
+        aTab.NewLine();
+        aTab.Номенклатура:=З.зН;
+      EndIf;
+      К:=З.зН.оснКоэффициент;
+      К:=?(К=0,1,К);
+      If флТипПодбора=1 Then
+        З2.ResultTable.CurLine:=0;
+        If З2.ResultTable.LocateAndGoto("@LEVEL,зН",1,З.зН)>0 then
+          aTab.Количество:=З2.зКл;
+        EndIf;
+      Else
+        aTab.Количество:=З.зКл;
+      EndIf;
+      
+      aTab.Цена:=глНайтиЦену(З.зН,aEl.ТипЦен,aEl.DocDate);
+      If ФлИнвентаризацияПартий Then
+        aTab.КоличествоФактическоеВОсновных:=Trunc(aTab.КоличествоФактическое/К);
+        aTab.КоличествоФактическоеВБазовых:=aTab.КоличествоФактическое-aTab.КоличествоФактическоеВОсновных*К;
+      EndIf;
+    ElseIf Партии Then
+      If флТипПодбора=1 Then
+        З2.ResultTable.CurLine:=0;
+        If З2.ResultTable.LocateAndGoto("@LEVEL,зН",2,З.зН)=0 then
+          aTab.NewLine();
+          aTab.Номенклатура:=З.зН;
+          Continue;
+        EndIf;
+      EndIf;
+    
+      While З2.Next(2) Do
+        If (З2.зКл=0)And(флТипПодбора=0) Then
+          Continue;
+        EndIf;
+        
+        aTab.CurLine:=0;
+        If aTab.LocateAndGoto("Номенклатура,Партия",З.зН,З2.зПартия)=0 then
+          aTab.NewLine();
+          aTab.Номенклатура:=З.зН;
+          aTab.Партия:=З2.зПартия;
+        EndIf;
+        
+        К:=З.зН.оснКоэффициент;
+        К:=?(К=0,1,К);
+        aTab.Количество:=З2.зКл;
+        aTab.Цена:=глНайтиЦену(З.зН,aEl.ТипЦен,aEl.DocDate);
+        
+        If ФлИнвентаризацияПартий Then
+          aTab.КоличествоФактическое:=?(aTab.КоличествоФактическое=0,З2.зКл,aTab.КоличествоФактическое);
+          aTab.КоличествоФактическоеВОсновных:=Trunc(aTab.КоличествоФактическое/К);
+          aTab.КоличествоФактическоеВБазовых:=aTab.КоличествоФактическое-aTab.КоличествоФактическоеВОсновных*К;
+        EndIf;
+      EndDo;
+    EndIf;
+  EndDo;
+  If Партии Then
+    aTab.Sort("Номенклатура,Партия");
+  EndIf;
+EndFunction
+
+Function локПриПодбореНоменклатурыВДокумент(Зн,флТипПодбора)
+  aEl:=Form.Object;
+  If Зн.IsFolder() Then
+    ДобавитьЗапросом(флТипПодбора,Зн);
+  Else
+    aTab:=aEl.LineParts("Номенклатура");
+    If aTab.FindAndGoto(Зн,,"Номенклатура")>0 Then
+      Box("Эта номенклатура уже присутствует в документе!",Q_STOP);
+    Else
+      ДобавитьЗапросом(флТипПодбора,Зн);
+    EndIf;
+  EndIf;
+EndFunction
+
+Function Видимость()
+  aEl:=Form.Object;
+  флВидимостьПартий:=(aEl.Склад.БезПартионногоУчета=0)And(not aEl.флОстаткиБезРазрезаПоПартиям);
+  Form.MainTab.Value.Column("Партия").isVisible:=флВидимостьПартий;
+  флИнвентаризацияПартий:=aEl.КодОперации=Enum.коАктПоСкладу.ИнвентаризацияПартий;
+  Form.кнПартии.isDisabled:=not флИнвентаризацияПартий;
+  
+  If (aEl.КодОперации=Enum.коАктПоСкладу.Инвентаризация)Or(флИнвентаризацияПартий) Then
+    Form.MainTab.Value.Column("Остатки").isVisible:=1-флИнвентаризацияПартий;
+    Form.MainTab.Value.Column("Цена").isVisible:=1-флИнвентаризацияПартий;
+    Form.MainTab.Value.Column("Сумма").isVisible:=1-флИнвентаризацияПартий;
+    Form.MainTab.Value.Column("Недостача").isVisible:=1;
+    Form.MainTab.Value.Column("КодНоменклатуры").isVisible:=1;
+    Form.MainTab.Value.Column("КоличествоФактическое").isVisible:=1;
+    Form.MainTab.Value.Column("КоличествоФактическоеВОсновных").isVisible:=Form.оШт.Value;
+    Form.MainTab.Value.Column("КоличествоФактическоеВБазовых").isVisible:=Form.оШт.Value;
+    Form.MainTab.Value.Column("Количество").Caption:="Бух. кол-во";
+    Form.MainTab.Value.Column("Количество").isReadonly:=флИнвентаризацияПартий*(1-глПользователь.бухГлавныйБухгалтер);
+    
+    Form.тТипЦен.isDisabled:=флИнвентаризацияПартий;
+    Form.ТипЦен.isDisabled:=флИнвентаризацияПартий;
+    
+    Form.оШт.isInvisible:=0;
+    Form.тЮрЛицо.isInvisible:=0;
+    Form.ЮрЛицо.isInvisible:=0;
+    Form.флОстаткиВРазрезеЮрЛица.isInvisible:=0;
+  Else
+    Form.оШт.isInvisible:=1;
+    Form.тЮрЛицо.isInvisible:=1;
+    Form.ЮрЛицо.isInvisible:=1;
+    Form.флОстаткиВРазрезеЮрЛица.isInvisible:=1;
+
+    Form.MainTab.Value.Column("Остатки").isVisible:=1;
+    Form.MainTab.Value.Column("Цена").isVisible:=0;
+    Form.MainTab.Value.Column("Сумма").isVisible:=0;
+    Form.MainTab.Value.Column("Недостача").isVisible:=0;
+    Form.MainTab.Value.Column("КодНоменклатуры").isVisible:=0;
+    Form.MainTab.Value.Column("КоличествоФактическое").isVisible:=0;
+    Form.MainTab.Value.Column("КоличествоФактическоеВОсновных").isVisible:=0;
+    Form.MainTab.Value.Column("КоличествоФактическоеВБазовых").isVisible:=0;
+    Form.MainTab.Value.Column("Количество").Caption:="Количество";
+    Form.MainTab.Value.Column("Количество").isReadonly:=0;
+    
+    Form.тТипЦен.isDisabled:=1;
+    Form.ТипЦен.isDisabled:=1;
+  EndIf;
+EndFunction
+
+Function OnAfterChangeOperationCode()
+  Видимость();
+EndFunction
+

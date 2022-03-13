@@ -1,0 +1,2526 @@
+//Глобальные (root) модули загружаются при старте системы. Загрузка начинается с модуля "module" и продолжается в алфавитном порядке.
+//Переменные и функции, объявленные с постфиксом export, будут доступны в любых других модулях в любых потоках системы.
+//Модуль может содержать специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Var глКаталогПечФорм Export;                      //Путь к каталогу печатных форм
+Var глКаталогПечФормТемп Export;                  //Локальный каталог печатных форм
+
+Var глЗапретПроекты Export;                       //Фильтры запретов в запросах
+Var глЗапретСклады Export;
+
+
+Function глСохранитьВМодуле(Имя,Значение) Export
+  aList:=ModuleTag;
+  if TypeStr(aList)<>"LIST" Then
+    aList:=List.Create();
+    ModuleTag(aList);
+  EndIf;
+  aList.SetByName(Имя,Значение);
+EndFunction
+
+Function глПолучитьИзМодуля(Имя) Export
+  aList:=ModuleTag;
+  if TypeStr(aList)<>"LIST" Then
+    Exit;
+  EndIf;
+  Exit aList.GetByName(Имя);
+EndFunction
+
+
+
+Function глНайтиЧислоСсылокВТаблице(Т) Export;
+  СпБыло:=List.Create();
+  Result:=0;
+  For i:=1 To Т.Objects.Count() Do
+    if (Т.Objects(i).Name="cRefresh")or(Т.Objects(i).Name="cTools") Then
+      Зн:=Т.Objects(i).Value;
+      If СпБыло.Find(Зн)=0 Then
+        If TypeStr(Зн)="LIST" Then
+          For i:=1 To Зн.Size() Do
+            If TypeStr(Зн.Get(i))="TABLE" Then
+              Result:=Result+1;
+              break;
+            EndIf;
+          EndDo;
+        ElseIf TypeStr(Зн)="TABLE" Then
+          Result:=Result+1;
+        EndIf;  
+        СпБыло.Add(Зн);
+      EndIf;
+    EndIf;
+  EndDo;
+EndFunction
+
+Function глПолучитьДобавочныйПараметрПриПечати(Файл) Export;
+  Result:=1;
+  If DoesFunctionExist("OnBeforeActivatePrintForm",2) Then
+    Result:=ExecuteFunction("OnBeforeActivatePrintForm",2,Файл);
+  EndIf;
+EndFunction
+
+Function глПрочитатьУстановкиПечатнойФормы(Таб) Export;
+  Файл:=глПолучитьИмяУстановокПечатнойФормы(Таб);
+  If isEmpty(Файл) Then
+    Exit;
+  EndIf;
+  If not File.DoesFileExist(Файл) Then
+    Exit;
+  EndIf;
+  Try
+    aList:=ObjectFromFile(Файл);
+  Except
+    Exit;
+  EndTry;
+  If typeStr(aList)<>"LIST" Then
+    Exit;
+  EndIf;
+  Try
+    Таб.Printing.Orientation:=aList.GetByName("Orientation");
+    Таб.Printing.ScaleMode:=aList.GetByName("ScaleMode");
+    Таб.Printing.Scale:=aList.GetByName("Scale");
+    Таб.Printing.PageOptions:=aList.GetByName("PageOptions");
+    Таб.Printing.Fields.Left:=Max(Min(aList.GetByName("Left"),200),0);
+    Таб.Printing.Fields.Right:=Max(Min(aList.GetByName("Right"),200),0);
+    Таб.Printing.Fields.Up:=Max(Min(aList.GetByName("Up"),200),0);
+    Таб.Printing.Fields.Down:=Max(Min(aList.GetByName("Down"),200),0);
+    Таб.Printing.Titles.Up.Size:=Max(Min(aList.GetByName("Titles.Up"),200),0);
+    Таб.Printing.Titles.Down.Size:=Max(Min(aList.GetByName("Titles.Down"),200),0);
+  Except
+  EndTry;  
+EndFunction
+
+
+Function глПечатнаяФормаОтчета(Т,Сп,Загол,флАльбомнаяОриентация=-1,ИмяФайла="",флБезКопий=0,аМасштаб=-1) Export;
+  Фл:=Т.Printing.ScaleMode;
+  If TypeStr(Сп)="LIST" Then
+    If флБезКопий=0 Then
+      Копий:=Number(Сп.GetByName("КоличествоКопий"));
+      If Копий>0 Then
+        Т.Printing.Copies:=Max(Копий,1);
+      EndIf;  
+    EndIf;  
+    If флАльбомнаяОриентация>=0 Then
+      Т.Printing.Orientation:=флАльбомнаяОриентация;
+    Else
+      Т.Printing.Orientation:=Number(Сп.GetByName("Ориентация"));
+    EndIf;
+  ElseIf флАльбомнаяОриентация>=0 Then
+    Т.Printing.Orientation:=флАльбомнаяОриентация;
+  EndIf;
+  Т.Printing.ScaleMode:=1;
+  If фл>0 Then
+    Т.Printing.ScaleMode:=Фл;
+  EndIf;
+  If аМасштаб>=0 Then
+    Т.Printing.ScaleMode:=аМасштаб;
+  EndIf;
+  
+  Т.EditorMode:=глПользователь.общиеИзменениеОтчетов;
+  If глПользователь.общиеИзменениеОтчетов=0 Then
+    Т.Restrict:=2;
+  EndIf;
+  
+  Принтер:=глПользователь.ПринтерПоУмолчанию;
+  If (Trim(Принтер)<>"Не выбран")And(Trim(Принтер)<>"") Then
+    Т.Printing.Printer:=Принтер;
+  EndIf;
+    
+  Т.SelfReferenceCount:=глНайтиЧислоСсылокВТаблице(Т);
+  If _Or(Typestr(Сп)<>"LIST",isEmpty(Сп.GetByName("ПечататьБезВывода"))) Then
+    глПрочитатьУстановкиПечатнойФормы(Т);
+    Т.Show(Загол,ИмяФайла);
+  Else
+    Т.Print();
+  EndIf;
+EndFunction
+
+Function глПринтерПоУмолчанию(Т) Export;
+  Принтер:=глПользователь.ПринтерПоУмолчанию;
+  If (Trim(Принтер)<>"Не выбран")And(Trim(Принтер)<>"") Then
+    Т.Printing.Printer:=Принтер;
+  EndIf;
+EndFunction
+
+//флАльбомнаяОриентация: -1 -- не менять
+//аМасштаб: -1 -- не менять
+//          0 -- сжимать до ширины листа
+//          1 -- сжимать или растягивать до ширины листа (умолчание)
+//          3 -- разместить на одном листе
+Function глПечатнаяФорма(Т,Сп,Загол,флАльбомнаяОриентация=-1,ИмяФайла="",флБезКопий=0,аМасштаб=-1) Export;
+  Фл:=Т.Printing.ScaleMode;
+  If TypeStr(Сп)="LIST" Then
+    If флБезКопий=0 Then
+      Копий:=Number(Сп.GetByName("КоличествоКопий"));
+      If Копий>0 Then
+        Т.Printing.Copies:=Max(Копий,1);
+      EndIf;  
+    EndIf;  
+    If флАльбомнаяОриентация>=0 Then
+      Т.Printing.Orientation:=флАльбомнаяОриентация;
+      Т.Printing.ScaleMode:=1;
+    EndIf;
+  Else
+    Т.Printing.Orientation:=0;
+    If флАльбомнаяОриентация>=0 Then
+      Т.Printing.Orientation:=флАльбомнаяОриентация;
+    EndIf;  
+    Т.Printing.ScaleMode:=1;
+  EndIf;  
+  If фл>0 Then
+    Т.Printing.ScaleMode:=Фл;
+  EndIf;
+  If аМасштаб>=0 Then
+    Т.Printing.ScaleMode:=аМасштаб;
+  EndIf;
+  
+  Т.EditorMode:=глПользователь.общиеИзменениеПечатныхФорм;
+  If глПользователь.общиеИзменениеПечатныхФорм=0 Then
+    Т.Restrict:=2;
+  EndIf;
+  
+  Принтер:=глПользователь.ПринтерПоУмолчанию;
+  If _And(TypeStr(Сп)="LIST",not isEmpty(Сп.GetByName("Принтер"))) Then
+    Т.Printing.Printer:=Сп.GetByName("Принтер");
+  ElseIf (Trim(Принтер)<>"Не выбран")And(Trim(Принтер)<>"") Then
+    Т.Printing.Printer:=Принтер;
+  EndIf;
+  ФлБезДиалогаПечати:=0;
+  //If TypeStr(Сп)="LIST" Then
+  //  ФлБезДиалогаПечати:=Number(Сп.GetByName("БезДиалогаПечати"))*2;
+  //EndIf;
+  
+  Т.SelfReferenceCount:=глНайтиЧислоСсылокВТаблице(Т);
+  If _Or(TypeStr(Сп)<>"LIST",isEmpty(Сп.GetByName("ПечататьБезВывода"))) Then
+    глПрочитатьУстановкиПечатнойФормы(Т);
+    Т.Show(Загол,ИмяФайла);
+  Else
+    If DoesFunctionExist("OnStartPrinting",2) Then
+      ExecuteFunction("OnStartPrinting",2,Т);
+    EndIf;  
+    Т.Print(0,,ФлБезДиалогаПечати);
+  EndIf;
+EndFunction
+
+
+Function глСвойстваПечатиПростые(НачДата=0,КонДата=0) Export
+  If isEmpty(КонДата) Then
+    Exit "Отчет сформирован "+FormatDate(CurDate(),"DD MMM YYYY, hh:tt:ss")+". Оператор "+глПользователь+".";
+  ElseIf not isEmpty(НачДата) Then
+    Exit "За период с "+НачДата+" по "+КонДата+". Отчет сформирован "+FormatDate(CurDate(),"DD MMM YYYY, hh:tt:ss")+". Оператор "+глПользователь+".";
+  EndIf;
+  Exit "На "+КонДата+". Отчет сформирован "+FormatDate(CurDate(),"DD MMM YYYY, hh:tt:ss")+". Оператор "+глПользователь+".";
+EndFunction;
+
+Function глСвойстваПечатиСложные(ТабФорма=0,НачДата=0,КонДата=0,тФильтры="",тКомбо="",тГалки="") Export
+  Result:="";
+  If КонДата<>0 Then
+    If НачДата<>0 Then
+      Result:="За период с "+НачДата+" по "+КонДата+". ";
+    Else
+      Result:="На дату "+КонДата+". ";
+    EndIf;
+  EndIf;
+  Result:=Result+"Сформирован "+FormatDate(CurDate(),"DD MMM YYYY, hh:tt:ss")+". Оператор "+глПользователь+".";
+  While тФильтры<>"" do
+    Стр:=Trim(tearStr(тФильтры,","));
+    If Pos(":",Стр)>0 Then
+      //<Имя>:<Стр1>@<Стр2>@<Стр3>@<Стр4>
+      Стр4:=Стр;
+      Стр:=TearStr(Стр4,":");
+      Стр1:=TearStr(Стр4,"@");
+      Стр2:=TearStr(Стр4,"@");
+      Стр3:=TearStr(Стр4,"@");
+      Стр4:=TearStr(Стр4,"@");
+    Else
+      Стр1:="";
+      Стр2:="";
+      Стр3:="";
+      Стр4:="";
+      If Стр="оЮЛ" Then
+        Стр1:="юр. лицу";    //По юр. лицу ХХХХ
+        Стр2:="юр. лицам";   //По 6 юр. лицам
+        Стр3:="юр. лица";    //Кроме юр. лица ХХХХ
+        Стр4:="юр. лиц";     //Кроме 6 юр. лиц
+      ElseIf Стр="оСк" Then
+        Стр1:="складу";
+        Стр2:="складам";
+        Стр3:="склада";
+        Стр4:="складов";
+      ElseIf Стр="оМг" Then
+        Стр1:="магазину";
+        Стр2:="магазинам";
+        Стр3:="магазина";
+        Стр4:="магазинов";
+      ElseIf Стр="оТГ" Then
+        Стр1:="тов. группе";
+        Стр2:="тов. группам";
+        Стр3:="тов. группы";
+        Стр4:="тов. групп";
+      ElseIf (Стр="оН")or(Стр="оТМЦ") Then
+        Стр1:="номенклатуре";
+        Стр2:="видам номенклатуры";
+        Стр3:="номенклатуры";
+        Стр4:="видов номенклатуры";
+      ElseIf Стр="оК" Then
+        Стр1:="контрагенту";
+        Стр2:="контрагентам";
+        Стр3:="контрагента";
+        Стр4:="контрагентов";
+      ElseIf Стр="оБ" Then
+        Стр1:="бухгалтеру";
+        Стр2:="бухгалтерам";
+        Стр3:="бухгалтера";
+        Стр4:="бухгалтеров";
+      ElseIf Стр="оКр" Then
+        Стр1:="кредитору";
+        Стр2:="кредиторам";
+        Стр3:="кредитора";
+        Стр4:="кредиторов";
+      ElseIf Стр="оКс" Then
+        Стр1:="кассе";
+        Стр2:="кассам";
+        Стр3:="кассы";
+        Стр4:="касс";
+      ElseIf Стр="оБн" Then
+        Стр1:="банку";
+        Стр2:="банкам";
+        Стр3:="банка";
+        Стр4:="банков";
+      ElseIf Стр="оПд" Then
+        Стр1:="подотчетнику";
+        Стр2:="подотчетникам";
+        Стр3:="подотчетника";
+        Стр4:="подотчетников";
+      ElseIf Стр="оД" Then
+        Стр1:="договору";
+        Стр2:="договорам";
+        Стр3:="договора";
+        Стр4:="договоров";
+      ElseIf Стр="оРс" Then
+        Стр1:="рас. счету";
+        Стр2:="рас. счетам";
+        Стр3:="рас. счета";
+        Стр4:="рас. счетов";
+      ElseIf Стр="оТЦ" Then
+        Стр1:="типу цен";
+        Стр2:="типам цен";
+        Стр3:="типа цен";
+        Стр4:="типов цен";
+      ElseIf Стр="оНДС" Then
+        Стр1:="ставке НДС";
+        Стр2:="ставкам НДС";
+        Стр3:="ставки НДС";
+        Стр4:="ставок НДС";
+      ElseIf Стр="оА" Then
+        Стр1:="автору";
+        Стр2:="авторам";
+        Стр3:="автора";
+        Стр4:="авторов";
+      ElseIf Стр="оПр" Then
+        Стр1:="проекту";
+        Стр2:="проектам";
+        Стр3:="проекта";
+        Стр4:="проектов";
+      ElseIf Стр="оЦЗ" Then
+        Стр1:="центру затрат";
+        Стр2:="центрам затрат";
+        Стр3:="центра затрат";
+        Стр4:="центров затрат";
+      ElseIf Стр="оСЗ" Then
+        Стр1:="статье затрат";
+        Стр2:="статьям затрат";
+        Стр3:="статьи затрат";
+        Стр4:="статей затрат";
+      ElseIf Стр="оОТВ" Then
+        Стр1:="ответственному";
+        Стр2:="ответственным";
+        Стр3:="ответственного";
+        Стр4:="ответственных";
+      ElseIf Стр="оСтр" Then
+        Стр1:="сотруднику";
+        Стр2:="сотрудникам";
+        Стр3:="сотрудника";
+        Стр4:="сотрудников";
+      ElseIf Стр="оЗТ" Then
+        Стр1:="затрате";
+        Стр2:="затраты";
+        Стр3:="затратам";
+        Стр4:="затрат";
+      ElseIf Стр="оТСТ" Then
+        Стр1:="типу статей";
+        Стр2:="типам статей";
+        Стр3:="типа статей";
+        Стр4:="типов статей";
+      ElseIf _Or(Стр="оСМП",Стр="оСМ") Then
+        Стр1:="статье маркетинга";
+        Стр2:="статьям маркетинга";
+        Стр3:="статьи маркетинга";
+        Стр4:="статей маркетинга";
+      ElseIf Стр="оСч" Then
+        Стр1:="бух. счету";
+        Стр2:="бух. счетам";
+        Стр3:="бух. счета";
+        Стр4:="бух. счетов";
+      ElseIf Стр="оСчК" Then
+        Стр1:="корр. счету";
+        Стр2:="корр. счетам";
+        Стр3:="корр. счета";
+        Стр4:="корр. счетов";
+      ElseIf Стр="оСуб1" Then
+        Стр1:="субконто 1";
+        Стр2:="субконто 1";
+        Стр3:="субконто 1";
+        Стр4:="субконто 1";
+      ElseIf Стр="оСуб2" Then
+        Стр1:="субконто 2";
+        Стр2:="субконто 2";
+        Стр3:="субконто 2";
+        Стр4:="субконто 2";
+      ElseIf Стр="оСуб3" Then
+        Стр1:="субконто 3";
+        Стр2:="субконто 3";
+        Стр3:="субконто 3";
+        Стр4:="субконто 3";
+      ElseIf Стр="оОб" Then
+        Стр1:="объекту";
+        Стр2:="объектам";
+        Стр3:="объекта";
+        Стр4:="объектов";
+      ElseIf Стр="оПлз" Then
+        Стр1:="пользователю";
+        Стр2:="пользователям";
+        Стр3:="пользователя";
+        Стр4:="пользователей";
+      ElseIf Стр="оСобытие" Then
+        Стр1:="событию";
+        Стр2:="событиям";
+        Стр3:="события";
+        Стр4:="событий";
+      ElseIf Стр="оГП" Then
+        Стр1:="группе партий";
+        Стр2:="группам партий";
+        Стр3:="группы партий";
+        Стр4:="групп партий";
+      Else
+        Message("Построитель свойств отчета: неизвестное имя переменной "+Стр+"!","!");
+      EndIf;
+    EndIf;  
+    
+    If Стр1="" Then
+      Continue;
+    EndIf;
+    
+    if ТабФорма=0 Then
+      Сп:=Form.Control(Стр).Value;
+    Else
+      Сп:=ТабФорма.FindAndGet("Value",Стр,,"ControlName");
+    EndIf;  
+    
+    If typeStr(Сп)<>"LIST" Then
+      If not isEmpty(Сп) Then
+        Result:=Result+_NEWLINE+"По "+Стр1+" "+Сп+".";
+      EndIf;
+      Continue;
+    EndIf;
+    If Сп.Size()=0 Then
+      Continue;
+    EndIf;
+
+
+    If Сп.Size()=1 Then
+      If Сп.Get(1).Size()>0 Then
+        Result:=Result+_NEWLINE+"По "+?(Сп.Get(1).Size()=1,Стр1+" "+Сп.Get(1).Get(1)+".",""+Сп.Get(1).Size()+" "+Стр2+".");
+      EndIf;  
+    Else
+      If Сп.Get(1).Size()+Сп.Get(2).Size()=0 Then
+        Continue;
+      EndIf;
+      If (Сп.Get(2).Size()=0)And(Сп.Get(1).Size()>0) Then
+        Result:=Result+_NEWLINE+"По "+?(Сп.Get(1).Size()=1,Стр1+" "+Сп.Get(1).Get(1)+".",""+Сп.Get(1).Size()+" "+Стр2+".");
+      ElseIf (Сп.Get(2).Size()>0)And(Сп.Get(1).Size()=0) Then
+        Result:=Result+_NEWLINE+"Кроме "+?(Сп.Get(2).Size()=1,Стр3+" "+Сп.Get(2).Get(1)+".",""+Сп.Get(2).Size()+" "+Стр4+".");
+      Else  
+        Result:=Result+_NEWLINE+"По "+?(Сп.Get(1).Size()=1,Стр1+" "+Сп.Get(1).Get(1),""+Сп.Get(1).Size()+" "+Стр2)+", кроме "+?(Сп.Get(2).Size()=1,Стр3+" "+Сп.Get(2).Get(1)+".",""+Сп.Get(2).Size()+" "+Стр4+".");
+      EndIf;  
+    EndIf;
+  EndDo;
+  
+  While тКомбо<>"" do
+    Стр:=Trim(tearStr(тКомбо,","));
+    If Стр="" then
+      Continue;
+    EndIf;
+    Стр1:=tearStr(Стр,"@");
+    if ТабФорма=0 Then
+      aCnt:=Form.Control(Стр).Value;
+    Else
+      aCnt:=ТабФорма.FindAndGet("Value",Стр,,"ControlName");
+    EndIf;  
+    
+    If aCnt.Size()=0 Then
+      Continue;
+    EndIf;
+    Стр2:=aCnt.GetName(Max(1,aCnt.SelectedLine));
+    If Стр2="" Then
+      Стр2:=aCnt.Get(Max(1,aCnt.SelectedLine));
+    EndIf;
+    If Стр2<>"" Then
+      Result:=Result+_NEWLINE+Стр1+": "+Стр2;
+    EndIf;  
+  EndDo;
+  
+  While тГалки<>"" do
+    Стр:=Trim(tearStr(тГалки,","));
+    Стр1:=tearStr(Стр,"@");
+    if ТабФорма=0 Then
+      aCnt:=Form.Control(Стр).Value;
+    Else
+      aCnt:=ТабФорма.FindAndGet("Value",Стр,,"ControlName");
+    EndIf;  
+    
+    If aCnt=1 Then
+      Result:=Result+_NEWLINE+Стр1;
+    EndIf;
+  EndDo;
+EndFunction
+
+
+Function глБыстрыйВызовОтчета(Строки,Тихо=0) Export
+  aList:=List.Create();
+  Стр:=Trim(Строки);
+  While Стр>"" do
+    aList.Add(TearStr(Стр));
+  Enddo;
+  Result:=0;
+  If aList.Size()>0 Then
+    Зн:="";Поз:=0;
+    Obj:=0;
+    If not isEmpty(Form.Object) Then
+      Obj:=Form.Object;
+    ElseIf not isEmpty(Form.ControlByName("MainTab")) Then
+      Obj:=Form.MainTab.SelectedElement;
+    EndIf;
+    Сп:=List.Create();
+    If (Тихо)and(aList.Size()=1) Then
+      Сп.SetByName("ВидОтчета",aList.Get(1));
+      Сп.SetByName("Object",Obj);
+      LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\БыстрыйВызовОтчета",Сп,0,"Module","Form");
+      Result:=1;
+    ElseIf aList.Select(Зн,1)>0 Then
+      Сп.SetByName("ВидОтчета",Зн);
+      Сп.SetByName("Object",Obj);
+      LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\БыстрыйВызовОтчета",Сп,0,"Module","Form");
+      Result:=1;
+    EndIf;
+  EndIf;
+EndFunction
+
+//Восстановление идет по значениям списка
+//Отсутствующие в исходном списке позиции удаляются из списка результата
+Function глВосстановитьНастройкуПростогоСписка(ИзСп,ВСп) Export
+  If isEmpty(ИзСп) Then
+    Exit;
+  EndIf;
+  
+  If TypeStr(ИзСп)<>"LIST" Then
+    Exit;
+  EndIf;
+  aPermit:=List.Create();
+  For i:=1 to ИзСп.Size() Do
+    Val:=ИзСп.Get(i);
+    aNum:=ВСп.Find(Val);
+    If aNum=0 Then
+      ВСп.Add(Val,ИзСп.GetName(i));
+      aNum:=ВСп.Size();
+    EndIf;
+    aPermit.Add(aNum);
+  EndDo;
+  For i:=1 to ВСп.Size() Do
+    If aPermit.Find(i)=0 Then
+      ВСп.Icon(i,100000);
+    EndIf;
+  EndDo;
+  
+  i:=0;
+  While i<ВСп.Size() Do
+    i:=i+1;
+    If ВСп.Icon(i)=100000 Then
+      ВСп.Remove(i);
+      i:=i-1;
+    EndIf;
+  EndDo;
+EndFunction
+
+//Подразумевается, что результирующая таблица в столбике Путь содержит элементы:
+//<Не важно>#<ИмяСинхронизации>#...
+Function глВосстановитьНастройкуСписка(ИзСп,ВТаб,СПометками=1) Export;
+  If TypeStr(ИзСп)<>"STRING" Then
+    Exit;
+  EndIf;
+  For а:=1 to ВТаб.Size() Do
+    ВТаб.Check(а,"Группировка",0);
+  EndDo;
+  If isEmpty(ИзСп) Then
+    Exit;
+  EndIf;
+  а:=Trim(ИзСп);
+  Прош:=0;
+  While а>"" Do
+    б:=TearStr(а,"@");
+    Нм:=0;
+    For i:=1 to ВТаб.Size() Do
+      ВТаб.CurLine:=i;
+      Стр:=ВТаб.Путь;
+      If Pos("#",Стр)>0 Then
+        TearStr(Стр,"#");
+        Стр:=TearStr(Стр,"#");
+      EndIf;  
+      If Стр=б Then
+        Нм:=i;
+        Break;
+      EndIf;
+    EndDo;
+    If Нм>0 Then
+      ВТаб.Check(Нм,"Группировка",1);
+      If (Прош>Нм)And(Прош>0) Then
+        ВТаб.Move(Нм,Прош-Нм);
+      Else
+        Прош:=Нм;
+      EndIf;
+    EndIf;
+  EndDo;
+EndFunction
+
+
+Function глПриОткрытииОтчета(ВидОтчета,Param,флПараметры=1) Export;
+  If Pos("@"+ВидОтчета+"@","@"+глПользователь.ЗапрещенныеОтчеты)>0 Then
+    Box("Вам нельзя пользоваться данным отчетом!",Q_STOP);
+    Form.Close(0);
+    Exit 0,2;
+  EndIf;
+  If not флПараметры Then
+    Exit 1;
+  EndIf;
+  If TypeStr(Param)<>"LIST" Then
+    Exit 0;
+  EndIf;
+  Сп:=Param.GetByName("Настройки");
+  Т:=Param.GetByName("Table");
+  Выполнить:=Number(Param.GetByName("Выполнить"));
+  If TypeStr(Сп)<>"LIST" Then
+    Exit Выполнить;
+  EndIf;
+
+  For i:=1 To Сп.Size() Do
+    Имя:=Сп.GetName(i);
+    Значение:=Сп.Get(i);
+    aCnt:=Form.Control(Имя);
+    if not IsEmpty(aCnt) Then
+       If TypeStr(Значение)="LIST" Then
+         If _And(Значение.Size()>0,TypeStr(Значение.Get(1))="LIST") Then //Переменные со списками
+           If TypeStr(aCnt.Value)="LIST" Then
+             For j:=1 to aCnt.Value.Size() Do
+               aCnt.Value.Get(j).Clear();
+               If Значение.Size()>=j Then
+                 Значение.Get(j).CopyTo(aCnt.Value.Get(j));
+               EndIf;
+             EndDo;
+           EndIf;
+         Else
+           aCnt.Value.Clear();
+           Значение.CopyTo(aCnt.Value);
+         EndIf;
+       Else
+         If TypeStr(aCnt.Value)="LIST" Then //Группы...
+           глВосстановитьНастройкуСписка(Значение,aCnt.Value);
+         Else
+           aCnt.Value:=Значение;
+         EndIf;  
+       EndIf;
+    EndIf;
+  EndDo;
+
+  Exit Выполнить;
+EndFunction
+
+
+//ТолькоОбработанный=1 - может печатать бухгалтер, 2 -- не обработанный не может печатать никто
+Function глПроверкаПраваПечати(Д,Param,ТолькоОбработанный=0,СчФактура=0) Export
+  If Д.Selected()<0 Then
+    Box("Объект не записан! Сначала запишите документ!",Q_STOP);
+    Exit 0;
+  EndIf;
+  If _And(not isEmpty(Param),TypeStr(Param)="LIST") Then
+    If not IsEmpty(Param.GetByName("Форма")) Then
+      If Param.GetByName("Форма").IsChanged() Then
+        Box("Перед печатью объекта, необходимо сохранить все изменения!",Q_STOP);
+        Exit 0;
+      EndIf;
+    EndIf;  
+  EndIf;
+  If ТолькоОбработанный>0 Then
+    If Д.Status()<2 Then
+      If (not глПользователь.бухБухгалтер)Or(ТолькоОбработанный>1) Then
+        Box("Перед печатью документ необходимо обработать!",Q_STOP);
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  If СчФактура Then
+    If Д.Copy().УчитыватьВНалоговомУчете<>Д.УчитыватьВНалоговомУчете Then
+      Box("Перед тем как печатать счет-фактуру, сохраните изменения в документе!",Q_STOP);
+      Exit 0;
+    EndIf;
+    
+    If (Д.Status()<2)Or(Д.УчитыватьВНалоговомУчете=0) Then
+      Box("Нельзя печатать счет-фактуру к документу, так как он не обработан, либо счет-фактура не выписана!",Q_STOP);
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+
+//СравнитьСТекДатой:=-2-не сравнивать,-1-не предупреждать,0-предупреждать о нач/кон месяца,1-предупрежать о не текущей дате
+Function глПроверитьДатуВОтчетах(aParam,byRef нДата=0,byRef кДата,СравнитьСТекДатой=0) Export
+  If typeStr(aParam)="LIST" Then
+    If aParam.GetByName("Выполнить")=1 Then
+      Exit 1;
+    EndIf;
+  EndIf;
+
+  If not isEmpty(нДата) Then
+    нДата:=BegOfDay(нДата);
+  EndIf;
+  кДата:=BegOfDay(кДата);
+  ТекДата:=BegOfDay(Date());
+  НачБазы:=DBVar.НачалоПериодаБазы;
+  КонБазы:=DBVar.ОкончаниеПериодаБазы;
+
+  If (not isEmpty(НачБазы))And(кДата<НачБазы)And(СравнитьСТекДатой>-2) Then
+    If AskQuestion("Нет смысла формировать по дату "+кДата+" так как текущая база данных начинается с даты "+НачБазы+". Вы уверены, что формируете правильно?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      кДата:=НачБазы;
+      If нДата<>0 Then
+        нДата:=кДата;
+      EndIf;
+      Exit 0;
+    EndIf;
+  ElseIf (not isEmpty(КонБазы))And(кДата>КонБазы)And(СравнитьСТекДатой>-2) Then
+    If AskQuestion("Нет смысла формировать по дату "+кДата+" так как текущая база данных заканчивается датой "+КонБазы+". Вы уверены, что формируете правильно?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      кДата:=КонБазы;
+      If нДата<>0 Then
+        нДата:=Min(нДата,кДата);
+      EndIf;
+      Exit 0;
+    EndIf;
+  ElseIf (кДата<>ТекДата)And(СравнитьСТекДатой=0)And(EndOfMonth(кДата)<>кДата) Then
+    If AskQuestion("Вы формируете отчет не на текущую дату и не на конец месяца. Вы уверены, что формируете правильно?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      кДата:=Min(ТекДата,EndOfMonth(кДата));
+      Exit 0;
+    EndIf;
+  ElseIf (кДата<>ТекДата)And(СравнитьСТекДатой=1) Then
+    If AskQuestion("Вы формируете отчет не на текущую дату. Вы уверены, что формируете правильно?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      кДата:=ТекДата;
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If нДата<>0 Then
+    If (not isEmpty(нДата))And(not isEmpty(НачБазы))And(нДата<НачБазы) Then
+      If AskQuestion("Нет смысла формировать начиная с даты "+нДата+" так как текущая база данных начинается с даты "+НачБазы+". Вы уверены, что формируете правильно?",Q_QUESTION+Q_YESNO)<>R_YES Then
+        нДата:=НачБазы;
+        кДата:=Max(кДата,нДата);
+        Exit 0;
+      EndIf;
+    EndIf;
+    If (not isEmpty(нДата))And(not isEmpty(КонБазы))And(нДата>КонБазы) Then
+      If AskQuestion("Нет смысла формировать начиная с даты "+нДата+" так как текущая база данных заканчивается датой "+КонБазы+". Вы уверены, что формируете правильно?",Q_QUESTION+Q_YESNO)<>R_YES Then
+        нДата:=КонБазы;
+        кДата:=Min(кДата,нДата);
+        Exit 0;
+      EndIf;
+    EndIf;
+    
+    If кДата<нДата Then
+      Box("Конечная дата не может быть меньше начальной даты!",Q_STOP);
+      кДата:=нДата;
+      Exit 0;
+    ElseIf (BegOfMonth(нДата)<>нДата)And(СравнитьСТекДатой>=0) Then
+      If AskQuestion("Начальная дата отчета не совпадает с началом месяца. Для данного типа отчета это не рекомендуется. Вы уверены, что формируете правильно?",Q_QUESTION+Q_YESNO)<>R_YES Then
+        нДата:=BegOfMonth(нДата);
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;
+
+  Exit 1;
+EndFunction
+
+//{ДобавитьПослеОписания"!"}<Описание>"#"{!}<Путь>"#"<ИмяПеременной>
+Function глЗаполнитьТаблицуФильтров(пТабИмя,спФильры,флБезУдаления=0) Export;
+  aTab:=Form.Control(пТабИмя).Value;
+  For i:=1 to спФильры.Size() Do
+    СтрЗнач:=спФильры.Get(i);
+    If СтрЗнач="" Then
+      Continue;
+    EndIf;
+    СтрИмя:=TearStr(СтрЗнач,"#");
+    СтрПосле:="";
+    If Pos("!",СтрИмя)>0 Then
+      СтрПосле:=tearStr(СтрИмя,"!");
+    EndIf;
+    флГалка:=0;
+    If Left(СтрЗнач,1)="!" Then
+      флГалка:=1;
+      СтрЗнач:=Mid(СтрЗнач,2);
+    EndIf;  
+    If aTab.FindAndGoto(СтрИмя,,"Группировка")>0 Then
+      aTab.Путь:=СтрЗнач;
+      флГалка:=0;
+    ElseIf СтрПосле="" Then
+      aTab.AddLine("Группировка,Путь",СтрИмя,СтрЗнач);
+    ElseIf СтрПосле="." Then
+      aTab.NewLine(1);
+      aTab.Группировка:=СтрИмя;
+      aTab.Путь:=СтрЗнач;
+    ElseIf aTab.FindAndGoto(СтрПосле,,"Группировка")>0 Then
+      aTab.NewLine(aTab.CurLine+1);
+      aTab.Группировка:=СтрИмя;
+      aTab.Путь:=СтрЗнач;
+    Else
+      aTab.AddLine("Группировка,Путь",СтрИмя,СтрЗнач);
+    EndIf;
+    If флГалка Then
+      aTab.Check(aTab.CurLine,"Группировка",1);
+    EndIf;
+  EndDo;
+  If _And(флБезУдаления=0,aTab.Size()<>спФильры.Size()) Then
+    сп:=List.Create();
+    For i:=1 to спФильры.Size() Do
+      СтрЗнач:=спФильры.Get(i);
+      СтрИмя:=TearStr(СтрЗнач,"#");
+      СтрПосле:="";
+      If Pos("!",СтрИмя)>0 Then
+        СтрПосле:=tearStr(СтрИмя,"!");
+      EndIf;
+      сп.Add(СтрИмя);
+    EndDo;
+    i:=0;
+    While i<aTab.Size() Do
+      i:=i+1;
+      aTab.CurLine:=i;
+      If Pos("(польз)",aTab.Группировка)=1 Then
+        Continue;
+      EndIf;
+      If сп.Find(aTab.Группировка)=0 Then
+        aTab.Remove(i);
+        i:=i-1;
+      EndIf;
+    EndDo;
+  EndIf;
+EndFunction
+
+Function глОбновитьСписокПоказателей(пСпИмя) Export;
+  aList:=Form.Control(пСпИмя).Value;
+  Фл:=0;
+  For i:=1 To aList.Size() Do
+    If Pos("(польз)",aList.GetName(i))=1 Then
+      Фл:=1;
+      aList.Icon(i,83);
+    Else
+      aList.Icon(i,0);
+    EndIf;
+  EndDo;
+EndFunction
+
+Function глЗаполнитьСписокПоказателейЭлементы(пСпИмя,спФильры,флТолькоОбновить=0) Export;
+  aList:=Form.Control(пСпИмя).Value;
+  For iLoop:=1 to спФильры.Size() Do
+    аЭл:=спФильры.Get(iLoop);
+    aCaption:=спФильры.GetName(iLoop);
+    i:=aList.Find(аЭл);
+    If i=0 Then
+      aList.Add(аЭл,aCaption);
+    EndIf;  
+  EndDo;
+  If (aList.Size()<>спФильры.Size())And(not флТолькоОбновить) Then
+    i:=0;
+    While i<aList.Size() Do
+      i:=i+1;
+      If спФильры.Find(aList.Get(i))=0 Then
+        aList.Remove(i);
+        i:=i-1;
+      EndIf;
+    EndDo;
+  EndIf;
+EndFunction
+
+
+//{ДобавитьПослеОписания"!"}<Описание>"#"{!}<Путь>"#"<ИмяПеременной>
+Function глЗаполнитьСписокПоказателей(пСпИмя,спФильры,стрНеУдалять="") Export;
+  aList:=Form.Control(пСпИмя).Value;
+  For iLoop:=1 to спФильры.Size() Do
+    СтрЗнач:=спФильры.Get(iLoop);
+    If СтрЗнач="" Then
+      Continue;
+    EndIf;
+    СтрИмя:=TearStr(СтрЗнач,"#");
+    СтрПосле:="";
+    If Pos("!",СтрИмя)>0 Then
+      СтрПосле:=tearStr(СтрИмя,"!");
+    EndIf;
+    флГалка:=0;
+    If Left(СтрЗнач,1)="!" Then
+      флГалка:=1;
+      СтрЗнач:=Mid(СтрЗнач,2);
+    EndIf;
+    i:=aList.FindByName(СтрИмя,,,0);
+    If i>0 Then
+      aList.Set(i,СтрЗнач);
+      флГалка:=0;
+    ElseIf СтрПосле="" Then
+      aList.Add(СтрЗнач,СтрИмя);
+      i:=aList.Size();
+    Else
+      i:=aList.FindByName(СтрПосле,,,0);
+      If i>0 Then
+        i:=i+1;
+        aList.Insert(i,СтрЗнач,СтрИмя);
+      Else
+        aList.Add(СтрЗнач,СтрИмя);
+        i:=aList.Size();
+      EndIf;
+    EndIf;  
+    If флГалка Then
+      aList.Check(i,1);
+    EndIf;
+  EndDo;
+  If aList.Size()<>спФильры.Size() Then
+    сп:=List.Create();
+    For i:=1 to спФильры.Size() Do
+      СтрЗнач:=спФильры.Get(i);
+      СтрИмя:=TearStr(СтрЗнач,"#");
+      СтрПосле:="";
+      If Pos("!",СтрИмя)>0 Then
+        СтрПосле:=tearStr(СтрИмя,"!");
+      EndIf;
+      сп.Add(СтрИмя);
+    EndDo;
+    i:=0;
+    While i<aList.Size() Do
+      i:=i+1;
+      If Pos("(польз)",aList.GetName(i))=1 Then
+        Continue;
+      EndIf;
+      If _And(стрНеУдалять<>"",Pos(стрНеУдалять,aList.GetName(i))=1) Then
+        Continue;
+      EndIf;
+      If сп.Find(aList.GetName(i))=0 Then
+        aList.Remove(i);
+        i:=i-1;
+      EndIf;
+    EndDo;
+  EndIf;
+EndFunction
+
+Function глУдалитьИзТаблицыФильтров(пТабИмя,спФильры) Export;
+  aTab:=Form.Control(пТабИмя).Value;
+  For i:=1 to спФильры.Size() Do
+    СтрИмя:=спФильры.Get(i);
+    If aTab.FindAndGoto(СтрИмя,,"Группировка")>0 Then
+      aTab.Remove(aTab.CurLine);
+    EndIf;
+  EndDo;
+EndFunction
+
+
+Function глОбновитьТаблицуФильтров(пТабИмя) Export;
+  aTab:=Form.Control(пТабИмя).Value;
+  Фл:=0;
+  If TypeStr(aTab)="TAB" Then
+    aTab.Select();
+    While aTab.Next() Do
+      If Pos("(польз)",aTab.Группировка)=1 Then
+        Фл:=1;
+        aTab.FontStyle(aTab.CurLine,"Группировка",1);
+      EndIf;
+    EndDo;
+    If Фл Then
+      Form.Control(пТабИмя).isNoCaptions:=0;
+      aTab.Column("ФильтрыТекст").isVisible:=1;
+    Else
+      Form.Control(пТабИмя).isNoCaptions:=1;
+      aTab.Column("ФильтрыТекст").isVisible:=0;
+    EndIf;
+  ElseIf TypeStr(aTab)="LIST" Then
+    глОбновитьСписокПоказателей(пТабИмя);
+  EndIf;  
+EndFunction
+
+Function глДобавлениеВТаблицуФильтров(пТабИмя,стрОбъекты,флТолькоЦифры=0) Export;
+  Сп:=List.Create();
+  Сп.SetByName("Объекты",стрОбъекты);
+  Сп.SetByName("флТолькоЦифры",флТолькоЦифры);
+  LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\ВыборПутиДляТаблицыФильтров",Сп,0,"Module","Form");
+  If Number(Сп.GetByName("Ответ"))=0 Then
+    Exit;
+  EndIf;
+  Путь:=Сп.GetByName("Путь");
+  ПутьИмя:=Сп.GetByName("ПутьИмя");
+  aTab:=Form.Control(пТабИмя).Value;
+  If TypeStr(aTab)="TAB" Then
+    aTab.Select();
+    While aTab.Next() Do
+      If Pos("(польз)",aTab.Группировка)=0 Then
+        Continue;
+      EndIf;
+      If aTab.Путь=Путь Then
+        Box("Этот фильтр уже был добавлен в таблицу!",Q_STOP);
+        Exit;
+      EndIf;
+    EndDo;
+    aTab.NewLine();
+    aTab.Группировка:="(польз) "+ПутьИмя;
+    aTab.Путь:=Путь;
+  ElseIf TypeStr(aTab)="LIST" Then
+    For i:=1 To aTab.Size() Do
+      If Pos("(польз)",aTab.GetName(i))=0 Then
+        Continue;
+      EndIf;
+      If aTab.Get(i)=Путь Then
+        Box("Этот фильтр уже был добавлен в список!",Q_STOP);
+        Exit;
+      EndIf;
+    EndDo;
+    aTab.Add(Путь,"(польз) "+ПутьИмя);
+  EndIf;
+  глОбновитьТаблицуФильтров(пТабИмя);
+EndFunction
+
+Function глУдалитьНесовместимыеФильтрыИзТаблицы(пТабИмя,стрОбъекты) Export;
+  aList:=List.Create();
+  aList.FromString(стрОбъекты,",");
+  //Совмещаем одинаковые по именам и типам реквизиты
+  aTab:=Form.Control(пТабИмя).Value;
+  i:=0;
+  While i<aTab.Size Do
+    i:=i+1;
+    aTab.CurLine:=i;
+    If Pos("(польз)",aTab.Группировка)=0 Then
+      Continue;
+    EndIf;
+    
+    Фл:=0;
+    For j:=1 To aList.Size() Do
+      Путь:=aList.Get(j);
+      if Pos(Путь+".",aTab.Путь+".")=1 Then
+        Фл:=1;
+        Break;
+      EndIf;
+    EndDo;
+    if not Фл Then
+      aTab.Remove(i);
+      i:=i-1;
+    EndIf;
+  EndDo;
+EndFunction
+
+Function глПолучитьШиринуКолонкиИзТипаДанных(Тип,Макс=250) Export;
+  //Тип: STRING.X
+  //     NUMBER.X.Y
+  //     DATE.X.Y
+  //     REF.XXXX...
+  Тип1:=TearStr(Тип,".");
+  If Тип1="STRING" Then
+    Чл:=Number(Тип);
+    If Чл=0 Then
+      Exit Макс;
+    Else
+      Exit Чл*10;
+    EndIf;
+  ElseIf Тип1="NUMBER" Then
+    Чл:=Number(Тип);
+    If Чл=0 Then
+      Exit Min(100,Макс);
+    Else
+      Exit Чл*10;
+    EndIf;
+  ElseIf Тип1="DATE" Then
+    Exit 50;
+  ElseIf (Тип1="REF")or(Тип1="DOC")or(Тип1="JOR")or(Тип1="JOUR") Then
+    Exit Макс;
+  Else
+    Exit 50;
+  EndIf;
+EndFunction
+
+
+Function глПолучитьТипДанныхИзПутиФильтра(Путь,ByRef пЗаголовок="") Export;
+  Стр:=Путь;
+  пЗаголовок:="";
+  While Стр<>"" Do
+    Стр:=Trim(tearStr(Стр,","));
+    If Pos(".",Стр)=0 Then
+      Exit Стр;
+    EndIf;
+    Стр1:=Uppercase(tearStr(Стр,"."));
+    If (Стр1="NUMBER")or(Стр1="DATE")or(Стр1="ANY")or(Стр1="NOTHING")or(Стр1="STRING") Then
+      Exit Стр1+"."+Стр;
+    EndIf;
+    //<Type>.<Name>{.<Prop>{{..<Type>.<Name>}.Prop}} ...
+    If (Стр1<>"REF")and(Стр1<>"DOC")and(Стр1<>"ENUM")and(Стр1<>"STOR")and(Стр1<>"JOUR")and(Стр1<>"JOR") Then
+      Exit Стр1+"."+Стр;
+    EndIf;
+    Стр1:=Стр1+"."+tearStr(Стр,".");
+    If Стр="" Then
+      Exit Стр1;
+    EndIf;
+    aStruct:=DB(Стр1).Struct;
+    пЗаголовок:=?(aStruct.Caption="",aStruct.Name,aStruct.Caption);
+    Стр2:=Стр1;
+    While 1 Do
+      Стр1:=uppercase(tearStr(Стр,"."));
+      //Исключения
+      If Стр1="@PARENT" Then
+        If aStruct.Parents.Count()=1 Then
+          Стр1:="REF."+aStruct.Parents(1).Name;
+          пЗаголовок:=?(aStruct.Parents(1).Caption="",aStruct.Parents(1).Name,aStruct.Parents(1).Caption);
+        Else
+          Стр1:="REF";
+          пЗаголовок:="?";
+        EndIf;
+      ElseIf Стр1="@FOLDER" Then
+        Стр1:=Стр2;
+      ElseIf (Стр1="@ISFOLDER")or(Стр1="@STATUS")or(Стр1="@LINE")or(Стр1="@LINEID")or(Стр1="@EXPENSE")or(Стр1="@TRIGGER") Then
+        пЗаголовок:=Стр1;
+        Exit "NUMBER";
+      ElseIf (Стр1="@DATE")or(Стр1="@SECOND")or(Стр1="@MINUTE")or(Стр1="@HOUR")or(Стр1="@DAY")or(Стр1="@WEEK")or(Стр1="@MONTH")or(Стр1="@QUARTER")or(Стр1="@YEAR") Then
+        пЗаголовок:=Стр1;
+        Exit "DATE";
+      ElseIf Стр1="@LINK" Then
+        Стр1:="DOC";
+        пЗаголовок:="?";
+      ElseIf (Стр1="@ELEMENT")or(Стр1="@HEADER") Then
+        If aStruct.StructLinkType()="Struct.Object.LinePart" Then
+          Стр1:=aStruct.ObjectLink.DataType;
+        Else
+          пЗаголовок:="";
+          Exit "";//Ошибочное применение @HEADER
+        EndIf;
+      ElseIf isEmpty(aStruct.Props(Стр1)) Then
+        //Строчная часть?
+        Try
+          If Стр1="" Then
+            //Указание на строчную часть, которая не имеет типа объекта
+            Exit "";
+          ElseIf isEmpty(aStruct.LineParts(Стр1)) Then
+            Exit "";
+          Else
+            aStruct:=aStruct.LineParts(Стр1);
+            Continue;
+          EndIf;
+        Except
+          Exit "";//Неоконченный путь со строчной частью (Doc.Реализация.Номенклатура)
+        EndTry;
+      Else
+        пЗаголовок:=?(aStruct.Props(Стр1).Caption="",aStruct.Props(Стр1).Name,aStruct.Props(Стр1).Caption);
+        Стр1:=aStruct.Props(Стр1).DataType;
+        If Стр="" Then
+          Exit Стр1;
+        EndIf;
+      EndIf;
+      If Left(Стр,1)="." Then //Cast
+        TearStr(Стр,".");
+        Continue 2;
+      EndIf;
+      Стр:=Стр1+"."+Стр;
+      Break;
+    EndDo;
+  EndDo;
+  
+  Exit "";
+EndFunction
+
+Function глПолучитьКликПоТаблицеФильтров(пТабИмя) Export;
+  aTab:=Form.Control(пТабИмя).Value;
+  If aTab.SelectedLine=0 Then
+    Exit;
+  EndIf;
+  
+  aTab.CurLine:=aTab.SelectedLine;
+  If aTab.SelectedColumnName=Uppercase("ФильтрыТекст") Then
+    If Pos("(польз)",aTab.Группировка)=0 Then
+      Exit;
+    EndIf;
+    Тип:=глПолучитьТипДанныхИзПутиФильтра(aTab.Путь);
+    //Доступны: Строка, Дата, Число, Перечисление, Справочник
+    Зн:=глВыполнитьВыборВМеню("Очистить@Выбрать@Выбрать множество",,2);
+    If Зн>0 Then    
+      Стр:=Тип;
+      Стр1:=tearStr(Стр,".");
+      If Зн=1 Then
+        aTab.Фильтры:=GetNothing();
+      ElseIf Зн=2 Then
+        If isEmpty(aTab.Фильтры) Then
+          aTab.Фильтры:=List.Create(List.Create(),List.Create());
+        EndIf;
+        aList0:=aTab.Фильтры;
+        
+        If Стр1="NUMBER" Then
+          aNum:=0;
+          If not AskNumber(aNum,"Введите число:") Then
+            Exit;
+          EndIf;
+          aList0.Get(2).Clear();
+          aList0.Get(1).Clear();
+          aList0.Get(1).Add(aNum);
+        ElseIf Стр1="DATE" Then
+          aDate:=Date();
+          If not AskDate(aDate,"Введите дату:",1) Then
+            Exit;
+          EndIf;
+          aList0.Get(2).Clear();
+          aList0.Get(1).Clear();
+          aList0.Get(1).Add(aDate);
+        ElseIf Стр1="ANY" Then
+          //TODO: Support
+        ElseIf Стр1="STRING" Then
+          aStr:="";
+          If not AskString(aStr,"Введите строку:") Then
+            Exit;
+          EndIf;
+          aList0.Get(2).Clear();
+          aList0.Get(1).Clear();
+          aList0.Get(1).Add(aStr);
+        ElseIf Стр1="ENUM" Then
+          а:=List.Create();
+          For б:=1 to Struct.Enum(Стр).Values.Count() Do
+            а.Add(Enum.GetByIndex(Стр,б));
+          EndDo;
+          Зн:=0;
+          If not а.Select(Зн,0,"Введите значение перечисления:") Then
+            Exit;
+          EndIf;
+          aList0.Get(2).Clear();
+          aList0.Get(1).Clear();
+          aList0.Get(1).Add(Зн);
+        Else
+          aList:=aList0.Get(1);
+          а:=0;
+          If aList.Size()>0 Then
+            а:=aList.Get(1);
+          EndIf;
+          б:=SelectObject(Тип,0,0,,,а,,,3);
+          If not isEmpty(б) Then
+            aList0.Get(2).Clear();
+            aList.Clear();
+            aList.Add(б);
+          EndIf;  
+        EndIf;
+      ElseIf Стр1="REF" Then
+        //TODO: Выбрать владельца
+        а:=List.Create();
+        а.Add(Стр,"Справочник");
+        If isEmpty(aTab.Фильтры) Then
+          aTab.Фильтры:=List.Create(List.Create(),List.Create());
+        EndIf;
+        а.Add(aTab.Фильтры,"Фильтр");
+        а.Add(Form.ThisForm(),"Form");
+        LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\Мультифильтр",а,0,"Module","Form");
+      Else
+        //TODO: Support docs?
+        //TODO: Support enums
+      EndIf;
+      
+      aTab.ФильтрыТекст:=глЗаголовокФильтра(aTab.Фильтры);
+    EndIf;
+  EndIf;
+EndFunction
+
+Function глПроверитьНаЛишниеФильтры(ТабФорма=0,пЮЛИмя="",пУАИмя="",тРек="номенклатуре") Export
+  If глПользователь.бухБухгалтер Then
+    Exit 1;
+  EndIf;
+  If пЮЛИмя<>"" Then
+    if ТабФорма=0 Then
+      оЮЛ:=Form.Control(пЮЛИмя).Value;
+    Else
+      оЮЛ:=ТабФорма.FindAndGet("Value",пЮЛИмя,,"ControlName");
+    EndIf;  
+    Стр:="В данном отчете не рекомендуется использовать фильтр по юридическим лицам. Возможно, вы совершаете ошибку, используя этот фильтр. Рекомендуется использовать фильтр по "+тРек+". Все равно продолжить?";
+    If _And(not isEmpty(оЮЛ),оЮЛ.Size()>0,оЮЛ.Get(1).Size()>0) Then
+      If AskQuestion(Стр,Q_QUESTION+Q_YESNO,Q_YESNO)=R_YES Then
+        Exit 1;
+      EndIf;
+      Exit 0;
+    EndIf;
+    If _And(not isEmpty(оЮЛ),оЮЛ.Size()>1,оЮЛ.Get(2).Size()>0) Then
+      If AskQuestion(Стр,Q_QUESTION+Q_YESNO,Q_YESNO)=R_YES Then
+        Exit 1;
+      EndIf;
+      Exit 0;
+    EndIf;
+  EndIf;  
+  Exit 1;
+EndFunction
+
+Function глКоличествоПоказателей(aList) Export
+  Result:=0;
+  For i:=1 To aList.Size() Do
+    If aList.Check(i)=1 Then
+      Result:=Result+1;
+    EndIf;
+  EndDo;
+EndFunction
+
+Function глКоличествоУровнейИзФильтров(aTab) Export
+  Result:=0;
+  aTab.Select();
+  While aTab.Next() Do
+    If aTab.Check(aTab.CurLine,"Группировка")=1 Then
+      Result:=Result+1;
+    EndIf;
+  EndDo;
+EndFunction
+
+Function глПолучитьИмяПеременной(пТабГруппы,Индекс,флДобИндекс=0,Префикс="зТабПерем") Export
+  If typeStr(пТабГруппы)="TAB" Then
+    пТабГруппы.CurLine:=Индекс;
+    If Pos("(польз)",пТабГруппы.Группировка)=0 Then
+      Result:=пТабГруппы.Путь;
+      TearStr(Result,"#");
+      Result:=TearStr(Result,"#");
+    Else
+      Result:=Префикс+(Индекс+флДобИндекс);
+    EndIf;
+  ElseIf typeStr(пТабГруппы)="LIST" Then
+    If Pos("(польз)",пТабГруппы.GetName(Индекс))=0 Then
+      Result:=пТабГруппы.Get(Индекс);
+      TearStr(Result,"#");
+      Result:=TearStr(Result,"#");
+    Else
+      Result:=Префикс+(Индекс+флДобИндекс);
+    EndIf;
+  EndIf;  
+EndFunction;
+
+Function глПолучитьКод(Эл) Export
+  If isEmpty(Эл) Then
+    Exit "";
+  ElseIf Pos("DB.REF.",TypeStr(Эл))<>1 Then
+    Exit "";
+  Else
+    Try
+      Exit Эл.Code;
+    Except
+      Exit "";
+    EndTry;  
+  EndIf;
+EndFunction
+
+Function глРаскраситьСтроку(Т,Строк,ОснСтолбик=0,Ур,УрВсего,СтолбНач,СтолбКон,Эл=0) Export;
+  ФлПапка:=0;
+  If not IsEmpty(Эл) Then
+    If Pos("DB.REF.",TypeStr(Эл))=1 Then
+      ФлПапка:=Эл.isFolder();
+    EndIf;
+  EndIf;
+  //8..17 -- обычные
+  //22..31 -- папки
+  ФлПапка:=ФлПапка*10;
+  Профайл:=Min(УрВсего-Ур+8,17)+ФлПапка;
+  Т.Area(СтолбНач,Т.Height()-Строк+1,СтолбКон,Т.Height()).ColorProfile:=Профайл;
+  If (ОснСтолбик>0)And(Ур>1) then
+    флВыступ:=0;
+    While Строк-флВыступ>1 Do
+      If Т.Area(ОснСтолбик,Т.Height()-флВыступ,ОснСтолбик,Т.Height()-флВыступ).HAlign=1 Then
+        флВыступ:=флВыступ+1;
+      Else
+        Break;
+      EndIf;  
+    EndDo;
+    Т.Area(ОснСтолбик,Т.Height()-Строк+1,ОснСтолбик,Т.Height()-флВыступ).IndentX:=Ур-1;
+  EndIf;
+EndFunction
+
+Function глДобавитьУровень(Т,ВНач,ВКон,флГориз=0,флПолИтога=0) Export;
+  Т.Levels(флГориз).Add(флПолИтога,ВНач,ВКон);
+EndFunction
+
+Function глОбработатьВыводимоеЗначениеВОтчет(ByRef пЭл,ИмяПер) Export
+  ИмяПер:=Uppercase(ИмяПер);
+  If (ИмяПер="MONTH")Or(ИмяПер="МЕСЯЦ") Then
+    Try
+      пЭл:=FormatDate(пЭл,"MM YYYY г.");
+    Except
+      пЭл:="";
+    EndTry;  
+  ElseIf (ИмяПер="YEAR")or(ИмяПер="ГОД") Then
+    Try
+      пЭл:=FormatDate(пЭл,"YYYY г.");
+    Except
+      пЭл:="";
+    EndTry;  
+  ElseIf (ИмяПер="QUARTER")Or(ИмяПер="КВАРТАЛ") Then
+    Try
+      пЭл:=FormatDate(пЭл,"q квартал YYYY г.");
+    Except
+      пЭл:="";
+    EndTry;  
+  ElseIf (ИмяПер="WEEK")or(ИмяПер="НЕДЕЛЯ") Then
+    Try
+      пЭл:="с "+BegOfWeek(пЭл)+" по "+EndOfWeek(пЭл)+" ("+FormatDate(пЭл,"w неделя")+")";
+    Except
+      пЭл:="";
+    EndTry;  
+  ElseIf (ИмяПер="DAY")Or(ИмяПер="ДЕНЬ") Then
+    Try
+      пЭл:=""+пЭл+" ("+Lowercase(FormatDate(пЭл,"NN"))+")";
+    Except
+      пЭл:="";
+    EndTry;  
+  EndIf;
+EndFunction
+
+//тИмена: <Тип1>,<Тип2>
+//<Тип>: <ИмяГруппировки>:<ИмяНачОст>:<ИмяПриход>:<ИмяРасход>:<ИмяКонОст>
+Function глСимулироватьСальдоПоДокументам(З,тИмена) Export
+
+  Function DoGroupping(З,Level,спИмена)
+    If З.GroupCount<Level Then
+      Exit;
+    EndIf;
+    
+    If isEmpty(спИмена.GetByName(З.Groups(Level))) Then
+      While З.Next(Level) Do
+        DoGroupping(З,Level+1,спИмена);
+      EndDo;  
+      Exit;
+    EndIf;
+
+    Таб:=З.ResultTable;
+    ИмяГруппы:=З.Groups(Level);
+    Сп:=спИмена.GetByName(ИмяГруппы);
+    aCur:=Таб.CurLine;
+    аИзменить:=0;
+    аЧисло:=0;
+    If З.Next(Level) Then
+      зНачОсн:=З.Get(Сп.Get(1));
+      зЗн:=З.Get(ИмяГруппы);
+      If (isEmpty(зЗн))And(зНачОсн=0)And(З.Get(Сп.Get(2))=0)And(З.Get(Сп.Get(3))=0) Then
+        аТекУр:=З.GroupCount-Level+1;
+        аИзменить:=Таб.CurLine;
+        аЧисло:=аИзменить+1;
+        While аЧисло<=Таб.Size() Do
+          If Таб.Get(аЧисло,"@LEVEL")>=аТекУр Then
+            Break;
+          EndIf;
+          аЧисло:=аЧисло+1;
+        EndDo;
+        аЧисло:=аЧисло-аИзменить;
+        aCur:=Таб.CurLine;
+      EndIf;
+    EndIf;
+    Таб.CurLine:=aCur;
+        
+    While З.Next(Level) Do
+      Таб.Set(Таб.CurLine,Сп.Get(1),зНачОсн);
+      зНачОсн:=зНачОсн+З.Get(Сп.Get(2))-З.Get(Сп.Get(3));
+      Таб.Set(Таб.CurLine,Сп.Get(4),зНачОсн);
+      
+      DoGroupping(З,Level+1,спИмена);
+    EndDo;
+    
+    if аИзменить<>0 Then
+      For i:=1 To аЧисло Do
+        Таб.Set(аИзменить+i-1,"@LEVEL",-1);
+      EndDo;  
+    EndIf;
+  EndFunction;
+  
+  спИмена:=List.Create();
+  While тИмена<>"" Do
+    Стр:=tearStr(тИмена,",");
+    Имя:=Trim(tearStr(Стр,":"));
+    If Имя="" Then
+      Continue;
+    EndIf;
+    Сп:=List.Create();
+    Сп.FromString(Стр,":");
+    спИмена.SetByName(Имя,Сп);
+  EndDo;
+  
+  З.First(0);
+  DoGroupping(З,1,спИмена);
+  З.First(0);
+EndFunction
+
+Function глГруппировкаАктивна(пГрп,тГруппы) Export
+  If TypeStr(тГруппы)="TAB" Then
+    If тГруппы.FindAndGoto(пГрп,,"Группировка")=0 Then
+      Exit 0;
+    EndIf;
+    
+    Exit тГруппы.Check(тГруппы.CurLine,"Группировка");
+  ElseIf TypeStr(тГруппы)="LIST" Then
+    i:=тГруппы.FindByName(пГрп,,,0);
+    If i=0 Then
+      Exit 0;
+    EndIf;
+    
+    Exit тГруппы.Check(i);
+  EndIf;
+EndFunction
+
+
+//флТипГруппировок: 0 -- обычные
+//                 -1 -- без группировок
+//                  1 -- горизонтальные
+//пТабГруппы: <ИмяЭлемента>@<ПропуститьГруппыЧзЗапятую>
+Function глПостроитьТекстЗапросаИзФильтров(ByRef ТЗ,ТабФорма=0,Путь,НачДата,КонДата,тФильтры,пТабГруппы,спРезПеременные=0,флТипГруппировок=0,флДопИндекс=0) Export;
+  If спРезПеременные=0 Then
+    спРезПеременные:=List.Create();
+  EndIf;
+  If НачДата<>0 Then
+    ТЗ:=ТЗ+"Period from '"+BegOfDay(НачДата)+"' to '"+BegOfDay(КонДата)+"';"+_NEWLINE;
+  EndIf;
+  //Фильтры
+  СпДопТип:=List.Create();
+  стрПуть0:="";
+  стрИмя0:="";
+  While тФильтры<>"" Do
+    СтрПуть:=Trim(tearStr(тФильтры,","));
+    СтрИмяЭл:=tearStr(СтрПуть,"@");
+    СтрИмя:=tearStr(СтрПуть,"@");
+    //СтрПуть: Путь...<Тип>
+    СтрТип:="";
+    If Pos("...",СтрПуть)>0 Then
+      СтрТип:=СтрПуть;
+      СтрПуть:=TearStr(СтрТип,"...");
+      СтрТип:=Uppercase(СтрТип);
+      СпДопТип.Add(СтрТип,Uppercase(СтрПуть));
+    EndIf;
+    
+    If стрПуть0="" Then
+      стрПуть0:=СтрПуть;
+      стрИмя0:=СтрИмя;
+    EndIf;
+    if ТабФорма=0 Then
+      oCnt:=Form.Control(СтрИмяЭл).Value;
+    Else
+      oCnt:=ТабФорма.FindAndGet("Value",СтрИмяЭл,,"ControlName");
+    EndIf;  
+    If oCnt.Size()=0 Then
+      Continue;
+    EndIf;
+    If _And(oCnt.Size()=1,oCnt.Get(1).Size()=0) Then
+      Continue;
+    EndIf;
+    If _And(oCnt.Size()>1,oCnt.Get(1).Size()+oCnt.Get(2).Size()=0) Then
+      Continue;
+    EndIf;
+      
+    If isEmpty(спРезПеременные.GetByName(СтрИмя)) Then
+      спРезПеременные.SetByName(СтрИмя,?(СтрПуть="",".",СтрПуть));
+      ТЗ:=ТЗ+СтрИмя+":="+?(Путь<>"",Путь+?(СтрПуть="","","."),"")+СтрПуть+";"+_NEWLINE;
+    EndIf;
+    if _And(oCnt.Size()>0,oCnt.Get(1).Size()>0) Then
+      if ТабФорма=0 Then
+        Стр:="Form."+СтрИмяЭл+".Value.Get(1)";
+      Else
+        Стр:="ТабФорма.FindAndGet(""Value"","""+СтрИмяЭл+""",,""ControlName"").Get(1)";
+      EndIf;
+      If _And(oCnt.Size()>1,oCnt.Get(1).Size()=1,oCnt.Get(2).Size()=0,isEmpty(oCnt.Get(1).Get(1)),oCnt.Get(1).Get(1)<>0,oCnt.Get(1).Get(1)<>"") Then
+        ТЗ:=ТЗ+"Condition(IsEmpty("+СтрИмя+"));"+_NEWLINE;
+      Else
+        ТЗ:=ТЗ+"Condition("+СтрИмя+" IN "+Стр+");"+_NEWLINE;
+      EndIf;  
+    EndIf;
+    if _And(oCnt.Size()>1,oCnt.Get(2).Size()>0) Then
+      if ТабФорма=0 Then
+        Стр:="Form."+СтрИмяЭл+".Value.Get(2)";
+      Else
+        Стр:="ТабФорма.FindAndGet(""Value"","""+СтрИмяЭл+""",,""ControlName"").Get(2)";
+      EndIf;  
+      ТЗ:=ТЗ+"Condition("+СтрИмя+" NOT IN "+Стр+");"+_NEWLINE;
+    EndIf;
+  EndDo;
+  
+  If пТабГруппы<>"" Then
+    пПропуститьГруппы:=пТабГруппы;
+    пТабГруппы:=TearStr(пПропуститьГруппы,"@");
+    If пПропуститьГруппы<>"" Then
+      пПропуститьГруппы:=","+пПропуститьГруппы+",";
+    EndIf;
+    If ТабФорма=0 Then
+      aTab:=Form.Control(пТабГруппы).Value;
+    Else
+      aTab:=ТабФорма.FindAndGet("Value",пТабГруппы,,"ControlName");
+    EndIf;  
+  
+    //Особые табличные фильтры
+    If TypeStr(aTab)="TAB" Then
+      aTab.Select();
+      While aTab.Next() Do
+        If Pos("(польз)",aTab.Группировка)=0 Then
+          Continue;
+        EndIf;
+        If _Or(IsEmpty(aTab.Фильтры),aTab.Фильтры.Size()=0) Then
+          Continue;
+        EndIf;
+        If _And(aTab.Фильтры.Size()=1,aTab.Фильтры.Get(1).Size()=0) Then
+          Continue;
+        EndIf;
+        If _And(aTab.Фильтры.Size()>1,aTab.Фильтры.Get(1).Size()+aTab.Фильтры.Get(2).Size()=0) Then
+          Continue;
+        EndIf;
+        If пПропуститьГруппы<>"" Then
+          Continue;
+        EndIf;
+        
+        СтрПуть:=Trim(aTab.Путь);
+        СтрИмя:="зТабПерем"+(aTab.CurLine+флДопИндекс);
+        If isEmpty(спРезПеременные.GetByName(СтрИмя)) Then        
+          спРезПеременные.SetByName(СтрИмя,?(СтрПуть="",".",СтрПуть));
+          ТЗ:=ТЗ+СтрИмя+":="+СтрПуть+";"+_NEWLINE;
+        EndIf;
+        oCnt:=aTab.Фильтры;
+        if _And(oCnt.Size()>0,oCnt.Get(1).Size()>0) Then
+          if ТабФорма=0 Then
+            Стр:="Form."+пТабГруппы+".Value.Get("+aTab.CurLine+",""Фильтры"").Get(1)";
+          Else
+            Стр:="ТабФорма.FindAndGet(""Value"","""+пТабГруппы+""",,""ControlName"").Get("+aTab.CurLine+",""Фильтры"").Get(1)";
+          EndIf;  
+          If _And(oCnt.Size()>1,oCnt.Get(1).Size()=1,oCnt.Get(2).Size()=0,isEmpty(oCnt.Get(1).Get(1)),oCnt.Get(1).Get(1)<>0,oCnt.Get(1).Get(1)<>"") Then
+            ТЗ:=ТЗ+"Condition(IsEmpty("+СтрИмя+"));"+_NEWLINE;
+          Else
+            ТЗ:=ТЗ+"Condition("+СтрИмя+" IN "+Стр+");"+_NEWLINE;
+          EndIf;  
+        EndIf;
+        if _And(oCnt.Size()>1,oCnt.Get(2).Size()>0) Then
+          if ТабФорма=0 Then
+            Стр:="Form."+пТабГруппы+".Value.Get("+aTab.CurLine+",""Фильтры"").Get(2)";
+          Else
+            Стр:="ТабФорма.FindAndGet(""Value"","""+пТабГруппы+""",,""ControlName"").Get("+aTab.CurLine+",""Фильтры"").Get(2)";
+          EndIf;  
+          ТЗ:=ТЗ+"Condition("+СтрИмя+" NOT IN "+Стр+");"+_NEWLINE;
+        EndIf;
+      EndDo;
+    ElseIf TypeStr(aTab)="LIST" Then
+      For i:=1 to aTab.Size() Do
+        If aTab.Check(i)=0 Then
+          Continue;
+        EndIf;
+        If Pos("(польз)",aTab.GetName(i))=0 Then
+          //Договор.@Parent#зК
+          СтрИмя:=aTab.Get(i);
+          СтрПуть:=TearStr(СтрИмя,"#");
+          If (СтрИмя="")or(Left(СтрИмя,1)="!") Then
+            Continue;
+          EndIf;
+          СтрПуть:=?(Путь<>"",Путь+?(СтрПуть="","","."),"")+СтрПуть;
+          СтрПуть:=СтрИмя+":="+СтрПуть;
+          If pos(СтрПуть,ТЗ)=0 Then
+            ТЗ:=ТЗ+СтрПуть+";"+_NEWLINE;
+          EndIf;
+          Continue;
+        EndIf;
+        СтрПуть:=aTab.Get(i);
+        СтрИмя:="зСпПерем"+(i+флДопИндекс);
+        If isEmpty(спРезПеременные.GetByName(СтрИмя)) Then
+          спРезПеременные.SetByName(СтрИмя,?(СтрПуть="",".",СтрПуть));
+          ТЗ:=ТЗ+СтрИмя+":="+СтрПуть+";"+_NEWLINE;
+        EndIf;
+      EndDo;
+    EndIf;  
+    
+    //Группировки
+    флПапки:=0;
+    If флТипГруппировок=0 Then
+      if ТабФорма=0 Then
+        If not isEmpty(Form.ControlByName("оГрп")) Then
+          флПапки:=Number(Form.ControlByName("оГрп").Value);
+        EndIf;
+      Else
+        флПапки:=Number(ТабФорма.FindAndGet("Value","оГрп",,"ControlName"));
+      EndIf;
+    EndIf;  
+
+    If флТипГруппировок>=0 Then
+      aTab.Select();
+      While aTab.Next() Do
+        If aTab.Check(aTab.CurLine,"Группировка")=0 Then
+          Continue;
+        EndIf;
+        If пПропуститьГруппы<>"" Then
+          СтрИмя:=Trim(aTab.Путь);
+          СтрПуть:=tearStr(СтрИмя,"#");
+          If Pos(","+СтрИмя+",",пПропуститьГруппы)>0 Then
+            Continue;
+          EndIf;
+        EndIf;  
+        
+  
+        //ЮрЛицо#зЮЛ
+        //DocDate+BegOfYear#Год
+        //DocDate+BegOfYear(@@@)#Год
+        стрФункция:="";
+        If Pos("(польз)",aTab.Группировка)=0 Then
+          СтрИмя:=Trim(aTab.Путь);
+          СтрПуть:=tearStr(СтрИмя,"#");
+          //<Path>+<Func ... @@@ ...>
+          if pos("+",СтрПуть)>0 then
+            стрФункция:=СтрПуть;
+            СтрПуть:=TearStr(стрФункция,"+");
+          EndIf;
+          Тип:=глПолучитьТипДанныхИзПутиФильтра(?(Путь<>"",Путь+?(СтрПуть="","","."),"")+СтрПуть);
+        Else
+          СтрПуть:=Trim(aTab.Путь);
+          СтрИмя:="зТабПерем"+(aTab.CurLine+флДопИндекс);
+          Тип:=глПолучитьТипДанныхИзПутиФильтра(СтрПуть);
+        EndIf;  
+        
+        If стрФункция<>"" Then
+          Стр0:=?(Путь<>"",Путь+?(СтрПуть="","","."),"")+СтрПуть;
+          If Pos("@@@",стрФункция)=0 Then
+            стрФункция:=стрФункция+"("+Стр0+")";
+          Else
+            стрФункция:=Replace(стрФункция,"@@@",Стр0);
+          EndIf;
+        Else
+          стрФункция:=?(Путь<>"",Путь+?(СтрПуть="","","."),"")+СтрПуть;
+        EndIf;
+        
+        
+        If isEmpty(спРезПеременные.GetByName(СтрИмя)) Then
+          спРезПеременные.SetByName(СтрИмя,СтрПуть);
+          If Pos("(польз)",aTab.Группировка)=0 Then
+            ТЗ:=ТЗ+СтрИмя+":="+стрФункция+";"+_NEWLINE;
+          Else
+            ТЗ:=ТЗ+СтрИмя+":="+СтрПуть+";"+_NEWLINE;
+          EndIf;  
+        EndIf;
+        
+        СтрТип:=Trim(СпДопТип.GetByName(СтрПуть));
+        Фл:=0;
+        If СтрТип<>"" Then
+          If Pos("REF.",СтрТип)=1 Then
+            Фл:=DB(СтрТип).Struct.HasFolders;
+          EndIf;  
+        ElseIf Pos("REF.",Тип)=1 Then
+          //"REF.общПричиныВозвратов,REF.общПричиныДокументов"
+          Стр0:=Тип;
+          While Стр0<>"" Do
+            Стр2:=TearStr(Стр0,",");
+            If DB(Стр2).Struct.HasFolders Then
+              Фл:=1;
+              Break;
+            EndIf;
+          EndDo;
+        EndIf;
+        If Фл Then
+          If Pos("(польз)",aTab.Группировка)=0 Then
+            Стр0:=?(Путь<>"",Путь+?(СтрПуть="","","."),"")+СтрПуть+?(СтрТип<>"",".."+СтрТип)+".@IsFolder";
+          Else
+            Стр0:=СтрПуть+?(СтрТип<>"",".."+СтрТип)+".@IsFolder";
+          EndIf;  
+          //ТЗ:=ТЗ+"Condition("+Стр0+"=0)OR(IsNULL("+Стр0+"));"+_NEWLINE;
+          ТЗ:=ТЗ+"Condition("+Стр0+"=0);"+_NEWLINE;
+        EndIf;
+        If _Or(Pos("Group "+СтрИмя+" ",ТЗ)>0,Pos("Group "+СтрИмя+";",ТЗ)>0) Then
+          Raise "Запрос уже содержит группировку "+СтрИмя+", возможно, вы выбрали одну и ту же группировку два раза!";
+        EndIf;
+        ТЗ:=ТЗ+?(флТипГруппировок=1,"Hor","")+"Group "+СтрИмя+?(Фл And флПапки," with folders")+";"+_NEWLINE;
+      EndDo;
+    EndIf;  
+  EndIf;
+
+  //По крайней мере один путь
+  If (спРезПеременные.Size()=0)and(стрПуть0<>"") Then
+    ТЗ:=ТЗ+СтрИмя0+":="+?(Путь<>"",Путь+?(СтрПуть="","","."),"")+СтрПуть0+";"+_NEWLINE;
+    спРезПеременные.SetByName(СтрИмя0,СтрПуть0);
+  EndIf;
+EndFunction
+
+
+Function глПолучитьУстановку(ТабФорма,пИмя,пТип="Value") Export
+  Result:=?(not isEmpty(ТабФорма),ТабФорма.FindAndGet(пТип,пИмя,,"ControlName"),GetNothing());
+EndFunction
+
+Function глФормулаПростогоСпискаВТаблице(Таб) Export
+  if Таб.SelectionMode>1 then
+    Exit 0;
+  EndIf;  
+  Знч:=Таб.Area(Таб.CurCol,Таб.CurLine,Таб.CurCol,Таб.CurLine).Value;
+  If TypeStr(Знч)<>"LIST" Then
+    Exit 0;
+  EndIf;
+  If Знч.Size()=0 Then
+    Exit 0;
+  EndIf;
+  If pos("DB.",TypeStr(Знч.Get(1)))<>1 Then
+    Exit 0;
+  EndIf;
+  Зн:=0;
+  If Знч.Select(Зн,1)=0 Then
+    Exit 0;
+  EndIf;
+  OpenObject(Зн,0,1);
+  Exit 1;
+EndFunction
+
+Function глРаботаСОсобымиИконкамиТаблицы(Таб) Export
+  If Таб.SelectionMode>1 Then
+    if Таб.SelectedObjects().Count()<1 Then
+      Exit 0;
+    EndIf;
+    Obj:=Таб.SelectedObjects().Get(1);
+    Сп:=Obj.Value;
+    
+    If Obj.Name="cRefresh" Then
+      If DoesFunctionExist("OnExecute",2) Then
+        If ArgumentsNumber("OnExecute",2)>0 Then
+          If TypeStr(Сп)="LIST" Then
+            Сп.SetByName("Таблица",Таб);
+          EndIf;  
+          ExecuteFunction("OnExecute",2,Сп);
+        Else
+          ExecuteFunction("OnExecute",2);
+        EndIf;
+      EndIf;
+    ElseIf Obj.Name="cTools" Then
+      If TypeStr(Сп)<>"LIST" Then
+        Exit 0;
+      EndIf;
+      а:=List.Create("Настройка отчета (открыть форму отчета с текущими настройками)","Удалить сохраненные параметры печати для данного отчета");
+      Зн:=а.Select(Зн,1);
+      If Зн=0 Then
+        Exit 1;
+      EndIf;
+      If Зн=1 Then
+        If Сп.GetByName("БезНастройки")=1 Then
+          Exit 1;
+        EndIf;
+        Сп.SetByName("Таблица",Таб);
+        aParent:=Form.GetParentForm();
+        пПуть:=aParent.GetModuleFileName();
+        пМодуль:=GetFileName(пПуть);
+        пПуть:=GetPath(пПуть);
+        пФорма:=GetFileName(aParent.GetFormFileName());
+        LoadModule(2,пПуть,Сп,0,?(пМодуль="","Module",пМодуль),?(пФорма="","Form",пФорма));
+      ElseIf Зн=2 Then
+        Файл:=глПолучитьИмяУстановокПечатнойФормы(Таб);
+        If isEmpty(Файл) Then
+          Exit 1;
+        EndIf;
+        If File.DoesFileExist(Файл) Then
+          If AskQuestion("Удалить сохраненные установки печати данного отчета?",Q_QUESTION+Q_YESNO)=R_YES Then
+            File.DeleteFile(Файл);
+          EndIf;
+        Else
+          Box("Сохраненные установки не найдены! Установки сохраняются только после печати.",Q_INFORMATION);
+        EndIf;
+        Exit 1;
+      EndIf;
+    Else
+      Exit 0;
+    EndIf;
+    Exit 1;
+  EndIf;
+  Exit 0;
+EndFunction
+
+Function глФормулаРасшифровкиОтчета(ТабФорма,Таб,тСписки,тКопировать,тДопУстановки,тФайл) Export
+
+  Function ОбнулитьСписки(Сп,Стр)
+    While Стр>"" Do
+      пИмя:=TearStr(Стр,",");
+      Сп.SetByName(пИмя,List.Create(List.Create(),List.Create()));
+    EndDo;
+  EndFunction
+  
+  Function ОбновитьСписок(Сп,Имя,aCnt)
+    If TypeStr(aCnt)="LIST" Then
+      aList:=aCnt.Copy();
+      bList:=Сп.GetByName(Имя);
+      if _And(aList.Size()>0,typeStr(aList.Get(1))="LIST") Then
+        If _And(bList.Size()>0,typeStr(bList.Get(1))="LIST") Then
+          For i:=1 To bList.Size() Do
+            bList.Get(i).Clear();
+            If aList.Size()>=i Then
+              aList.Get(i).CopyTo(bList.Get(i));
+            EndIf;
+          EndDo;
+        Else
+          bList.Clear();
+          aList.Get(1).CopyTo(bList);
+        EndIf;
+      ElseIf _And(bList.Size()>0,typeStr(bList.Get(1))="LIST") Then
+        For i:=1 To bList.Size() Do
+          bList.Get(i).Clear();
+        EndDo;
+        aList.CopyTo(bList.Get(1));
+      Else
+        bList.Clear();
+        aList.CopyTo(bList);
+      EndIf;  
+    ElseIf Pos("NUMBER",TypeStr(aCnt))+Pos("DATE",TypeStr(aCnt))+Pos("STRING",TypeStr(aCnt))>0 Then  
+      Сп.SetByName(Имя,aCnt);
+    ElseIf _Or(TypeStr(aCnt)="DB",Pos("DB.",TypeStr(aCnt))>0) Then  
+      bList:=Сп.GetByName(Имя);
+      If typeStr(bList)="LIST" Then
+        If _And(bList.Size()>0,typeStr(bList.Get(1))="LIST") Then
+          For i:=1 To bList.Size() Do
+            bList.Get(i).Clear();
+          EndDo;
+          bList.Get(1).Add(aCnt);
+        Else
+          bList.Clear();
+          bList.Add(aCnt);
+        EndIf;
+      Else
+        Сп.SetByName(Имя,aCnt);
+      EndIf;  
+    Else
+      //TODO: поддерживать
+    EndIf;
+  EndFunction  
+  
+
+  if Таб.SelectionMode>1 then
+    Exit 0;
+  EndIf;  
+  Знч:=Таб.Area(Таб.CurCol,Таб.CurLine,Таб.CurCol,Таб.CurLine).Value;
+  If TypeStr(Знч)<>"LIST" Then
+    Exit 0;
+  EndIf;
+  
+  Сп:=List.Create();
+  If тСписки<>"" Then
+    ОбнулитьСписки(Сп,тСписки);
+  EndIf;
+  If тСписки<>"" Then
+    тКопировать:=тКопировать+?(тКопировать="","",",")+тСписки;
+  EndIf;  
+  While тКопировать<>"" Do
+    Имя:=TearStr(тКопировать,",");
+    If Имя="" Then
+      Continue;
+    EndIf;
+    if ТабФорма=0 Then
+      If isEmpty(Form.ControlByName(Имя)) Then
+        Continue;
+      EndIf;
+      aCnt:=Form.Control(Имя).Value;
+    Else
+      If ТабФорма.FindAndGoto(Имя,,"ControlName")=0 Then
+        Continue;
+      EndIf;  
+      aCnt:=ТабФорма.Value;
+    EndIf;
+    ОбновитьСписок(Сп,Имя,aCnt);
+  EndDo;
+  
+  //TODO: тДопУстановки
+  
+  For i:=1 To Знч.Size() Do
+    Имя:=Знч.GetName(i);
+    aCnt:=Знч.Get(i);
+    ОбновитьСписок(Сп,Имя,aCnt);
+  EndDo;
+  
+  а:=List.Create();
+  а.SetByName("ПростыеУстановки",Сп);
+  Т:=Table.Create();
+  а.SetByName("Таблица",Т);
+  а.SetByName("Выполнить",1);
+  LoadModule(0,"Modules\FreeForms\"+тФайл,а,0,"Module","Form");
+EndFunction
+
+
+
+//СтрИмена -- имена элементов для обновления ч/з запятые
+Function глЗагрузитьПараметрыФормыОтчета(aParam,СтрИмена="") Export
+  If typeStr(aParam)<>"LIST" Then
+    Exit 0;
+  EndIf;
+  
+{
+     GCNT_LABEL=0;
+     GCNT_EDITBOX=1;
+     GCNT_BUTTON=2;
+     GCNT_CHECKBOX=3;
+     GCNT_RADIOBUTTON=4;
+     GCNT_COMBOBOX=5;
+     GCNT_LISTBOX=6;
+     GCNT_GROUPBOX=7;
+     GCNT_IMAGE=8;
+     GCNT_PAGECONTROL=9;
+     GCNT_BEVEL=10;
+     GCNT_OLE=11;
+     GCNT_MACRO=12;
+     GCNT_TABLE=13;
+     GCNT_SFTABLE=14;
+     GCNT_DIAGRAM=15;
+     GCNT_TREELIST=16;
+     GCNT_SPLITTER=100;
+}     
+  
+  //Простые установки//Простые установки//Простые установки//Простые установки//Простые установки//Простые установки
+  аУст:=aParam.getByName("ПростыеУстановки");
+  If (typestr(аУст)="LIST")and(aParam.getByName("Выполнить")=1) Then
+    Фл:=0;
+    For iLoop:=1 To аУст.Size() Do
+      пИмя:=аУст.GetName(iLoop);
+      пЗн:=аУст.Get(iLoop);
+      If isEmpty(Form.ControlByName(пИмя)) Then
+        Continue;
+      EndIf;
+      If _And(СтрИмена<>"",Pos(","+пИмя+",",","+СтрИмена+",")=0) Then
+        Continue;
+      EndIf;
+      aCnt:=Form.ControlByName(пИмя);
+      If aCnt.TypeNum=1 Then
+        //Editbox
+        if (TypeStr(aCnt.Value)="LIST")and(TypeStr(пЗн)="LIST") Then
+          aList:=пЗн;
+          bList:=aCnt.Value;
+          For i:=1 To Min(bList.Size(),aList.Size()) Do
+            bList.Get(i).Clear();
+            aList.Get(i).CopyTo(bList.Get(i));
+          EndDo;
+        Elseif (TypeStr(aCnt.Value)="LIST")or(TypeStr(пЗн)="LIST") Then
+          Continue;
+        Else
+          aCnt.Value:=пЗн;
+        EndIf;
+        Фл:=1;
+      ElseIf aCnt.TypeNum=3 Then
+        //Checkbox
+        aCnt.Value:=пЗн;
+        Фл:=1;
+      ElseIf aCnt.TypeNum=4 Then
+        //Radiobutton
+        aCnt.Value:=пЗн;
+        Фл:=1;
+      ElseIf aCnt.TypeNum=5 Then
+        //Combobox
+        aCnt.Value.SelectedLine:=пЗн;
+        Фл:=1;
+      ElseIf aCnt.TypeNum=6 Then
+        //ListBox
+        Фл:=1;
+        aCnt:=aCnt.Value;
+        For а:=1 to aCnt.Size() Do
+          aCnt.Check(а,0);
+        EndDo;
+        aList:=пЗн;
+        Прош:=0;
+        if typeStr(aList)="LIST"  Then
+          For i0:=1 To aList.Size() do
+            б:=aList.GetName(i0);
+            Нм:=0;
+            For i:=1 to aCnt.Size() Do
+              Стр:=aCnt.GetName(i);
+              If Стр=б Then
+                Нм:=i;
+                Break;
+              EndIf;
+            EndDo;
+            If Нм>0 Then
+              aCnt.Check(Нм,aList.Check(i0));
+              If (Прош>Нм)And(Прош>0) Then
+                aCnt.Move(Нм,Прош-Нм);
+              Else
+                Прош:=Нм;
+              EndIf;
+            EndIf;
+          EndDo;
+        Else
+          Стр:=""+aList;
+          While Стр<>"" Do
+            Стр1:=TearStr(Стр);
+            If Стр1="" Then
+              Continue;
+            EndIf;
+            Нм:=aCnt.FindByName(Стр1,,,0);
+            If Нм>0 Then
+              aCnt.Check(Нм,1);
+              If (Прош>Нм)And(Прош>0) Then
+                aCnt.Move(Нм,Прош-Нм);
+              Else
+                Прош:=Нм;
+              EndIf;
+            EndIf;
+          EndDo;
+        EndIf;  
+      ElseIf aCnt.TypeNum=13 Then
+        //Table
+        aCnt:=aCnt.Value;
+        If aCnt.GetColumnIndex("Группировка")=0 Then
+          Continue;
+        EndIf;
+        глВосстановитьНастройкуСписка(пЗн,aCnt);
+      ElseIf aCnt.TypeNum=16 Then
+        //Treelist
+        //TODO
+      EndIf;  
+    EndDo;
+    Exit Фл;
+  EndIf;  
+  //Простые установки//Простые установки//Простые установки//Простые установки//Простые установки//Простые установки
+
+  
+    
+  //Стандартные установки//Стандартные установки//Стандартные установки//Стандартные установки//Стандартные установки
+  аУст:=aParam.getByName("Установки");
+  If typestr(аУст)<>"TAB" Then
+    Exit 0;
+  EndIf;
+  
+  Фл:=0;
+  аУст.Select();
+  While аУст.Next() Do
+    пИмя:=аУст.ControlName;
+    If isEmpty(Form.ControlByName(пИмя)) Then
+      Continue;
+    EndIf;
+    If _And(СтрИмена<>"",Pos(","+пИмя+",",","+СтрИмена+",")=0) Then
+      Continue;
+    EndIf;
+    aCnt:=Form.ControlByName(пИмя);
+    if aCnt.TypeNum<>аУст.ControlType Then
+      Continue;
+    EndIf;
+    If аУст.ControlType=1 Then
+      //Editbox
+      if (TypeStr(aCnt.Value)="LIST")and(TypeStr(аУст.Value)="LIST") Then
+        aList:=аУст.Value;
+        bList:=aCnt.Value;
+        For i:=1 To Min(bList.Size(),aList.Size()) Do
+          bList.Get(i).Clear();
+          aList.Get(i).CopyTo(bList.Get(i));
+        EndDo;
+      Elseif (TypeStr(aCnt.Value)="LIST")or(TypeStr(аУст.Value)="LIST") Then
+        Continue;
+      Else
+        aCnt.Value:=аУст.Value;
+      EndIf;
+      Фл:=1;
+    ElseIf аУст.ControlType=3 Then
+      //Checkbox
+      aCnt.Value:=аУст.Value;
+      Фл:=1;
+    ElseIf аУст.ControlType=4 Then
+      //Radiobutton
+      aCnt.Value:=аУст.Value;
+      Фл:=1;
+    ElseIf аУст.ControlType=5 Then
+      //Combobox
+      aCnt.Value.SelectedLine:=аУст.Value.SelectedLine;
+      Фл:=1;
+    ElseIf аУст.ControlType=6 Then
+      //ListBox
+      Фл:=1;
+      aCnt:=aCnt.Value;
+      For а:=1 to aCnt.Size() Do
+        aCnt.Check(а,0);
+      EndDo;
+      aList:=аУст.Value;
+      Прош:=0;
+      For i0:=1 To aList.Size() do
+        б:=aList.GetName(i0);
+        Нм:=0;
+        For i:=1 to aCnt.Size() Do
+          Стр:=aCnt.GetName(i);
+          If Стр=б Then
+            Нм:=i;
+            Break;
+          EndIf;
+        EndDo;
+        If Нм>0 Then
+          aCnt.Check(Нм,aList.Check(i0));
+          If (Прош>Нм)And(Прош>0) Then
+            aCnt.Move(Нм,Прош-Нм);
+          Else
+            Прош:=Нм;
+          EndIf;
+        EndIf;
+      EndDo;
+    ElseIf аУст.ControlType=13 Then
+      //Table
+      aCnt:=aCnt.Value;
+      aTab:=аУст.Value;
+      If aCnt.GetColumnIndex("Группировка")+aTab.GetColumnIndex("Группировка")<2 Then
+        Continue;
+      EndIf;
+      Фл:=1;
+      For а:=1 to aCnt.Size() Do
+        aCnt.Check(а,"Группировка",0);
+      EndDo;
+      Прош:=0;
+      For i0:=1 To aTab.Size() do
+        aTab.CurLine:=i0;
+        б:=aTab.Группировка;
+        Нм:=0;
+        For i:=1 to aCnt.Size() Do
+          If aCnt.Get(i,"Группировка")=б Then
+            Нм:=i;
+            Break;
+          EndIf;
+        EndDo;
+        If Нм>0 Then
+          aCnt.Check(Нм,"Группировка",aTab.Check(i0,"Группировка"));
+          If (Прош>Нм)And(Прош>0) Then
+            aCnt.Move(Нм,Прош-Нм);
+          Else
+            Прош:=Нм;
+          EndIf;
+        EndIf;
+      EndDo;
+    ElseIf аУст.ControlType=16 Then
+      //Treelist
+      //TODO
+    EndIf;  
+  EndDo;
+  //Стандартные установки//Стандартные установки//Стандартные установки//Стандартные установки//Стандартные установки
+  
+  Exit Фл;
+EndFunction
+
+//bFinished=1 -- после формирования отчета
+Function глЭтоБыстрыйВызовОтчета(aParam,bFinished=0) Export
+  If typeStr(aParam)<>"LIST" Then
+    Exit 0;
+  EndIf;
+  If aParam.GetByName("Выполнить")<>1 Then
+    Exit 0;
+  EndIf;
+  If bFinished=1 Then
+    Form.Close(0,1);
+    Exit 1;
+  EndIf;
+  
+  If isEmpty(Form.ControlByName("bPanelProceed")) Then
+    Exit 0;
+  EndIf;
+  bProc:=Form.ControlByName("bPanelProceed");
+  bProc.InvokeEventAsync("OnClick");
+  Exit 1;
+EndFunction
+
+Function глЗагрузкаРезультатаОтчетаВМультиФильтр(Param,З,пСтолбикКоличества="",пСтолбикСуммы="") Export
+  If typestr(Param)<>"LIST" Then
+    Exit 0;
+  EndIf;
+  If Param.GetByName("ИзМультиФильтра")<>1 Then
+    Exit 0;
+  EndIf;
+  //Подбор может осуществляться для двух видов обработок: мультифильтр (любой справочник) и универсальный обработчик подбора (номенклатура)
+  Таб:=З.ResultTable;
+  РезТаб:=Param.GetByName("Список");
+  ФлТаблица:=?(TypeStr(РезТаб)="LIST",0,1);
+  ВидСпр:="DB.REF."+Param.GetByName("ВидСправочника");
+  //0 - Добавить
+  //1 - Оставить входящие в оба списка
+  //2 - Удалить
+  Режим:=Number(Param.GetByName("Режим"));
+  //Ищем столбик
+  Столбик:=-1;
+  For y:=1 To Таб.Size() Do
+    For x:=1 To Таб.Columns() Do
+      Зн:=Таб.Get(y,x);
+      If typeStr(Зн)=ВидСпр Then
+        Столбик:=x;
+        Break 2;
+      EndIf;
+    EndDo;
+  EndDo;
+  If Столбик<0 Then
+    Box("В сформированном отчете невозможно найти группировку с нужным видом справочника!",Q_STOP);
+    Exit 1;
+  EndIf;
+  If _And(ФлТаблица,пСтолбикКоличества<>"",Таб.GetColumnIndex(пСтолбикКоличества)=0) Then
+    Box("В сформированном отчете отсутствует столбик количества ("""+пСтолбикКоличества+""")!",Q_STOP);
+    Exit 1;
+  EndIf;
+  If _And(ФлТаблица,пСтолбикСуммы<>"",Таб.GetColumnIndex(пСтолбикСуммы)=0) Then
+    Box("В сформированном отчете отсутствует столбик суммы ("""+пСтолбикСуммы+""")!",Q_STOP);
+    Exit 1;
+  EndIf;
+  If пСтолбикКоличества<>"" Then
+    If Таб.GetColumnIndex(пСтолбикКоличества)=0 Then
+      пСтолбикКоличества:="";
+    EndIf;
+  EndIf;  
+  If пСтолбикСуммы<>"" Then
+    If Таб.GetColumnIndex(пСтолбикСуммы)=0 Then
+      пСтолбикСуммы:="";
+    EndIf;
+  EndIf;  
+  
+  ТВход:=Tab.Create("Зн");
+  ТВход.AddColumn("Чл",,"Number");
+  ТВход.AddColumn("См",,"Number");
+  //Выгрузка
+  For y:=1 To Таб.Size() Do
+    Зн:=Таб.Get(y,Столбик);
+    If IsEmpty(Зн) Then
+      Continue;
+    EndIf;
+    If Таб.Get(y,"@LEVEL")<>0 Then
+      Continue;
+    EndIf;
+    Чл:=0;
+    См:=0;
+    If пСтолбикКоличества<>"" Then
+      Чл:=Number(Таб.Get(y,пСтолбикКоличества));
+    EndIf;
+    If пСтолбикСуммы<>"" Then
+      См:=Number(Таб.Get(y,пСтолбикСуммы));
+    EndIf;
+    If Режим=0 Then
+      If ФлТаблица Then
+        If РезТаб.FindAndGoto(Зн,,"Номенклатура")=0 Then
+          РезТаб.NewLine();
+          РезТаб.Номенклатура:=Зн;
+        EndIf;
+        If пСтолбикКоличества<>"" Then
+          РезТаб.Количество:=РезТаб.Количество+Чл;
+        EndIf;  
+        If пСтолбикСуммы<>"" Then
+          РезТаб.Сумма:=РезТаб.Сумма+См;
+        EndIf;  
+      ElseIf РезТаб.Find(Зн)=0 Then
+        РезТаб.Add(Зн);
+      EndIf;
+    ElseIf Режим=1 Then
+      If ФлТаблица Then
+        If РезТаб.FindAndGoto(Зн,,"Номенклатура")>0 Then
+          ТВход.NewLine();
+          ТВход.Зн:=Зн;
+          If пСтолбикКоличества<>"" Then
+            ТВход.Чл:=ТВход.Чл+Чл;
+            РезТаб.Количество:=РезТаб.Количество+Чл;
+          EndIf;
+          If пСтолбикСуммы<>"" Then
+            ТВход.См:=ТВход.См+См;
+            РезТаб.Сумма:=РезТаб.Сумма+См;
+          EndIf;
+        EndIf;
+      ElseIf РезТаб.Find(Зн)>0 Then
+        ТВход.NewLine();
+        ТВход.Зн:=Зн;
+      EndIf;
+    ElseIf Режим=2 Then
+      If ФлТаблица Then
+        If РезТаб.FindAndGoto(Зн,,"Номенклатура")>0 Then
+          If пСтолбикКоличества<>"" Then
+            РезТаб.Количество:=РезТаб.Количество-Чл;
+            If пСтолбикСуммы<>"" Then
+              РезТаб.Сумма:=РезТаб.Сумма-См;
+            EndIf;
+          Else  
+            РезТаб.Remove(РезТаб.CurLine);
+          EndIf;  
+        EndIf;  
+      Else
+        аПоз:=РезТаб.Find(Зн);
+        If аПоз>0 Then
+          РезТаб.Remove(аПоз);
+        EndIf;  
+      EndIf;
+    EndIf;
+  EndDo;
+  
+  If Режим=1 Then
+    ТВход.Group("Зн","Чл,См");
+    If ФлТаблица Then
+      iLoop:=0;
+      While iLoop<РезТаб.Size() Do
+        iLoop:=iLoop+1;
+        РезТаб.CurLine:=iLoop;
+        If ТВход.Find(РезТаб.Номенклатура,,"Зн")=0 Then
+          РезТаб.Remove(iLoop);
+          iLoop:=iLoop-1;
+        EndIf;
+      EndDo;
+    Else
+      iLoop:=0;
+      While iLoop<РезТаб.Size() Do
+        iLoop:=iLoop+1;
+        If ТВход.Find(РезТаб.Get(iLoop),,"Зн")=0 Then
+          РезТаб.Remove(iLoop);
+          iLoop:=iLoop-1;
+        EndIf;
+      EndDo;
+    EndIf;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+Function глФормированиеОтчетаДобавитьВСобытия(пВид="",НачДата=0,КонДата=0,пФильтры="") Export
+  If not глПользователь.общиеДополнительнаяИнформацияВЛогах Then
+    Exit;
+  EndIf;
+  If Trim(пВид)="" Then
+    пПуть:=Form.GetModuleFileName();
+    пВид:=GetFileName(RemoveBackslash(GetPath(пПуть)));
+  EndIf;
+  If not isEmpty(НачДата) Then
+    If isEmpty(КонДата) Then
+      Стр:=""+пВид+" на "+НачДата;
+    Else
+      Стр:=""+пВид+" с "+НачДата+" по "+КонДата;
+    EndIf;
+  ElseIf not isEmpty(КонДата) Then
+    Стр:=""+пВид+" на "+КонДата;
+  Else
+    Стр:=""+пВид;
+  EndIf;
+  
+  While пФильтры<>"" Do
+    СтрФ:=TearStr(пФильтры,",");
+    If СтрФ="" Then
+      Continue;
+    EndIf;
+    Сп:=Form.Control(СтрФ).Value;
+    If typeStr(Сп)<>"LIST" Then
+      If not isEmpty(Сп) Then
+        Стр:=Стр+", "+Сп;
+      EndIf;
+      Continue;  
+    EndIf;
+    If _And(Сп.Size()>0,TypeStr(Сп.Get(1))="LIST") Then
+      Сп1:=Сп.Get(1);
+      If Сп1.Size()=1 Then
+        Стр:=Стр+", "+Сп1.Get(1);
+      ElseIf Сп1.Size()=2 Then
+        Стр:=Стр+", "+Сп1.Get(1)+", "+Сп1.Get(2);
+      ElseIf Сп1.Size()>2 Then
+        Стр:=Стр+", "+Сп1.Get(1)+", "+Сп1.Get(2)+" и еще "+(Сп1.Size()-2)+" эл.";
+      EndIf;
+      
+      If Сп.Size()>1 Then
+        Сп2:=Сп.Get(2);
+        If Сп2.Size()=1 Then
+          Стр:=Стр+", кроме "+Сп2.Get(1);
+        ElseIf Сп2.Size()=2 Then
+          Стр:=Стр+", кроме "+Сп2.Get(1)+", "+Сп2.Get(2);
+        ElseIf Сп2.Size()>2 Then
+          Стр:=Стр+", кроме "+Сп2.Get(1)+", "+Сп2.Get(2)+" и еще "+(Сп2.Size()-2)+" эл.";
+        EndIf;
+      EndIf;  
+    Else
+      If Сп.Size()=1 Then
+        Стр:=Стр+", "+Сп.Get(1);
+      ElseIf Сп.Size()=2 Then
+        Стр:=Стр+", "+Сп.Get(1)+", "+Сп.Get(2);
+      ElseIf Сп.Size()>2 Then
+        Стр:=Стр+", "+Сп.Get(1)+", "+Сп.Get(2)+" и еще "+(Сп.Size()-2)+" эл.";
+      EndIf;
+    EndIf;
+  EndDo;
+  Logs.Write(Стр,глПользователь,"REPORT");  
+EndFunction
+
+Function глПриИзмененииПутиГруппировок(пИмя) Export
+  While пИмя<>"" Do
+    Стр:=TearStr(пИмя,",");
+    Тип:=Form.Control(Стр).TypeNum;
+    Фл:=0;
+    If Тип=13 Then //Table
+      aTab:=Form.Control(Стр).Value;
+      aTab.Select();
+      While aTab.Next() Do
+        If Pos("(польз)",aTab.Группировка)=0 Then
+          Continue;
+        EndIf;
+        Фл:=1;
+        Break;
+      EndDo;
+    ElseIf Тип=6 Then //List
+      aList:=Form.Control(Стр).Value;
+      For i:=1 To aList.Size() Do
+        If Pos("(польз)",aList.GetName(i))=1 Then
+          Фл:=1;
+          Break;
+        EndIf;
+      EndDo;
+    EndIf;  
+    If Фл Then
+      If AskQuestion("В таблицах группировок или показателей есть особые фильтры, которые будут удалены при изменении типа отчета, продолжить?",Q_QUESTION+Q_YESNO)<>R_YES Then
+        Exit 0;
+      EndIf;
+      Exit 1;
+    EndIf;
+  EndDo;  
+  Exit 1;
+EndFunction
+
+
+//TODO: можно улучшить, подставляя в запрос подчиненных элементов только нужные, а не весь список
+Function глДобавитьПодчиненные(СписокЭлементов,спВиды=0) Export
+  If СписокЭлементов.Size()<1 Then
+    Exit List.Create();
+  EndIf;
+  If спВиды=0 Then
+    спВиды:=List.Create();
+    For i:=1 To СписокЭлементов.Size() Do
+      Вид:=TypeStr(СписокЭлементов.Get(i));
+      if pos("DB.REF.",Вид)=0 Then
+        Continue;
+      EndIf;
+      TearStr(Вид,"DB.REF.");
+      If спВиды.Find(Вид)=0 Then
+        спВиды.Add(Вид);
+      EndIf;
+    EndDo;
+  EndIf;  
+    
+  i:=0;
+  While i<спВиды.Size() Do
+    i:=i+1;
+    Вид:=спВиды.Get(i);
+    If Struct.Ref(Вид).Children.Count()>0 Then
+      For i2:=1 To Struct.Ref(Вид).Children.Count() Do
+        ТекВид:=Struct.Ref(Вид).Children(i2).Name;
+        
+        ТЗ:="Эл:=Ref."+ТекВид+";Влад:=Ref."+ТекВид+".@Parent;Condition(Влад IN СписокЭлементов);Group Эл;";
+        З:=Query.Create();
+        З.Execute(ТЗ,0);
+        aTab:=З.ResultTable;
+        MassLoadObjects(aTab,,,,2);
+        Фл:=0;
+        aTab.Select();
+        While aTab.Next() Do
+          аЭл:=aTab.Эл;
+          If СписокЭлементов.Find(аЭл)=0 Then
+            СписокЭлементов.Add(аЭл);
+            СписокЭлементов.Check(СписокЭлементов.Size(),1);
+            Фл:=1;
+          EndIf;
+        EndDo;
+        If Фл Then
+          If спВиды.Find(ТекВид)=0 Then
+            спВиды.Add(ТекВид);
+          EndIf;
+        EndIf;  
+      EndDo;  
+    EndIf;
+  EndDo;
+  
+  Exit спВиды;  
+EndFunction
+
+
+глКаталогПечФорм:="Modules\FreeForms\ПечатныеФормы\";
+глКаталогПечФормТемп:="Temp\ПечатныеФормы\";
+If not File.DoesPathExist(глКаталогПечФормТемп) Then
+  глКаталогПечФормТемп:="";
+EndIf;
+

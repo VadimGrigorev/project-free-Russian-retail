@@ -1,0 +1,319 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+var ИмяФайла Export;
+Var Файл Export;
+Var Уст Export;
+
+Function Видимость()
+  оТипы:=Form.оТипы.Value;
+  Form.оФайл.Value:=GetFileName(Файл);
+  If оТипы.SelectedLine>0 Then
+    Стр:=оТипы.Get(оТипы.SelectedLine);
+    ИмяФайла:=Уст.GetData(Стр+"\DefaultFile","");
+    If ИмяФайла="" Then
+      ИмяФайла:="1c_to_kl.txt";
+    EndIf;
+    If isEmpty(Файл) Then
+      Form.кнВыгрузить.isDisabled:=1;
+    Else
+      Form.кнВыгрузить.isDisabled:=0;
+    EndIf;
+  Else
+    Form.кнВыгрузить.isDisabled:=1;
+  EndIf;
+  оРС:=Form.оРС.Value;
+  Стр:=?(оРС.Selected()=0,"","№ р/с: "+оРС.НомерСчета);
+  If Form.пБанковскийСчет.Caption<>Стр Then
+    Form.пБанковскийСчет.Caption:=Стр;
+  EndIf;  
+EndFunction
+
+Function ДобавитьСекцию(Рез,СпПар,СпСекции,Имя)
+  If IsEmpty(СпСекции.GetByName(Имя))=1 Then
+    Exit 1;
+  EndIf;
+  Стр:=СпСекции.GetByName(Имя);
+  For i:=1 To СпПар.Size() Do
+    Стр2:=СпПар.GetName(i);
+    Знч:=СпПар.Get(i);
+    Стр:=Replace(Стр,"%"+Стр2+"%",Знч);
+  EndDo;
+  Рез.AddString(Стр);
+  Exit 1;
+EndFunction
+
+Function ДобавитьДокументТЧ(Д)
+  оТаб:=Form.оТаб.Value;
+  оТаб.AddLine("Док,Контрагент,Сумма",Д,Д.Контрагент,Д.СуммаВзаиморасчетов);
+EndFunction
+
+Function ПриПодбореДокументов(aEl,Фл)
+  оТаб:=Form.оТаб.Value;
+  If not IsEmpty(aEl) Then
+    If aEl.DBName()<>"ВыпискаБанкаРасход" Then
+      Box("Пожалуйста, добавляйте только документы типа ""выписка банка расход""!",Q_STOP);
+      Exit;
+    EndIf;
+    If aEl.Status()<2 Then
+      Box("Документ не обработан!",Q_STOP);
+      Exit;
+    EndIf;
+    If оТаб.FindAndGoto(aEl,,"Док")>0 Then
+      Box("Документ уже выбран!",Q_STOP);
+    Else
+      ДобавитьДокументТЧ(aEl);
+    EndIf;
+  EndIf;    
+EndFunction
+
+Function ОбновитьДоки()
+  оТаб:=Form.оТаб.Value;
+  оЮЛ:=Form.оЮЛ.Value;
+  оРС:=Form.оРС.Value;
+  If оЮЛ.Selected()=0 Then
+    Box("Выберите юридическое лицо!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  If оТаб.Size()>0 Then
+    If AskQuestion("Обновление удалит выбранные документы, вы уверены?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Exit;
+    EndIf;
+  EndIf;
+  
+  НДата:=Date();
+  КДата:=НДата;
+  If not AskPeriod(НДата,КДата,"Введите период выписок:") Then
+    Exit;
+  EndIf;
+  
+  оТаб.ClearLines();
+  
+  СпКод:=List.Create(Enum.коВыпискаБанкаРасход.ОплатаПоставщику,Enum.коВыпискаБанкаРасход.ВозвратПокупателю);
+  //СпКод.Add(Enum.коВыпискаБанкаРасход.Прочее);
+  
+  ТЗ:="зСтатус:=Doc.ВыпискаБанкаРасход.@Status;Condition(зСтатус>1);зДата:=BegOfDay(Doc.ВыпискаБанкаРасход.DocDate);Condition((зДата>=НДата)And(зДата<=КДата));
+  |зЮЛ:=Doc.ВыпискаБанкаРасход.ЮрЛицо;
+  |Condition(зЮЛ=оЮЛ);
+  |зДок:=Doc.ВыпискаБанкаРасход;
+  |зКод:=Doc.ВыпискаБанкаРасход.КодОперации;"+
+  ?(оРС.Selected()<>0,"","зРС=Doc.ВыпискаБанкаРасход.БанковскийСчет;Condition(зРС=оРС);")+
+  "Condition(зКод IN СпКод);
+  |зД:=Doc.ВыпискаБанкаРасход.Договор;
+  |Group зД,зДок;";
+  
+  З:=Query.Create();
+  З.Execute(ТЗ);
+  
+  While З.Next(1) Do
+    While З.Next(2) Do
+      ДобавитьДокументТЧ(З.зДок);
+    EndDo;
+  EndDo;
+EndFunction
+
+
+Function Выгрузить()
+  оТаб:=Form.оТаб.Value;
+  оЮЛ:=Form.оЮЛ.Value;
+  оТипы:=Form.оТипы.Value;
+  
+  If оТаб.Size()=0 Then
+    Box("Выберите по крайней мере один документ!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  If оЮЛ.Selected()=0 Then
+    Box("Выберите юридическое лицо!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  If оТипы.SelectedLine=0 Then
+    Box("Выберите тип выгрузки!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  If isEmpty(Файл) Then
+    Box("Выберите файл выгрузки!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  НДата:=BegOfDay(Date());
+  КДата:='01.01.1981';
+  оТаб.Select();
+  While оТаб.Next() Do
+    If НДата>BegOfDay(оТаб.Док.DocDate) Then
+      НДата:=BegOfDay(оТаб.Док.DocDate);
+    EndIf;
+    If КДата<BegOfDay(оТаб.Док.DocDate) Then
+      КДата:=BegOfDay(оТаб.Док.DocDate);
+    EndIf;
+  EndDo;
+  КДата:=Max(КДата,НДата);
+  
+  Стр:=оТипы.Get(оТипы.SelectedLine);
+  Шабл:=Уст.GetData(Стр+"\TemplateFile","");
+  If Шабл="" Then
+    Box("Ошибка в установках для данного типа выгрузки!",Q_STOP);
+    Exit;
+  EndIf;
+  Шабл:="Modules\FreeForms\ВнутренниеОбработки\ЗагрузкаВыписокБанка\ВыгрузкаВыписок\"+Шабл;
+  If not File.DoesFileExist(Шабл) Then
+    Box("Не найден файл шаблона "+Шабл+"!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  Ш:=Text.Create();
+  Ш.Load(Шабл);
+  
+  //@@@HEADER@@@
+  //@@@BODY@@@
+  //@@@FOOTER@@@
+  СпПар:=List.Create();
+  СпПар.SetByName("USERNAME",""+глПользователь);
+  СпПар.SetByName("DATE",""+FormatDate(Date(),"dd.mm.YYYY"));
+  СпПар.SetByName("TIME",""+CurTime());
+  СпПар.SetByName("PERIODBEG",""+FormatDate(НДата,"dd.mm.YYYY"));
+  СпПар.SetByName("PERIODEND",""+FormatDate(КДата,"dd.mm.YYYY"));
+  
+  Сп:=List.Create();
+  оТаб.Select();
+  While оТаб.Next() Do
+    д:=оТаб.Док;
+    Стр:=Trim(д.БанковскийСчет.НомерСчета);
+    If Сп.Find(Стр)=0 Then
+      Сп.Add(Стр);
+    EndIf;
+  EndDo;
+  
+  СтрАк:="";
+  For i:=1 To Сп.Size() Do
+    СчНом:=Сп.Get(i);
+    If СчНом<>"" Then
+      СтрАк:=СтрАк+?(СтрАк="","",_NEWLINE)+"РасчСчет="+СчНом;
+    EndIf;
+  EndDo;
+  СпПар.SetByName("ACCOUNTS_SB",""+СтрАк);
+  
+  //Создание строк для секций
+  СпСекции:=List.Create();
+  i:=1;
+  While i<=Ш.Size() Do
+    Стр:=Ш.GetLine(i);
+    If Pos("@@@!!!",Стр)<>1 Then
+      i:=i+1;
+      Continue;
+    EndIf;
+    If Pos("!!!@@@",Стр)=0 Then
+      i:=i+1;
+      Continue;
+    EndIf;
+    
+    TearStr(Стр,"@@@!!!");
+    Стр:=TearStr(Стр,"!!!@@@");
+    СтрКон:="@@@!!!"+Стр+"!!!@@@";
+    
+    Стр2:="";
+    i:=i+1;
+    While i<=Ш.Size() Do
+      Стр3:=Ш.GetLine(i);
+      i:=i+1;
+      If Стр3=СтрКон Then
+        Break;
+      EndIf;
+      Стр2:=Стр2+?(Length(Стр2)=0,"",_NEWLINE)+Стр3;
+    EndDo;
+    
+    СпСекции.SetByName(Стр,Стр2);
+  EndDo;
+  
+  Рез:=Text.Create();
+  If not ДобавитьСекцию(Рез,СпПар,СпСекции,"HEADER") Then
+    Exit;
+  EndIf;
+  
+  оЗагол:="Реестр выгруженных банковских выписок";
+  оСвойства:=глСвойстваПечатиПростые()+", Тип выгрузки: "+оТипы.GetName(оТипы.SelectedLine);
+  Т:=Table.Create();
+  Т.CopyByX("v1",1);
+  Т.Options.FixedLine:=Т.Height();
+  
+  пИтого:=0;
+  аНом:=0;
+  оТаб.Select();
+  While оТаб.Next() Do
+    д:=оТаб.Док;
+    аНом:=аНом+1;
+    
+    СчКнт:=?(д.БанковскийСчетКонтрагента.Selected()<>0,д.БанковскийСчетКонтрагента,д.Контрагент.ОсновнойСчет);
+    СпПар.SetByName("DOCNUM",""+Number(Mid(д.DocNum,3)));
+    СпПар.SetByName("DOCDATE",""+FormatDate(д.DocDate,"dd.mm.YYYY"));
+    СпПар.SetByName("DOCSUM",FormatNumber(д.СуммаВзаиморасчетов,0,"",2));
+    СпПар.SetByName("DOCSUMMINUS",Replace(FormatNumber(д.СуммаВзаиморасчетов,0,"",2),".","-"));
+    Кмт:=Trim(д.Комментарий);
+    СпПар.SetByName("COMMENT",""+?(Кмт="","За товар по договору",Кмт));
+    
+    СпПар.SetByName("PayerAcc",""+Trim(д.БанковскийСчет.НомерСчета));
+    пКПП:=Replace(д.ЮрЛицо.ИНН,"\","/");
+    пИНН:=TearStr(пКПП,"/");
+    СпПар.SetByName("PayerTIN",""+пИНН);
+    СпПар.SetByName("PayerKPP",""+пКПП);
+    СпПар.SetByName("PayerNameFull","ИНН "+пИНН+" "+Trim(оЮЛ.Контрагент.ПолнНаименование));
+    СпПар.SetByName("PayerName",""+Trim(оЮЛ.Контрагент.ПолнНаименование));
+    СпПар.SetByName("PayerBankName",""+Trim(д.БанковскийСчет.Банк));
+    СпПар.SetByName("PayerBankPlace",""+Trim(д.БанковскийСчет.Банк.Местонахождение));
+    СпПар.SetByName("PayerBankBIC",""+Trim(д.БанковскийСчет.Банк.БИК));
+    СпПар.SetByName("PayerBankCorrAcc",""+Trim(д.БанковскийСчет.Банк.КоррСчет));
+    СпПар.SetByName("TakerAcc",""+Trim(СчКнт.НомерСчета));
+    пКПП:=Replace(д.Контрагент.ИНН,"\","/");
+    пИНН:=TearStr(пКПП,"/");
+    СпПар.SetByName("TakerTIN",""+пИНН);
+    СпПар.SetByName("TakerKPP",""+пКПП);
+    СпПар.SetByName("ContractComment",""+?(Кмт="",?(Trim(д.Договор.КомментарийПриВыбореДоговора)="","За товар по договору",Trim(д.Договор.КомментарийПриВыбореДоговора)),Кмт));
+    
+    СпПар.SetByName("TakerNameFull",""+"ИНН "+пИНН+" "+Trim(д.Контрагент.ПолнНаименование));
+    СпПар.SetByName("TakerName",""+Trim(д.Контрагент.ПолнНаименование));
+    СпПар.SetByName("TakerBankName",""+Trim(СчКнт.Банк));
+    СпПар.SetByName("TakerBankPlace",""+Trim(СчКнт.Банк.Местонахождение));
+    СпПар.SetByName("TakerBankBIC",""+Trim(СчКнт.Банк.БИК));
+    СпПар.SetByName("TakerBankCorrAcc",""+Trim(СчКнт.Банк.КоррСчет));
+    //НДС?
+    //If д.Контрагент.флВыделяетНДС=0 Then
+    //  СпПар.SetByName("TINSUMDESC","без НДС");//в т.ч. НДС(18%) - 2288-14
+    //  СпПар.SetByName("TINDESC","без НДС");
+    //  СпПар.SetByName("TINSUM","");
+    //Else
+    СпПар.SetByName("TINSUMDESC","в т.ч. НДС(20%) "+FormatNumber(д.СуммаВзаиморасчетов*20/120,0,"",2));//в т.ч. НДС(20%) - 2288-14
+    СпПар.SetByName("TINDESC","в т.ч. НДС(20%) "+FormatNumber(д.СуммаВзаиморасчетов*20/120,0,"",2));
+    СпПар.SetByName("TINSUM",""+FormatNumber(д.СуммаВзаиморасчетов*20/120,0,"",2));
+    //EndIf;
+    If not ДобавитьСекцию(Рез,СпПар,СпСекции,"BODY") Then
+      Exit;
+    EndIf;
+    
+    
+    пДок:=д;
+    пДокИмя:=""+д;
+    пДата:=BegOfDay(д.DocDate);
+    пН:=аНом;
+    пСумма:=глФРМ(д.СуммаВзаиморасчетов);
+    пИтого:=пИтого+д.СуммаВзаиморасчетов;
+    пД:=д.Договор;
+    пК:=д.Контрагент;
+    пКод:=глПолучитьКод(д.Контрагент);
+    Т.CopyByX("v2",1);
+  EndDo;
+  
+  If not ДобавитьСекцию(Рез,СпПар,СпСекции,"FOOTER") Then
+    Exit;
+  EndIf;
+  Рез.Save(Файл);
+  
+  пСумма:=глФРМ(пИтого);
+  Т.CopyByX("v3",1);
+  Box("Выгрузка произведена успешно!",Q_INFORMATION);
+  глПечатнаяФормаОтчета(Т,Param,оЗагол,1);
+EndFunction
+

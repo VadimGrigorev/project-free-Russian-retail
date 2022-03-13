@@ -1,0 +1,266 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var пЧисло Export;
+
+Function ДобавитьРодителей(Имя,Род,Ноль)
+  оРеквизиты:=Form.оРеквизиты.Value;
+  If isEmpty(Имя) Then
+    Exit;
+  EndIf;
+  If Struct.Ref(Имя).Parents().Count()<>1 Then
+    Exit;//TODO: Support
+  EndIf;
+  
+  Вид:=Struct.Ref(Имя).Parents(1).Name;
+  Имя:=Вид;
+  Тип:="Справочник";
+  Ид:=Struct.Ref(Вид).Name;
+  
+  оРеквизиты.AddLine("Фильтр,Ид,зПуть,зПерем,идПуть,Сорт",List.Create(List.Create(),List.Create()),"Родитель => "+Ид,"@Parent"+Род,"Parent"+Ноль,
+      "Ref."+Вид,Ноль+"Parent"+"@"+Тип+"@"+Вид);
+  
+  ДобавитьРодителей(Имя,Род+".@Parent",Ноль+"0");
+EndFunction
+
+Function ОбновитьТаблицуРеквизитов()
+  оТип:=Trim(Form.оТип.Value);
+  If оТип="" Then
+    Form.оЭл.isDisabled:=1;
+    Form.тЭлементы.isDisabled:=1;
+    Form.оРеквизиты.isDisabled:=1;
+    Exit;
+  EndIf;
+  Form.оЭл.isDisabled:=0;
+  Form.тЭлементы.isDisabled:=0;
+  Form.оРеквизиты.isDisabled:=0;
+  
+  оРеквизиты:=Form.оРеквизиты.Value;
+  оРеквизиты.ClearLines();
+  Имя:=оТип;
+  Ноль:="0";
+  Род:="";
+  If Struct.Ref(Имя).Parents().Count()>0 Then
+    ДобавитьРодителей(Имя,Род,Ноль);
+  EndIf;
+  
+  For i:=1 To Struct.Ref(оТип).Props.Count() Do
+    Ид:=Struct.Ref(оТип).Props(i).Name;
+    Вид:=Struct.Ref(оТип).Props(i).DataType;
+    Тип:=Вид;
+    Тип:=TearStr(Тип,".");
+    оРеквизиты.AddLine("Фильтр,пФильтр,Ид,зПерем,зПуть,идПуть,Сорт",List.Create(List.Create(),List.Create()),"",Ид,Ид,Ид,Вид,Тип+"@"+Ид);
+  EndDo;
+  оРеквизиты.Sort("Сорт+");
+  
+  //Справочники -- без цвета
+  //Перечисления -- красные
+  //Строки -- зеленые
+  //Числа -- синие
+  //Даты -- желтые
+  оРеквизиты.Select();
+  While оРеквизиты.Next() Do
+    Стр:=оРеквизиты.идПуть;
+    Тип:=TearStr(Стр,".");
+    If Тип="ENUM" Then
+      оРеквизиты.BackgroundColor(оРеквизиты.CurLine,0,MixColors(_CLR_WINDOW,_CLR_RED,10));
+    ElseIf Тип="NUMBER" Then
+      оРеквизиты.BackgroundColor(оРеквизиты.CurLine,0,MixColors(_CLR_WINDOW,_CLR_BLUE,10));
+    ElseIf Тип="STRING" Then
+      оРеквизиты.BackgroundColor(оРеквизиты.CurLine,0,MixColors(_CLR_WINDOW,_CLR_GREEN,10));
+    ElseIf Тип="DATE" Then
+      оРеквизиты.BackgroundColor(оРеквизиты.CurLine,0,MixColors(_CLR_WINDOW,_CLR_YELLOW,10));
+    EndIf;
+  EndDo;
+EndFunction
+
+Function ПолучитьСтруктуру(Вид,ВидРекв)
+  If Pos("Parent",ВидРекв)=0 Then
+    Exit Struct.Ref(Вид).Props(ВидРекв);
+  EndIf;
+  TearStr(ВидРекв,"Parent");
+  аСтр:=Struct.Ref(Вид);
+  While ВидРекв<>"" Do
+    аСтр:=аСтр.Parents(1);
+    ВидРекв:=Mid(ВидРекв,2);
+  EndDo;
+  Exit аСтр;
+EndFunction
+
+Function Группировка(З,ТабФорма,Т,Ном,Ур,тГруппы,УрВсего)
+  If Ном>тГруппы.Size() Then
+    Exit;
+  EndIf;
+  If тГруппы.Check(Ном,"Грп")=0 Then
+    Группировка(З,ТабФорма,Т,Ном+1,Ур,тГруппы,УрВсего);
+    Exit;
+  EndIf;
+  
+  оУровни:=глПолучитьУстановку(ТабФорма,"оУровни");
+  оРеквизиты:=Form.оРеквизиты.Value;
+  Вид:=Trim(глПолучитьУстановку(ТабФорма,"оТип"));
+  оУровни:=глПолучитьУстановку(ТабФорма,"оУровни");
+  ИмяПер:=З.Groups(Ур);
+  
+  While З.Next(Ур) Do
+    пЭл:=З.Get(ИмяПер);
+    пЭлР:=пЭл;
+    If IsEmpty(пЭл) Then
+      пЭл:="< Не выбран >";
+    EndIf;
+    пКод:=глПолучитьКод(пЭлР);
+    глОбработатьВыводимоеЗначениеВОтчет(пЭл,ИмяПер);
+    
+    If Ур=УрВсего Then
+      пЧисло:=пЧисло+1;
+    EndIf;  
+    
+    Т.CopyByX("v2|h1",1);
+    Стл:=3;
+    оРеквизиты.Select();
+    While оРеквизиты.Next() Do
+      If оРеквизиты.Check(оРеквизиты.CurLine,"Вкл")=1 Then
+        зПер:="зПерем_"+оРеквизиты.зПерем;
+        пЗнч:=З.Get(зПер);
+        Т.CopyByX("v2|h2");
+        Стл:=Стл+1;
+        
+        Тип:=ПолучитьСтруктуру(Вид,оРеквизиты.зПерем).DataType;
+        If pos("NUMBER",Тип)=1 Then
+          Т.Area(Стл,Т.Height(),Стл,Т.Height()).HAlign:=1;
+          Т.Area(Стл,Т.Height(),Стл,Т.Height()).RedNegative:=1;
+        EndIf;
+      EndIf;
+    EndDo;
+    Т.CopyByX("v2|h3");
+    
+    НачВыс:=Т.Height();
+    Form.StatusText(НачВыс);
+    Form.UpdateProgress(-1,,""+Т.Height());
+    глРаскраситьСтроку(Т,1,2,Ур,УрВсего,2,Стл,пЭлР);
+    Группировка(З,ТабФорма,Т,Ном+1,Ур+1,тГруппы,УрВсего);
+
+    If (оУровни=1)and(Ур<УрВсего) Then
+      глДобавитьУровень(Т,НачВыс,Т.Height());
+    EndIf;
+  EndDo;
+EndFunction
+
+
+Function Печать(СпУстановки)
+  ТабФорма:=СпУстановки.GetByName("Установки");
+  Т:=СпУстановки.GetByName("Таблица");
+  НачДата:=BegOfDay(глПолучитьУстановку(ТабФорма,"НачДата"));
+  Вид:=Trim(глПолучитьУстановку(ТабФорма,"оТип"));
+  оЭл:=глПолучитьУстановку(ТабФорма,"оЭл");
+  оГрп:=глПолучитьУстановку(ТабФорма,"оГрп").SelectedLine;
+  оУд:=глПолучитьУстановку(ТабФорма,"оУд");
+  оРеквизиты:=Form.оРеквизиты.Value;
+  оУровни:=глПолучитьУстановку(ТабФорма,"оУровни");
+  
+
+  Т:=Table.Create();
+  ТЗ:=?(оУд=0,"зСтатус:=Ref."+Вид+".@Status;Condition(зСтатус<>1);","")+
+    "зЭл:=Ref."+Вид+";Condition(зЭл IN оЭл.Get(1));Condition(зЭл NOT IN оЭл.Get(2));";
+
+  оЗагол:="Элементы справочника "+DB("Ref."+Вид).Struct.Caption;
+  оСвойства:=глСвойстваПечатиПростые();
+    
+  спГр:=List.Create();
+  УрВсего:=1;
+  оРеквизиты.Select();
+  While оРеквизиты.Next() Do
+    If (оРеквизиты.Check(оРеквизиты.CurLine,"Вкл")=0)And(оРеквизиты.Check(оРеквизиты.CurLine,"Грп")=0)And(оРеквизиты.Фильтр.Get(1).Size()=0)And(оРеквизиты.Фильтр.Get(2).Size()=0) Then
+      Continue;
+    EndIf;
+    Тип0:=оРеквизиты.идПуть;
+    ВидТипа:=оРеквизиты.идПуть;
+    Тип:=TearStr(ВидТипа,".");
+    
+    зПер:="зПерем_"+оРеквизиты.зПерем;
+    ФлПер:=ПолучитьСтруктуру(Вид,оРеквизиты.зПерем).Periodical;
+    ТЗ:=ТЗ+зПер+":=Ref."+Вид+"."+оРеквизиты.зПуть+?(ФлПер,"('"+НачДата+"')")+";"+_NEWLINE;
+    If оРеквизиты.Фильтр.Get(1).Size()>0 Then
+      ТЗ:=ТЗ+"Condition("+зПер+" IN оРеквизиты.Get("+оРеквизиты.CurLine+",""Фильтр"").Get(1));"+_NEWLINE;
+    EndIf;
+    If оРеквизиты.Фильтр.Get(2).Size()>0 Then
+      ТЗ:=ТЗ+"Condition("+зПер+" NOT IN оРеквизиты.Get("+оРеквизиты.CurLine+",""Фильтр"").Get(2));"+_NEWLINE;
+    EndIf;
+    
+    If оРеквизиты.Check(оРеквизиты.CurLine,"Грп")=1 Then
+      спГр.Add(зПер);
+      ФлЕстьПапки:=?(pos("REF.",Uppercase(Тип0))>0,DB(Тип0).Struct.HasFolders,0);
+      If (оГрп<>2)And(ФлЕстьПапки) Then
+        ТЗ:=ТЗ+зПер+"_Папка:=Ref."+Вид+"."+оРеквизиты.зПуть+".@IsFolder;Condition("+зПер+"_Папка=0);"+_NEWLINE;
+      EndIf;
+      ТЗ:=ТЗ+"Group "+зПер+?((оГрп=3)And(ФлЕстьПапки)," with folders","")+";"+_NEWLINE;
+      УрВсего:=УрВсего+1;
+    EndIf;
+  EndDo;
+  ФлЕстьПапки:=DB("Ref."+Вид).Struct.HasFolders;
+  If (оГрп<>2)And(ФлЕстьПапки) Then
+    ТЗ:=ТЗ+"зЭл_Папка:=Ref."+Вид+".@IsFolder;Condition(зЭл_Папка=0);"+_NEWLINE;
+  EndIf;
+  ТЗ:=ТЗ+"Group зЭл"+?((оГрп=3)And(ФлЕстьПапки)," with folders","")+";"+_NEWLINE;    
+      
+  З:=Query.Create();
+  З.Execute(ТЗ,?(оГрп=3,1,2));
+
+  Т.CopyByX("v1|h1",1);
+  оРеквизиты.Select();
+  While оРеквизиты.Next() Do
+    If оРеквизиты.Check(оРеквизиты.CurLine,"Вкл")=1 Then
+      пРеквизит:=ПолучитьСтруктуру(Вид,оРеквизиты.зПерем).Caption;
+      Т.CopyByX("v1|h2");
+    EndIf;
+  EndDo;
+  Т.CopyByX("v1|h3");
+  Т.Options.FixedLine:=Т.Height();
+  
+  Таб2:=Tab.Create();
+  оРеквизиты.CopyTo(Таб2);
+  Таб2.AddLine("зПерем","зЭл");
+  Таб2.Check(Таб2.CurLine,"Грп",1);
+  пЧисло:=0;
+  Группировка(З,ТабФорма,Т,1,1,Таб2,УрВсего);
+  
+  Стл:=3;
+  Т.CopyByX("v3|h1",1);
+  оРеквизиты.Select();
+  While оРеквизиты.Next() Do
+    If оРеквизиты.Check(оРеквизиты.CurLine,"Вкл")=1 Then
+      Стл:=Стл+1;
+      ФлДлина:=ПолучитьСтруктуру(Вид,оРеквизиты.зПерем).DataType;
+      //ФлБД:=Struct.Ref(Вид).Props(оРеквизиты.зПерем).IsDBType;
+      ТипДанных:=TearStr(ФлДлина,".");
+      Шир:=250;
+      If ТипДанных="NUMBER" Then
+        Шир:=100;
+      ElseIf ТипДанных="STRING" Then
+        //ФлДлина: 50 или 0
+        If (Number(ФлДлина)>0)And(Number(ФлДлина)<100) Then
+          Шир:=Min(Number(ФлДлина)*10,250);
+        EndIf;
+      ElseIf ТипДанных="DATE" Then
+        Шир:=75;
+      EndIf;
+      Т.CopyByX("v3|h2");
+      Т.Area(Стл,Т.Height(),Стл,Т.Height()).ColWidth:=Шир;
+    EndIf;
+  EndDo;
+  Т.CopyByX("v3|h3");
+  
+  If оУровни=1 Then
+    Т.Levels().Close();
+  EndIf;
+  глПечатнаяФормаОтчета(Т,Param,оЗагол);
+EndFunction
+
+
+Function OnExecute(СпУстановки)
+  Печать(СпУстановки);
+EndFunction
+
+
+

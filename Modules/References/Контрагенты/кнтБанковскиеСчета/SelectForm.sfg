@@ -1,0 +1,111 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=670
+  Height=400
+  OnOpen
+    @@>@e@T@X_:@4@dd1_1_[@]_j/@l@edD_#_U@z@/@B@.o@ml@T=@n@E"L4_03'_6@ov_a@Ea_bSX<H@uR
+    @_&No@q3_<H>By@C@/_A,_i@-_R_i_d_e.@Z_4V@c@w@I)@uv@l@4[@B_#k@Kn@#@~j@i._i_i@F_d/@6
+    @@\m@X0.=+y@iV@ip@w@r_j)_"n8_Y@>V@b@C_G/(@-@q@7@Mi_G@Wd_3_5_T_%4@z_Ys@r+_;@>E+%@t
+    @L@"_f9_i_a}=@Nk_]@A*6@[p@|#.@D%_'!"(Xa0K@Z@f@4!3@W@s_5_?@n@2_,@y_j'@jh@T_PP_XJr
+    @_k@~_*@:@&_%n7@7h/I_]_H0_:@I_8@^R@7_h_B@[_c@*)3oy_<_$T@e_?+h'_"@~_7@F_;,_&xP_jO9
+    @8K.@mL_"_._b@w6@q@"@{@F_R@k5Q@3@p_O@u@9@]@z/@A@N_m[:{@*@S_8w_P_2@ML@W@z_I@P_&_\a
+    @E6n_%_L_\_6@O_R_E@q@H@t\@vq_e_O_#@,_e_D:#@5U_N_P@=_c$@[~@#4su_&_O_<_][NX_J@8@\@"
+    @~_k_T@2@a@#%_<@>%_;@N@FA_1@d_+@{0_&,_[_WD@j@T8_8@V_:0@B_Q@/_'@z_db_'@9_:_'E@=_:@
+    @b@#@w@Is_4_h_4_2@E_k_d_L_*_(_h_h@P_*@O@,_l@-@^_be@[@>@'@y@m_Q_A@d_J@U@A_1@l_KT@7
+    @@g_=
+  End
+  OnTimerInterval=0
+  MaxControlSerial=7
+  LoadModes=0
+  Object BUTTON
+    LayerName=Main
+    Left=5
+    Top=375
+    Width=90
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=1
+    Caption=Закрыть
+    HotKey=
+    Picture=0
+    OnClick
+      @@>@eW_1e+@It1'_L_(_L>_l@+f_V"@"+@3ah@}@ONCQ_j3@o@M@?_8@qs~@O5_A_-_A_e_Q@?@;K_W_O
+      @_l@K@T<}@%@J@r;@'@}_G3@a3@m_U_hO\@BJ@R_i_7h_T(@M@>@]_K-@5ss_=R@Hag_I_I&_l,u_W@+_
+      @5_N@._C@"_:}}Y_Y@j@O@lQ@}<p(
+    End
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\ПечатьКнопка.sfg
+    LayerName=Main
+    Left=100
+    Top=375
+    Width=106
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=2
+  End
+  Object TABLE
+    LayerName=Main
+    Left=5
+    Top=30
+    Width=665
+    Height=340
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=15
+    Flags=49160
+    Hint=
+    Name=MainTab
+    ControlSerial=4
+    AttachedButtons=0#0@10001#0###@10003#0###@10004#0###@10006#2###@10012#0###@10028#0###@10026#2###@10032#0###
+    HotKey=
+    Folders=0
+    DBSource
+      @@>@e@)VU@*T_?US@(#!&_?"T
+    End
+    Filters
+      @@>@e@9)/@7-*.@,T@*@{@z$!5@f#_?
+    End
+    InitialSortString
+      @@>@e_ao_7q_A'!&o"@v
+    End
+    HeaderColumnsData
+      @T#S#R#R#R#R#R#T#T#R#TR#TR#TR#####@3CdKCdWCdVC###R#"R#R#R#R#R#R#R#R#R#S#SRR#SRR#S
+      @RR#]G@(GzG####@-CdWCdLCdMC##DC|CwCECwCtCzCxCtCvCtC}CzC#R#"R#R#S#R#R#S#R#R#R#S#T#
+      @SRRRR#TRR#bGvG~G@$G{G@'G@(GxGvG@'G~G{G####@8CdICdUCdMC##DC|CwCECwCtCzCxCtCvCtC}C
+      @{C#R#"R#R#S#R#S#S#R#R#R#R#T#TRR#SWV#bG@(G@$G{G@*GfC@+G@1G{G@,GvG####bG@(G@$G{G@*
+      @GgG@1G{G@,GvG##DC|CwCECwCtCzCxCtCvCtC~C{CEC#R#"R#R#S#R#S#S#R#R#R#R#T#SRRRR#SZX#T
+      @GvG@'G@"G####TGvG@'G@"G#RERdSEREEEdTEEEE#DC|CwCECwCtCzCxCtCvCtC}C~CEC#R#
+    End
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\ЗаголовокРодитель.sfg
+    LayerName=Main
+    Left=5
+    Top=5
+    Width=665
+    Height=20
+    Font=Default, 8
+    Color=00000000
+    AnchorType=11
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=6
+  End
+End

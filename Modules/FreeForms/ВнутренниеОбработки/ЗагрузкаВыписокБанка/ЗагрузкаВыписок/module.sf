@@ -1,0 +1,562 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+var Уст Export;
+var Файл Export;
+var МинДата Export;
+var МаксДата Export;
+
+Function ИнициализироватьФайл()
+  оТипы:=Form.оТипы.Value;
+  Form.оФайл.Value:=GetFileName(Файл);
+  If оТипы.SelectedLine=0 Then
+    Exit;
+  EndIf;
+  Стр:=оТипы.Get(оТипы.SelectedLine);
+  If isEmpty(Файл) Then
+    ФлКоп:=Уст.GetData(Стр+"\FileToCopy","");
+    If ФлКоп<>"" Then
+      If File.DoesFileExist(ФлКоп) Then
+        Файл:=AddBackSlash(GetTempDirectory())+GetFileName(ФлКоп);
+        If not File.CopyFile(ФлКоп,Файл,1) Then
+          Файл:="";
+        EndIf;
+      EndIf;
+    EndIf;
+  EndIf;  
+EndFunction
+
+
+Function ЗаполнитьСтроку(ТПарК,ТИНН,ФлУдНашРС,ФлБезСчета);
+  Function УдалитьИзСтроки(Ссылка,Стр)
+    i:=Pos(Стр,UpperCase(Ссылка));
+    If i>0 Then
+      Exit Trim(Left(Ссылка,i-1)+Mid(Ссылка,i+Length(Стр)));
+    EndIf;
+    Exit Ссылка;
+  EndFunction
+  
+  Function ЗаменитьВСтроке(Ссылка,Стр,Стр2)
+    i:=Pos(Стр,UpperCase(Ссылка));
+    If i>0 Then
+      Exit Trim(Left(Ссылка,i-1)+" "+Стр2+" "+Trim(Mid(Ссылка,i+Length(Стр))));
+    EndIf;
+    Exit Ссылка;
+  EndFunction  
+
+  оТаб:=Form.оТаб.Value;
+
+  //Главное -- наличие суммы и даты, если их нет, документа нет
+  If IsEmpty(ТПарК.Get(1,"Зн"))+IsEmpty(ТПарК.Get(2,"Зн"))>0 Then
+    Exit 1;
+  EndIf;
+  If Number(ТПарК.Get(2,"Зн"))<=0 Then
+    Exit 1;
+  EndIf;
+  If Trim(ТПарК.Get(4,"Зн"))="" Then
+    Message("Ошибка в платежной выписке контрагента "+Trim(ТПарК.Get(6,"Зн"))+"!","!");
+    Message("Комментарий документа: "+Trim(ТПарК.Get(11,"Зн")),"!");
+    Message("Не заполнен счет получателя! Документ будет пропущен, найдите его в банковской программе и введите вручную!","!");
+    Exit 1;
+  EndIf;
+  КИмя:=Trim(ТПарК.Get(6,"Зн"));
+  КИмя:=УдалитьИзСтроки(КИмя,"ИНДИВИДУАЛЬНЫЙ ПРЕДПРИНИМАТЕЛЬ");
+  КИмя:=УдалитьИзСтроки(КИмя,"ОТКРЫТОЕ АКЦИОНЕРНОЕ ОБЩЕСТВО");
+  КИмя:=УдалитьИзСтроки(КИмя,"ЗАКРЫТОЕ АКЦИОНЕРНОЕ ОБЩЕСТВО");
+  КИмя:=ЗаменитьВСтроке(КИмя,"РАЙОННОЕ ПОТРЕБИТЕЛЬСКОЕ ОБЩЕСТВО","РАЙПО");
+  КИмя:=УдалитьИзСтроки(КИмя,"ПРЕДПРИНИМАТЕЛЬ");
+  КИмя:=УдалитьИзСтроки(КИмя,"ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ");
+
+  оК:=0;
+  Стр:=Trim(ТПарК.Get(3,"Зн"));
+  бЭл:=Ref.кнтБанковскиеСчета;
+  If _And(Стр<>"",бЭл.Find("НомерСчета",Стр)) Then
+    оК:=бЭл.Parent();
+    If ФлУдНашРС=1 Then
+      //Удаляем наши оплаты
+      If оК.ТипАктива=3 Then
+        Exit 1;
+      EndIf;
+    EndIf;
+  EndIf;  
+    
+  оТаб.AddLine("Дата,Сумма,ТТ,КИмя,Описание,оК",Date(ТПарК.Get(1,"Зн")),Number(ТПарК.Get(2,"Зн")),ТПарК,КИмя,Trim(ТПарК.Get(11,"Зн")),оК);
+  МинДата:=Min(МинДата,BegOfDay(оТаб.Дата));
+  МаксДата:=Max(МаксДата,BegOfDay(оТаб.Дата));
+  
+  
+  Стр:=Trim(ТПарК.Get(5,"Зн"));
+  спКнт:=List.Create();
+  If not IsEmpty(оК) Then
+    спКнт.Add(оК);
+  EndIf;
+  If Стр<>"" Then
+    аНомер:=0;
+    While ТИНН.FindAndGoto(Стр,аНомер,"зИНН")>0 Do
+      If (ТИНН.зК<>оК)And((not IsEmpty(оК))Or(TypeStr(оТаб.спКнт)="LIST")) Then
+        If TypeStr(оТаб.спКнт)<>"LIST" Then
+          оТаб.спКнт:=спКнт;
+        EndIf;
+        If оТаб.спКнт.Find(ТИНН.зК)=0 Then
+          оТаб.спКнт.Add(ТИНН.зК);
+        EndIf;
+        оТаб.оК:=GetNothing();
+      Else
+        оТаб.оК:=ТИНН.зК;
+        If спКнт.Find(оТаб.оК)=0 Then
+          спКнт.Add(оТаб.оК);
+        EndIf;
+      EndIf;
+      ТИНН.зИНН:=ТИНН.зИНН+"\";
+      аНомер:=аНомер+1;
+    EndDo;
+  EndIf;
+  
+  //Пропускаем поставщиков
+  If not IsEmpty(оК) Then
+    If оК.ТипАктива<>0 Then
+      оТаб.Вид:="Инкассо";
+    EndIf;
+  ElseIf TypeStr(оТаб.спКнт)="LIST" Then
+    Фл:=1;
+    For i:=1 To оТаб.спКнт.Size() Do
+      If оТаб.спКнт.Get(i).ТипАктива=0 Then
+        Фл:=0;
+        Break;
+      EndIf;
+    EndDo;
+    If Фл Then
+      оТаб.Вид:="Инкассо";
+    EndIf;
+  EndIf;
+  
+  //ЮЛ и расчетный счет
+  Фл:=0;
+  Фл2:=0;
+  Стр:=Trim(ТПарК.Get(4,"Зн"));
+  бЭл:=Ref.кнтБанковскиеСчета;
+  бЭл.Select("НомерСчета",Стр);
+  While бЭл.Next() Do
+    Фл2:=1;
+    If бЭл.Parent().СвоеЮрЛицо.Selected()<>0 Then
+      Фл:=1;
+      Break;
+    EndIf;
+  EndDo;
+  If not Фл2 Then
+    If ФлБезСчета=0 Then
+      Message("Не найден собственный расчетный счет с номером "+Стр+" загрузка продолжена не будет!","!");
+      Exit 0;
+    Else
+      Message("Пропущен документ с расчетным счетом номер "+Стр+", так как расчетный счет не принадлежит нашему юр. лицу!","!");
+      оТаб.Remove(оТаб.Size());
+      Exit 1;
+    EndIf;
+  ElseIf not Фл Then
+    Message("Владелец счета с номером "+Стр+" не является собственным юр. лицом, загрузка продолжена не будет!","!");
+    Exit 0;
+  EndIf;
+  оТаб.оЮЛ:=бЭл.Parent().СвоеЮрЛицо;
+  оТаб.оСч:=бЭл;
+          
+  //Если договор единственный, выбираем его
+  оТаб.оД:=GetNothing();
+  If not IsEmpty(оТаб.оК) Then
+    оДог:=0;
+    аЭл:=Ref.кнтДоговоры;
+    аЭл.Select("@Parent,@Status",оТаб.оК,0);
+    While аЭл.Next() Do
+      If аЭл.ЮрЛицо<>оТаб.оЮЛ Then
+        Continue;
+      EndIf;
+      If оДог<>0 Then
+        оДог:="";
+        Break;
+      Else
+        оДог:=аЭл.Copy();
+      EndIf;
+    EndDo;
+    If not IsEmpty(оДог) Then
+      оТаб.оД:=оДог;
+    EndIf;
+  EndIf;
+  Exit 1;
+EndFunction
+
+
+Function Обновить(флФорсированно=1)
+
+  Function ПолучитьБлок(Стр,Стр2)
+    а:=Number(TearStr(Стр2,":"));
+    б:=Number(TearStr(Стр2,":"));
+    Exit ?(Стр2="",Mid(Стр,а,б-а+1),Replace(Mid(Стр,а,б-а+1),Стр2,""));
+  EndFunction
+
+  Function РасшифроватьБлок(Т,i,Выс,ТПар)
+    ТПар.Select();
+    While ТПар.Next() Do
+      Стр2:=UpperCase(ТПар.Маска);
+      If Стр2<>"" Then
+        ВарВыс:=0;
+        Лн:=TearStr(Стр2,":");
+        If Left(Лн,1)="$" Then
+          Лн:=Number(Mid(Лн,2));
+        ElseIf Left(Лн,1)="@" Then
+          ВарВыс:=Number(Mid(Лн,2));
+        Else
+          Лн:=Number(Mid(Лн,2))+i;
+        EndIf;
+        
+        If ВарВыс=0 Then
+          Стр:=Т.GetLine(Лн);
+          Зн:=Trim(ПолучитьБлок(Стр,Стр2));
+        Else
+          Зн:="";
+          For i2:=ВарВыс To Выс Do
+            Стр:=Т.GetLine(i+i2-1);
+            Зн:=Зн+?(Зн="",""," ")+Trim(ПолучитьБлок(Стр,Стр2));
+          EndDo;
+        EndIf;
+        ТПар.Зн:=Зн;
+      EndIf;
+    EndDo;
+  EndFunction  
+  
+  Function НайтиСекцию(Т,ByRef i,СекцСтр)
+    While i<=Т.Size() Do
+      Стр:=Trim(Т.GetLine(i));
+      If Pos(СекцСтр,Стр)=1 Then
+        i:=i+1;
+        Exit 1;
+      EndIf;
+      i:=i+1;
+    EndDo;
+    Exit 0;
+  EndFunction  
+  
+  Function РасшифроватьСтроку(Стр,ТПар)
+    ТПар.Select();
+    While ТПар.Next() Do
+      Стр2:=UpperCase(ТПар.Маска);
+      If Стр2<>"" Then
+        СтрДо:=TearStr(Стр2);
+        i:=Pos(СтрДо,UpperCase(Стр));
+        If i=0 Then
+          Continue;
+        EndIf;
+        Стр:=Mid(Стр,i+Length(СтрДо));
+        If Стр2<>"" Then
+          i:=Pos(Стр2,UpperCase(Стр));
+          If i=0 Then
+            Continue;
+          EndIf;
+          Стр:=Left(Стр,i-1);
+        EndIf;
+        ТПар.Зн:=Стр;
+        Exit;
+      EndIf;
+    EndDo;
+  EndFunction    
+  
+  
+  оТаб:=Form.оТаб.Value;
+  оТипы:=Form.оТипы.Value;
+  Form.кнЗагрузить.isDisabled:=1;
+
+  If _Or(isEmpty(Файл),not File.DoesFileExist(Файл)) Then
+    If флФорсированно Then
+      Box("Файл загрузки не существует!",Q_STOP);
+    EndIf;  
+    Exit;
+  EndIf;
+  МинДата:=BegOfDay(Date());
+  МаксДата:=Date(0);
+  
+  ТЗ:="зПапка:=Ref.кнтКонтрагенты.@IsFolder;Condition(зПапка=0);
+  |зСтатус:=Ref.кнтКонтрагенты.@Status;Condition(зСтатус<>1);
+  |зК:=Ref.кнтКонтрагенты;
+  |зИНН:=Ref.кнтКонтрагенты.ИНН;
+  |Group зК;";
+  З:=Query.Create();
+  З.Execute(ТЗ,2);
+  
+  i:=0;
+  ТИНН:=Tab.Create("зК,зИНН");
+  While З.Next(1) Do
+    ТИНН.AddLine("зК",З.зК);
+    i:=i+1;
+    If i%100=0 Then
+      Form.StatusText(i);
+    EndIf;
+    Стр:=Trim(З.зИНН);
+    If Length(Стр)>12 Then
+      Стр:=TearStr(Стр,"/");
+      Стр:=TearStr(Стр,"\");
+    EndIf;
+    ТИНН.зИНН:=Стр;
+  EndDo;
+  //If ТИНН.Size()>0 Then
+  //  ТИНН.Sort("зИНН+");
+  //EndIf;
+  
+  оТаб.ClearLines();
+  While 1 Do
+    Стр:=оТипы.Get(оТипы.SelectedLine);
+    ФлСекции:=Number(Уст.GetData(Стр+"\IsBySection",0));
+    ФлБлок:=Number(Уст.GetData(Стр+"\IsByBlock",0));
+    ФлБезСчета:=Number(Уст.GetData(Стр+"\IsSkipUnknownAccount",0));
+    ФлУдНашРС:=Number(Уст.GetData(Стр+"\DeleteOurPayerAcc",0));
+    
+    ТПар:=Tab.Create("Маска,Тип,Зн");
+    ТПар.AddLine("Тип,Маска","Дата",Уст.GetData(Стр+"\DataDoc",""));
+    ТПар.AddLine("Тип,Маска","Сумма",Уст.GetData(Стр+"\SumDoc",""));
+    ТПар.AddLine("Тип,Маска","СчетКнт",Уст.GetData(Стр+"\PayerAcc",""));
+    ТПар.AddLine("Тип,Маска","СчетЮЛ",Уст.GetData(Стр+"\TakerAcc",""));
+    ТПар.AddLine("Тип,Маска","ИННКнт",Уст.GetData(Стр+"\PayerTIN",""));
+    ТПар.AddLine("Тип,Маска","ИмяКнт",Уст.GetData(Стр+"\PayerName",""));
+    ТПар.AddLine("Тип,Маска","ИННЮЛ",Уст.GetData(Стр+"\TakerTIN",""));
+    ТПар.AddLine("Тип,Маска","ИмяЮЛ",Уст.GetData(Стр+"\TakerName",""));
+    ТПар.AddLine("Тип,Маска","БИК",Уст.GetData(Стр+"\TakerBankBIC",""));
+    ТПар.AddLine("Тип,Маска","ИмяБанка",Уст.GetData(Стр+"\TakerBankName",""));
+    ТПар.AddLine("Тип,Маска","Коммент",Уст.GetData(Стр+"\PaymentDescription",""));
+    
+    //Загрузка файла
+    Т:=Text.Create();
+    Т.Load(Файл);
+    
+    If ФлБлок=1 Then
+      СекцНач:=Уст.GetData(Стр+"\SectionBegin","");
+      СекцКон:=Уст.GetData(Стр+"\SectionEnd","");
+      СекцПроп:=Number(Уст.GetData(Стр+"\SectionBeginSkip","0"));
+      ВысБлокаМин:=Number(Уст.GetData(Стр+"\BlockHeightAtLeast","1"));
+      ПродБлк:=Уст.GetData(Стр+"\BlockContinueWhileEmpty","");
+      
+      //Поиск начала
+      i:=1;
+      Фл:=0;
+      While i<=Т.Size() Do
+        Стр:=Т.GetLine(i);
+        If Pos(СекцНач,Стр)>0 Then
+          i:=i+1;
+          Фл:=1;
+          Break;
+        EndIf;
+        i:=i+1;
+      EndDo;
+      If not Фл Then
+        Exit;
+      EndIf;
+      i:=i+СекцПроп;
+      
+      While i<=Т.Size() Do
+        //Конец?
+        Стр:=Т.GetLine(i);
+        If Pos(СекцКон,Стр)>0 Then
+          Break;
+        EndIf;
+        
+        //Поиск высоты блока
+        Выс:=ВысБлокаМин;
+        If ПродБлк<>"" Then
+          i2:=i+Выс;
+          While i2<=Т.Size() Do
+            Стр:=Т.GetLine(i2);
+            Стр:=Trim(ПолучитьБлок(Стр,ПродБлк));
+            If Стр<>"" Then
+              Выс:=i2-i;
+              Break;
+            EndIf;
+            i2:=i2+1;
+          EndDo;
+        EndIf;
+        
+        ТПарК:=Tab.Create();
+        ТПар.CopyTo(ТПарК);
+        РасшифроватьБлок(Т,i,Выс,ТПарК);
+        i:=i+Выс;
+        
+        If not ЗаполнитьСтроку(ТПарК,ТИНН,ФлУдНашРС,ФлБезСчета) Then
+          оТаб.ClearLines();
+          Exit;
+        EndIf;
+      EndDo;
+      
+    ElseIf ФлСекции=1 Then
+      СекцНач:=Уст.GetData(Стр+"\SectionBegin","");
+      СекцКон:=Уст.GetData(Стр+"\SectionEnd","");
+      
+      i:=1;
+      While i<=Т.Size() Do
+        If НайтиСекцию(Т,i,СекцНач) Then
+          ТПарК:=Tab.Create();
+          ТПар.CopyTo(ТПарК);
+          While i<=Т.Size() Do
+            Стр:=Trim(Т.GetLine(i));
+            If (Стр=СекцКон)Or(Стр=СекцНач) Then
+              Break;
+            EndIf;
+            РасшифроватьСтроку(Стр,ТПарК);
+            i:=i+1;
+          EndDo;
+          If not ЗаполнитьСтроку(ТПарК,ТИНН,ФлУдНашРС,ФлБезСчета) Then
+            оТаб.ClearLines();
+            Exit;
+          EndIf;
+        EndIf;
+        НайтиСекцию(Т,i,СекцКон);
+      EndDo;
+      
+    Else
+      Exit;
+    EndIf;
+    Break;
+  EndDo;
+  
+  If оТаб.Size()>0 Then
+    Form.кнЗагрузить.isDisabled:=0;
+    оТаб.Sort("Вид+,Дата+,Сумма+");
+    Form.оТаб.SetFocus();
+  EndIf;
+EndFunction
+
+
+Function Принять()
+  оТаб:=Form.оТаб.Value;
+  оТипы:=Form.оТипы.Value;
+  
+  If (isEmpty(МаксДата))Or(МинДата>МаксДата)Or(оТаб.Size()=0) Then
+    Box("Загрузка произведена не будет, так как не найдено ни одного документа!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  оТаб.Select();
+  While оТаб.Next() Do
+    If ((оТаб.оК.Selected()=0)Or(оТаб.оД.Selected()=0))And(оТаб.Вид<>"НЕ загружать") Then
+      If AskQuestion("По крайней мере один из контрагентов (договоров) не был выбран! Вы уверены, что хотите произвести загрузку, в некоторых документах будет не выбран контрагент!",Q_QUESTION+Q_YESNO)<>R_YES Then
+        Exit;
+      EndIf;
+      Break;
+    EndIf;
+  EndDo;
+  
+  пКод:=Enum.коВыпискаБанкаПриход.ОплатаПокупателя;
+  ТЗ:="зДата:=BegOfDay(Doc.ВыпискаБанкаПриход.DocDate);Condition((зДата>=МинДата)And(зДата<=МаксДата));
+  |зДок:=Doc.ВыпискаБанкаПриход;
+  |зКод:=Doc.ВыпискаБанкаПриход.КодОперации;
+  |Condition(зКод=пКод);
+  |зД:=Doc.ВыпискаБанкаПриход.Договор;
+  |Group зД,зДок;";
+  
+  З1:=Query.Create();
+  З1.Execute(ТЗ,2);
+  
+  пКод:=Enum.коВыпискаБанкаПриход.Инкассация;
+  ТЗ:="зДата:=BegOfDay(Doc.ВыпискаБанкаПриход.DocDate);Condition((зДата>=МинДата)And(зДата<=МаксДата));
+  |зДок:=Doc.ВыпискаБанкаПриход;
+  |зКод:=Doc.ВыпискаБанкаПриход.КодОперации;
+  |Condition(зКод=пКод);
+  |зК:=Doc.ВыпискаБанкаПриход.ПодотчетноеЛицо;
+  |Group зК,зДок;";
+  
+  З2:=Query.Create();
+  З2.Execute(ТЗ,2);
+  
+  оЗагол:="Реестр загруженных банковских выписок";
+  оСвойства:=глСвойстваПечатиПростые()+", Тип выгрузки: "+оТипы.GetName(оТипы.SelectedLine);
+  Т:=Table.Create();
+  Т.CopyByX("v1",1);
+  Т.Options.FixedLine:=Т.Height();
+  
+  пН:=0;
+  пОК:=0;
+  СпКнт:=List.Create();
+  оТаб.Select();
+  While оТаб.Next() Do
+    If оТаб.Вид="НЕ загружать" Then
+      Continue;
+    EndIf;
+    пН:=пН+1;
+    пД:=оТаб.оД;
+    пК:=оТаб.оК;
+    пКод:=?(IsEmpty(оТаб.оК),"",глПолучитьКод(оТаб.оК));
+    пСумма:=глФРМ(оТаб.Сумма);
+    пВид:=оТаб.Вид;
+    пДата:=оТаб.Дата;
+    пДок:="";
+    пДокИмя:="";
+    пСтатус:="ОШИБКА!";
+    
+    ФлПропустить:=0;
+    If оТаб.Вид="Инкассо" Then
+      If оТаб.оК.Selected()<>0 Then
+        З2.First();
+        If З2.ResultTable.LocateAndGoto("зК",оТаб.оК)>0 Then
+          З2.LinearLevelPos:=1;
+          While З2.Next(2) Do
+            If (BegOfDay(З2.зДок.DocDate)=BegOfDay(оТаб.Дата))And(З2.зДок.СуммаВзаиморасчетов=оТаб.Сумма) Then
+              пСтатус:="ПРОПУЩЕН!";
+              пДок:=З2.зДок;
+              пДокИмя:=""+пДок.КодОперации+" №"+Trim(пДок.DocNum);
+              Т.CopyByX("v2",1);
+              ФлПропустить:=1;
+            EndIf;
+          EndDo;
+        EndIf;
+      EndIf;
+    Else
+      If оТаб.оД.Selected()<>0 Then
+        З1.First();
+        If З1.ResultTable.LocateAndGoto("зД",оТаб.оД)>0 Then
+          З1.LinearLevelPos:=1;
+          While З1.Next(2) Do
+            If (BegOfDay(З1.зДок.DocDate)=BegOfDay(оТаб.Дата))And(З1.зДок.СуммаВзаиморасчетов=оТаб.Сумма) Then
+              пСтатус:="ПРОПУЩЕН!";
+              пДок:=З1.зДок;
+              пДокИмя:=""+пДок.КодОперации+" №"+Trim(пДок.DocNum);
+              Т.CopyByX("v2",1);
+              ФлПропустить:=1;
+            EndIf;
+          EndDo;
+        EndIf;
+      EndIf;
+    EndIf;
+    If ФлПропустить Then
+      Continue;
+    EndIf;
+    
+    аДок:=Doc.ВыпискаБанкаПриход;
+    аДок.New();
+    аДок.DocDate:=оТаб.Дата;
+    глЗаполнитьШапку(аДок);
+    аДок.КодОперации:=Enum.коВыпискаБанкаПриход.ВозвратОтПоставщика;
+    аДок.СуммаВзаиморасчетов:=оТаб.Сумма;
+    аДок.ЮрЛицо:=оТаб.оЮЛ;
+    аДок.БанковскийСчет:=оТаб.оСч;
+    аДок.Комментарий:=оТаб.Описание;
+    глУстановитьНовыйНомер(аДок);
+    If оТаб.Вид="Инкассо" Then
+      аДок.КодОперации:=Enum.коВыпискаБанкаПриход.Инкассация;
+      аДок.ПодотчетноеЛицо:=оТаб.оК;
+    Else
+      аДок.Контрагент:=оТаб.оК;
+      аДок.Договор:=оТаб.оД;
+      аДок.ЮрЛицо:=аДок.Договор.ЮрЛицо;
+    EndIf;
+    If глЗаписать(аДок) Then
+      пДок:=аДок;
+      пДокИмя:=""+пДок.КодОперации+" №"+Trim(пДок.DocNum);
+      If глОбработать(аДок) Then
+        пСтатус:="ОК";
+        пОК:=пОК+1;
+      EndIf;
+    EndIf;
+    Т.CopyByX("v2",1);
+  EndDo;
+  пИтого:=""+пН+" документов, "+(пН-пОК)+" документов с ошибками.";
+  Т.CopyByX("v3",1);
+  глПечатнаяФормаОтчета(Т,Param,оЗагол,1);
+  File.DeleteFile(Файл);
+  Form.кнЗагрузить.isDisabled:=1;
+  Файл:="";
+EndFunction

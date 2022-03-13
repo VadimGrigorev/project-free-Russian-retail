@@ -1,0 +1,147 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function Обновить()
+  оКО:=Form.оКО.Value;
+  
+  оВид:=Trim(Form.оВид.Value);
+  If оВид="" Then
+    Form.оКО.isDisabled:=1;
+    оКО.Clear();
+    Exit;
+  EndIf;
+  Form.оКО.isDisabled:=0;
+  aEl:=оКО.SelectedLine;
+  If (aEl>0)And(aEl<=оКО.Size()) Then
+    aEl:=оКО.Get(aEl);
+  EndIf;
+  оКО.Clear();
+  aStruct:=Meta.Enum("ко"+оВид);
+  оКО.Add("");
+  For i:=1 to aStruct.Values.Count() Do
+    оКО.Add(Enum.GetByIndex("ко"+оВид,i));
+  EndDo;
+  aNum:=оКО.Find(aEl);
+  If aNum>0 Then
+    оКО.SelectedLine:=aNum;
+  Else
+    оКО.SelectedLine:=1;
+  EndIf;
+EndFunction
+
+Function OnExecute()
+  НачДата:=BegOfDay(Form.НачДата.Value);
+  КонДата:=BegOfDay(Form.КонДата.Value);
+  оКО:=Form.оКО.Value;
+  оЮЛ:=Form.оЮЛ.Value;
+  оМг:=Form.оМг.Value;
+  оК:=Form.оК.Value;
+  оСк:=Form.оСк.Value;
+  ДНач:=Date(DBVar.НачалоПериодаБазы);
+  оПропуск:=Form.оПропуск.Value;
+  
+  оВид:=Trim(Form.оВид.Value);
+  ФлЖурнал:=0;
+  If оВид<>"" Then
+    аДок:=DB("Doc."+оВид);
+  Else
+    аДок:=DB("Jour.ОбщийЖурнал");
+    ФлЖурнал:=1;
+  EndIf;
+  
+  Message("Удерживайте Ctrl+S, чтобы остановить обработку до ее завершения...","I");
+  ФлНум:=0;
+  аДок.UseOrder("DocDate+");
+  аДок.Select("<DocDate,>=DocDate,>@Status",КонДата+1,НачДата,1);
+  While аДок.Next() Do
+    бДок:=?(ФлЖурнал,аДок.LinkedObject(),аДок);
+    If оКО.SelectedLine>1 Then
+      If глЕстьРеквизитДокумента("КодОперации",бДок.DBName()) Then
+        If бДок.КодОперации<>оКО.Get(оКО.SelectedLine) Then
+          Continue;
+        EndIf;
+      EndIf;  
+    EndIf;
+    If оЮЛ.Get(1).Size()>0 Then
+      If not оЮЛ.Get(1).Contains(бДок.ЮрЛицо) Then
+        Continue;
+      EndIf;
+    EndIf;
+    If оЮЛ.Get(2).Size()>0 Then
+      If оЮЛ.Get(2).Contains(бДок.ЮрЛицо) Then
+        Continue;
+      EndIf;
+    EndIf;
+    If оМг.Get(1).Size()>0 Then
+      If not оМг.Get(1).Contains(бДок.Магазин) Then
+        Continue;
+      EndIf;
+    EndIf;
+    If оМг.Get(2).Size()>0 Then
+      If оМг.Get(2).Contains(бДок.Магазин) Then
+        Continue;
+      EndIf;
+    EndIf;
+    
+    If глЕстьРеквизитДокумента("Контрагент",бДок.DBName()) Then
+      If оК.Get(1).Size()>0 Then
+        If not оК.Get(1).Contains(бДок.Контрагент) Then
+          Continue;
+        EndIf;
+      EndIf;
+      If оК.Get(2).Size()>0 Then
+        If оК.Get(2).Contains(бДок.Контрагент) Then
+          Continue;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    If глЕстьРеквизитДокумента("Склад",бДок.DBName()) Then
+      If оСк.Get(1).Size()>0 Then
+        If not оСк.Get(1).Contains(бДок.Склад) Then
+          Continue;
+        EndIf;
+      EndIf;
+      If оСк.Get(2).Size()>0 Then
+        If оСк.Get(2).Contains(бДок.Склад) Then
+          Continue;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    If глЕстьРеквизитДокумента("ДокОснование",бДок.DBName()) Then
+      If бДок.ДокОснование.Selected()<>0 Then
+        If BegOfDay(бДок.ДокОснование.DocDate)<ДНач Then
+          Message("Невозможно обработать "+Trim(бДок)+" так как его основание за периодом работы базы! Обработайте его вручную!","!");
+          Continue;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    If глЕстьРеквизитДокумента("ФлагОбмена",бДок.DBName()) Then
+      If бДок.ФлагОбмена=9 Then
+        Message("Невозможно обработать "+Trim(бДок)+" так как на нем установлен флаг ""не для переноса""! Обработайте его вручную!","!");
+        Continue;
+      EndIf;
+    EndIf;
+    
+    If IsKeyComboActive("Ctrl+S") Then
+      Message("Обработка остановлена!","!");
+      Exit 0;
+    EndIf;
+    
+    Message(бДок);
+    ФлНум:=ФлНум+1;
+    If not глОбработать(бДок,1) Then
+      Message("Невозможно обработать "+бДок+"!","!");
+      If оПропуск=0 Then
+        Break;
+      EndIf;
+    EndIf;
+  EndDo;
+  
+  Message("Было обработано "+ФлНум+" документов!");
+EndFunction
+

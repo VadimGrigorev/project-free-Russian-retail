@@ -1,0 +1,228 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var оТипСтар Export;
+
+Function ОбновитьВидимость()
+  оТип:=Form.оТип.Value.SelectedLine;
+  If оТип=1 Then
+    Form.оЗаголовок.Caption:="Объединение поступлений в один документ";
+    Form.оГруппа.Pages.Page("ТМЦ").isInvisible:=0;
+    Form.оГруппа.Pages.Page("Услуги").isInvisible:=1;
+    Form.оТаб.Value.Column("Склад").isVisible:=1;
+    Form.тТ1.IsDisabled:=0;
+    Form.тТ2.IsDisabled:=0;
+    Form.тТ3.IsDisabled:=0;
+    Form.тТ4.IsDisabled:=0;
+    Form.тТ5.IsDisabled:=0;
+    Form.тТ6.IsDisabled:=0;
+    Form.НомерДокВходящий.IsDisabled:=0;
+    Form.ДатаДокВходящий.IsDisabled:=0;
+    Form.НомерДокВходящийСФ.IsDisabled:=0;
+    Form.ДатаДокВходящийСФ.IsDisabled:=0;
+    Form.НомерДокИсправление.IsDisabled:=0;
+    Form.ДатаДокИсправление.IsDisabled:=0;
+    Form.оТЧ.Value.Column("Партия").isVisible:=1;
+  ElseIf оТип=2 Then
+    Form.оЗаголовок.Caption:="Объединение поступлений услуг (прочее) в один документ";
+    Form.оГруппа.Pages.Page("ТМЦ").isInvisible:=1;
+    Form.оГруппа.Pages.Page("Услуги").isInvisible:=0;
+    Form.оТаб.Value.Column("Склад").isVisible:=0;
+    Form.тТ1.IsDisabled:=0;
+    Form.тТ2.IsDisabled:=0;
+    Form.тТ3.IsDisabled:=0;
+    Form.тТ4.IsDisabled:=0;
+    Form.тТ5.IsDisabled:=0;
+    Form.тТ6.IsDisabled:=0;
+    Form.НомерДокВходящий.IsDisabled:=0;
+    Form.ДатаДокВходящий.IsDisabled:=0;
+    Form.НомерДокВходящийСФ.IsDisabled:=0;
+    Form.ДатаДокВходящийСФ.IsDisabled:=0;
+    Form.НомерДокИсправление.IsDisabled:=0;
+    Form.ДатаДокИсправление.IsDisabled:=0;
+    Form.оТЧ.Value.Column("Партия").isVisible:=0;
+  ElseIf оТип=3 Then
+    Form.оЗаголовок.Caption:="Объединение списаний в один документ";
+    Form.оГруппа.Pages.Page("ТМЦ").isInvisible:=0;
+    Form.оГруппа.Pages.Page("Услуги").isInvisible:=1;
+    Form.оТаб.Value.Column("Склад").isVisible:=1;
+    Form.тТ1.IsDisabled:=1;
+    Form.тТ2.IsDisabled:=1;
+    Form.тТ3.IsDisabled:=1;
+    Form.тТ4.IsDisabled:=1;
+    Form.тТ5.IsDisabled:=1;
+    Form.тТ6.IsDisabled:=1;
+    Form.НомерДокВходящий.IsDisabled:=1;
+    Form.ДатаДокВходящий.IsDisabled:=1;
+    Form.НомерДокВходящийСФ.IsDisabled:=1;
+    Form.ДатаДокВходящийСФ.IsDisabled:=1;
+    Form.НомерДокИсправление.IsDisabled:=1;
+    Form.ДатаДокИсправление.IsDisabled:=1;
+    Form.оТЧ.Value.Column("Партия").isVisible:=1;
+  ElseIf оТип=4 Then
+    Form.оЗаголовок.Caption:="Объединение реализаций в один документ";
+    Form.оГруппа.Pages.Page("ТМЦ").isInvisible:=0;
+    Form.оГруппа.Pages.Page("Услуги").isInvisible:=1;
+    Form.оТаб.Value.Column("Склад").isVisible:=1;
+    Form.тТ1.IsDisabled:=1;
+    Form.тТ2.IsDisabled:=1;
+    Form.тТ3.IsDisabled:=1;
+    Form.тТ4.IsDisabled:=1;
+    Form.тТ5.IsDisabled:=1;
+    Form.тТ6.IsDisabled:=1;
+    Form.НомерДокВходящий.IsDisabled:=1;
+    Form.ДатаДокВходящий.IsDisabled:=1;
+    Form.НомерДокВходящийСФ.IsDisabled:=1;
+    Form.ДатаДокВходящийСФ.IsDisabled:=1;
+    Form.НомерДокИсправление.IsDisabled:=1;
+    Form.ДатаДокИсправление.IsDisabled:=1;
+    Form.оТЧ.Value.Column("Партия").isVisible:=1;
+  EndIf;
+EndFunction
+
+Function ОбновитьСумму();
+  оТаб:=Form.оТаб.Value;
+  оТип:=Form.оТип.Value.SelectedLine;
+  оТЧ:=?(оТип<>2,Form.оТЧ.Value,Form.оТЧ2.Value);
+  Form.пСуммаДокумента.Caption:=глФРМ(оТЧ.SUM("Сумма"))+" руб.";
+EndFunction
+
+Function ДобавитьДокументТЧ(Д)
+  оТаб:=Form.оТаб.Value;
+  оТип:=Form.оТип.Value.SelectedLine;
+  оТЧ:=?(оТип<>2,Form.оТЧ.Value,Form.оТЧ2.Value);
+  оВид:=Max(Number(RestoreValue("ПоступлениеТМЦ_оВид")),1);
+  
+  If оТип=3 Then
+    оТаб.AddLine("Док,Сумма,Склад",Д,Д.СуммаВзаиморасчетов,Д.Склад);
+  ElseIf оТип<>2 Then
+    оТаб.AddLine("Док,Контрагент,Сумма,Склад",Д,Д.Контрагент,Д.СуммаВзаиморасчетов,Д.Склад);
+  Else
+    оТаб.AddLine("Док,Контрагент,Сумма",Д,Д.Контрагент,Д.СуммаВзаиморасчетов);
+  EndIf;
+  If оТип<3 Then
+    If Trim(Д.НомерДокВходящий)<>"" Then
+      If Trim(Д.НомерДокВходящий)<>Trim(Form.НомерДокВходящий.Value) Then
+        If Trim(Form.НомерДокВходящий.Value)="" Then
+          Form.НомерДокВходящий.Value:=Trim(Д.НомерДокВходящий);
+          Form.ДатаДокВходящий.Value:=Д.ДатаДокВходящий;
+        Else
+          Form.НомерДокВходящий.Value:="?";
+          Form.ДатаДокВходящий.Value:=0;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    If Trim(Д.НомерДокВходящийСФ)<>"" Then
+      If Trim(Д.НомерДокВходящийСФ)<>Trim(Form.НомерДокВходящийСФ.Value) Then
+        If Trim(Form.НомерДокВходящийСФ.Value)="" Then
+          Form.НомерДокВходящийСФ.Value:=Trim(Д.НомерДокВходящийСФ);
+          Form.ДатаДокВходящийСФ.Value:=Д.ДатаДокВходящийСФ;
+        Else
+          Form.НомерДокВходящийСФ.Value:="?";
+          Form.ДатаДокВходящийСФ.Value:=0;
+        EndIf;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  ФлБлок:=оТЧ.IsLocked();
+  If not ФлБлок Then
+    оТЧ.Lock();
+  EndIf;  
+  Try
+    aTab:=?(оТип<>2,Д.LineParts("Номенклатура"),Д.LineParts("Содержание"));
+    aTab.Select();
+    While aTab.Next() Do
+      Фл:=0;
+      оТЧ.CurLine:=0;
+      If оТип=2 Then
+        If оТЧ.LocateAndGoto("Содержание,СтавкаНДС,Счет,Субконто1,Субконто2,Субконто3",aTab.Содержание,aTab.СтавкаНДС,aTab.Счет,aTab.Субконто1,aTab.Субконто2,aTab.Субконто3,1)>0 Then
+          Фл:=1;
+        EndIf;
+      ElseIf not isEmpty(aTab.Партия) Then
+        If оТЧ.LocateAndGoto("Номенклатура,Партия",aTab.Номенклатура,aTab.Партия,1)>0 Then
+          Фл:=1;
+        EndIf;
+      ElseIf оТЧ.LocateAndGoto("Номенклатура",aTab.Номенклатура,1)>0 Then
+        Фл:=1;
+      EndIf;  
+      
+      If not Фл Then
+        If оТип<>2 Then
+          оТЧ.AddLineSorted("Номенклатура,Партия","КодНоменклатуры,Номенклатура,Партия,Единицы,СтавкаНДС",aTab.Номенклатура.Code,aTab.Номенклатура,aTab.Партия,"("+aTab.Номенклатура.оснКоэффициент+") "+Str(aTab.Номенклатура.базЕдиница)+" / "+Str(aTab.Номенклатура.оснЕдиница),
+            aTab.Номенклатура.СтавкаНДС);
+        Else
+          оТЧ.AddLineSorted("Содержание,СтавкаНДС,Счет,Субконто1,Субконто2,Субконто3","Содержание,СтавкаНДС,Счет,Субконто1,Субконто2,Субконто3",aTab.Содержание,aTab.СтавкаНДС,aTab.Счет,aTab.Субконто1,aTab.Субконто2,aTab.Субконто3);
+        EndIf;    
+      EndIf;
+      оТЧ.Сумма:=оТЧ.Сумма+aTab.Сумма;
+      оТЧ.Количество:=Round(оТЧ.Количество+aTab.Количество,6);
+      оТЧ.Цена:=оТЧ.Сумма/?(оТЧ.Количество=0,1,оТЧ.Количество);
+      If оТип<>2 Then
+        К:=?(aTab.Номенклатура.оснКоэффициент=0,1,aTab.Номенклатура.оснКоэффициент);
+        К:=?(К=0,1,К);
+        оТЧ.КоличествоВОсновных:=Trunc(Round((оТЧ.Количество)/К,6));
+        оТЧ.КоличествоВБазовых:=оТЧ.Количество-оТЧ.КоличествоВОсновных*К;
+      EndIf;  
+      оТЧ.СуммаНДС:=оТЧ.Сумма*глКоэффНДС(оТЧ.СтавкаНДС);
+    EndDo;  
+  Finally
+    If not ФлБлок Then
+      оТЧ.Unlock();
+    EndIf;  
+  EndTry;  
+  
+  Form.пСуммаДокумента.Caption:=глФРМ(оТЧ.SUM("Сумма"))+" руб.";
+EndFunction
+
+Function ПересчитатьЕдиницы(ФлСобратьКоличество=0)
+  оТЧ:=Form.оТЧ.Value;
+  оВид:=Max(Number(RestoreValue("ПоступлениеТМЦ_оВид")),1);
+  К:=?(оТЧ.Номенклатура.оснКоэффициент=0,1,оТЧ.Номенклатура.оснКоэффициент);
+  К:=?(К=0,1,К);
+  
+  If ФлСобратьКоличество Then
+    Кл:=оТЧ.КоличествоВБазовых+оТЧ.КоличествоВОсновных*К;
+    оТЧ.Количество:=Round(Кл,6);
+  EndIf;
+  
+  оТЧ.КоличествоВОсновных:=Trunc(Round((оТЧ.Количество)/К,6));
+  оТЧ.КоличествоВБазовых:=оТЧ.Количество-оТЧ.КоличествоВОсновных*К;
+  оТЧ.Цена:=оТЧ.Сумма/?(оТЧ.Количество=0,1,оТЧ.Количество);
+EndFunction
+
+
+Function ПриПодбореДокументов(aEl,Фл)
+  оТаб:=Form.оТаб.Value;
+  оТип:=Form.оТип.Value.SelectedLine;
+  If not IsEmpty(aEl) Then
+    If оТип=3 Then
+      //If _Or(aEl.DBName()<>"РегистрацияТМЦ",aEl.КодОперации<>Enum.коРегистрацияТМЦ.СписаниеТМЦ) Then
+      If aEl.DBName()<>"РегистрацияТМЦ" Then
+        Box("Пожалуйста, добавляйте только документы типа ""списание ТМЦ""!",Q_STOP);
+        Exit;
+      EndIf;
+    ElseIf оТип=4 Then
+      If aEl.DBName()<>"Реализация" Then
+        Box("Пожалуйста, добавляйте только документы типа ""реализация""!",Q_STOP);
+        Exit;
+      EndIf;
+    ElseIf ((оТип=1)And(aEl.DBName()<>"ПоступлениеТМЦ"))or
+       ((оТип=2)And(aEl.DBName()<>"ПоступлениеПрочее")) Then
+      Box("Пожалуйста, добавляйте только документы типа ""поступление ТМЦ""!",Q_STOP);
+      Exit;
+    EndIf;
+    If aEl.Status()<2 Then
+      Box("Документ не обработан!",Q_STOP);
+      Exit;
+    EndIf;
+    If оТаб.FindAndGoto(aEl,,"Док")>0 Then
+      Box("Документ уже выбран!",Q_STOP);
+    Else
+      ДобавитьДокументТЧ(aEl);
+    EndIf;
+  EndIf;    
+EndFunction
+

@@ -1,0 +1,49 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var НачДата Export;
+Var КонДата Export;
+
+Function Видимость(ОбновитьФильтр=0)
+  MainTab:=Form.MainTab.Value;
+  флБезусловноеОбновление:=ОбновитьФильтр;
+  Form.пПериод.Caption:="с "+FormatDate(НачДата,"DD MMM YYYY")+" по "+FormatDate(КонДата,"DD MMM YYYY");
+  Form.пПериод.FontColor:=_CLR_RED;
+  
+  оКО:=Enum.коПоступлениеПрочее.ПоступлениеПрочее;
+  If ОбновитьФильтр Then
+    If Form.оСданныеДокументы.Value=0 Then
+      Exec("Form.MainTab.SetFilters("">=DocDate,<DocDate,<>@Status,КодОперации,->Контрагент,->ЮрЛицо,Обработан"",'"+BegOfDay(НачДата)+"','"+BegOfDay(КонДата+1)+"',1,оКО,Form.оК.Value,Form.оЮЛ.Value,0)");
+    Else  
+      Exec("Form.MainTab.SetFilters("">=DocDate,<DocDate,<>@Status,КодОперации,->Контрагент,->ЮрЛицо"",'"+BegOfDay(НачДата)+"','"+BegOfDay(КонДата+1)+"',1,оКО,Form.оК.Value,Form.оЮЛ.Value)");
+    EndIf;
+  EndIf;
+EndFunction
+
+Function ОбновитьДокумент(Обработан=0)
+  MainTab:=Form.MainTab.Value;
+  MainTab.CurLine:=MainTab.SelectedLine;
+  aEl:=Form.MainTab.SelectedElement;
+  If isEmpty(aEl) Then
+    Exit 0;
+  EndIf;
+  Фл:=глЗаблокировать(aEl);
+  If Фл<>"" Then
+    Фл:="Невозможно изменить документ "+aEl+". "+Фл;
+    Exit;
+  EndIf;
+  Try
+    aEl.Reload();
+    If aEl.Обработан<>Обработан Then
+      aEl.Обработан:=Обработан;
+    EndIf;
+    aEl.Save();
+  Finally
+    aEl.Unlock();
+  EndTry;
+  If Обработан=0 Then
+    MainTab.BackgroundColor(MainTab.SelectedLine,0,_CLR_WINDOW);
+  EndIf;  
+  Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",MainTab.SelectedLine,MainTab.SelectedLine);
+EndFunction

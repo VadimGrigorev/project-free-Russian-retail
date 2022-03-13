@@ -1,0 +1,262 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var Т Export;
+Var Док Export;
+
+
+Function ВывестиДокумент(Д,Т,Шир)
+  Тек:=?(Д=Док,0,3);
+  Стат:=?(Д.Status()>1,0,?(Д.Status()=1,2,1));
+  пДок:=Trim(Д)+?(Стат=0," (обработан)",?(Стат=1,""," (удален)"));
+  
+  См:="";
+  If глЕстьРеквизитДокумента("СуммаВзаиморасчетов",Д.DBName()) Then
+    См:=глФРМ(Д.СуммаВзаиморасчетов);
+  EndIf;
+  If См="" Then
+    If глЕстьРеквизитДокумента("Сумма",Д.DBName()) Then
+      См:=глФРМ(Д.Сумма);
+    EndIf;
+  EndIf;
+  
+  Кнт:="";
+  If глЕстьРеквизитДокумента("Контрагент",Д.DBName()) Then
+    Кнт:=Д.Контрагент;
+  EndIf;
+  
+  пДокДоп:=?(См="","","Сумма: "+См+", ")+?(Кнт="","",Кнт);
+  пДокР:=Д;
+  
+  Сп:=List.Create();
+  Сп.SetByName("Документ",Док);
+  Сп.SetByName("Строка",Т.Height()+1);
+  Сп.SetByName("Столбец",Шир);
+  Сп.SetByName("ДокР",Д);
+  Сп.SetByName("Таблица",Т);
+  
+  Т.CopyByX("v2|h2");
+  
+  
+  Т2:=Т.Source();
+  Т.Area(Шир+1,Т.Height()-1,Шир+10,Т.Height()).ColorProfile:=Т2.Area(2,10+Тек+Стат,2,10+Тек+Стат).ColorProfile;
+EndFunction
+
+
+Function ОпределитьТип(Стр)
+  Рез:="h7";
+  If Pos("STRING.",Стр)>0 Then
+    tearStr(Стр,".");
+    i:=Number(Стр);
+    If i<11 Then
+      Рез:="h3";
+    ElseIf i<16 Then
+      Рез:="h4";
+    ElseIf i<26 Then
+      Рез:="h6";
+    Else  
+      Рез:="h7";
+    EndIf;
+  ElseIf Pos("DATE",Стр)=1 Then
+    Рез:="h4";
+  ElseIf Pos("NUMBER.",Стр)>0 Then
+    Рез:="h8";
+  ElseIf Pos("ENUM.",Стр)>0 Then
+    Рез:="h6";
+  EndIf;
+  Exit Рез;
+EndFunction
+
+
+Function Печать(Док,Т)
+  
+  Function ПредставлениеСубконто(Эл)
+    If pos("DB.REF.",TypeStr(Эл))>0 Then
+      If Эл.DBName()="кнтКонтрагенты" Then
+        Exit Эл.ПолнНаименование;
+      EndIf;
+    EndIf;
+    Exit Эл;
+  EndFunction
+
+  Function ПечатьПоЮрЛицу(Т,aTab,ЮрЛицо)
+    пСм0:=0;пКл0:=0;
+    пН:=0;
+    aTab.Select();
+    While aTab.Next() Do
+      If (ЮрЛицо<>aTab.ЮрЛицо) Then
+        Continue;
+      EndIf;
+      
+      пН:=пН+1;
+      зСуб1:="";
+      зСуб2:="";
+      зСуб3:="";
+      зСуб1К:="";
+      зСуб2К:="";
+      зСуб3К:="";
+      КолВо:=aTab.Количество;
+      
+      If aTab._Expense=0 Then
+        пСчД:=aTab.Счет;
+        пСчК:=aTab.КоррСчет;
+        зСуб1:=aTab.Субконто1;
+        зСуб2:=aTab.Субконто2;
+        зСуб3:=aTab.Субконто3;
+        
+        If пСчК.Selected()<>0 Then
+          If not aTab.Next() Then
+            Message("Документ имеет неверные движения по бух. учету, обратитесь к администратору!","!");
+          EndIf;
+          КолВо:=?(КолВо=0,aTab.Количество,КолВо);
+          зСуб1К:=aTab.Субконто1;
+          зСуб2К:=aTab.Субконто2;
+          зСуб3К:=aTab.Субконто3;
+        EndIf;
+      Else
+        пСчК:=aTab.Счет;
+        пСчД:=aTab.КоррСчет;
+        зСуб1К:=aTab.Субконто1;
+        зСуб2К:=aTab.Субконто2;
+        зСуб3К:=aTab.Субконто3;
+        
+        If пСчД.Selected()<>0 Then
+          If not aTab.Next() Then
+            Message("Документ имеет неверные движения по бух. учету, обратитесь к администратору!","!");
+          EndIf;
+          КолВо:=?(КолВо=0,aTab.Количество,КолВо);
+          зСуб1:=aTab.Субконто1;
+          зСуб2:=aTab.Субконто2;
+          зСуб3:=aTab.Субконто3;
+        EndIf;
+      EndIf;
+      
+      пСумма:=глФРМ(aTab.Сумма);
+      пКолВо:=глФРМЧл(КолВо);
+      пСм0:=пСм0+aTab.Сумма;
+      пКл0:=пКл0+aTab.Количество;
+      нН:=нН+1;
+      Form.UpdateProgress(-1,,""+нН);
+      Form.StatusText(нН);
+      
+      пКоммД:=?(not IsEmpty(зСуб1),Trim(ПредставлениеСубконто(зСуб1)),"");
+      пКоммД:=пКоммД+?(not IsEmpty(зСуб2),?(пКоммД="","",_NEWLINE)+Trim(ПредставлениеСубконто(зСуб2)),"");
+      пКоммД:=пКоммД+?(not IsEmpty(зСуб3),?(пКоммД="","",_NEWLINE)+Trim(ПредставлениеСубконто(зСуб3)),"");
+      
+      пКоммК:=?(not IsEmpty(зСуб1К),Trim(ПредставлениеСубконто(зСуб1К)),"");
+      пКоммК:=пКоммК+?(not IsEmpty(зСуб2К),?(пКоммК="","",_NEWLINE)+Trim(ПредставлениеСубконто(зСуб2К)),"");
+      пКоммК:=пКоммК+?(not IsEmpty(зСуб3К),?(пКоммК="","",_NEWLINE)+Trim(ПредставлениеСубконто(зСуб3К)),"");
+      
+      Т.CopyByX("v2",1);
+    EndDo;
+    пСумма:=глФРМ(пСм0);
+    пКолВо:=глФРМЧл(пКл0);
+    Т.CopyByX("v3",1);
+  EndFunction
+
+  Фл:=0;
+  aSA:=Struct.Doc(Док.DBName());
+  For i:=1 To aSA.StoragesAllowed.Count() Do
+    If aSA.StoragesAllowed(i).Name="БухгалтерскиеСчета" Then
+      Фл:=1;
+      Break;
+    EndIf;
+  EndDo;
+  
+  If Фл=0 Then
+    Box("Данный вид документов не может иметь бухгалтерских проводок!",Q_INFORMATION);
+    Exit;
+  EndIf;
+  
+  
+  Fl:=0;
+  If IsEmpty(Т) Then
+    Т:=Table.Create();
+  Else
+    Т.Lock();
+    Т.Clear();
+    Fl:=1;
+  EndIf;
+  Try  
+    Т.SetSourceName("Table");
+    
+    оЗагол:="Проводки документа "+Док;
+    Сп:=List.Create();
+    Сп.SetByName("Документ",Док);
+    Сп.SetByName("Таблица",Т);
+    Т.CopyByX("v1",1);
+    
+    aTab:=Док.LoadStorage("БухгалтерскиеСчета");
+    bTab:=Tab.Create();
+    aTab.CopyTo(bTab,,,"ЮрЛицо");
+    bTab.Group("ЮрЛицо");
+    bTab.Select();
+    аН:=0;
+    While bTab.Next() Do
+      аН:=аН+1;
+      пСвойства:=глСвойстваПечатиПростые()+_NEWLINE+
+        "Юр лицо: "+bTab.ЮрЛицо;
+      Т.CopyByX("v4",1);
+      If аН=1 Then
+        Т.Options.FixedLine:=Т.Height();
+      EndIf;
+      ПечатьПоЮрЛицу(Т,aTab,bTab.ЮрЛицо);
+    EndDo;
+  
+    If not Fl Then
+      глПечатнаяФорма(Т,Param,оЗагол);
+    EndIf;
+  Finally
+    If Fl Then
+      Т.Unlock();
+      Т.EditorMode:=1;
+    EndIf;
+  EndTry;  
+EndFunction
+
+
+Function OnDoubleClick(Т2)
+  Result:=1;
+  If Т2.SelectionMode>1 Then
+    if Т2.SelectedObjects().Count()<1 Then
+      Exit;
+    EndIf;
+    Obj:=Т2.SelectedObjects().Get(1);
+    Сп:=Obj.Value;
+    If TypeStr(Сп)<>"LIST" Then
+      Exit;
+    EndIf;
+    Док:=Сп.GetByName("Документ");
+    Т:=Сп.GetByName("Таблица");
+  
+    Док:=Док.Copy();//refresh
+    Печать(Док,Т);
+    Exit 0;
+  EndIf;
+EndFunction
+
+Function OnRightClick(Т2)
+  OnDoubleClick(Т2);
+EndFunction
+
+Function OnOpen()
+  Result:=0;
+  If IsEmpty(Param)=1 Then
+    Exit;
+  EndIf;
+  
+  If not глПользователь.бухБухгалтер Then
+    Box("Вам запрещено пользоваться этим отчетом!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  If not глПриОткрытииОтчета("ОтчетПоПроводкамДокумента",Param,0) Then
+    Exit;
+  EndIf;
+  
+  Док:=Param;
+  Печать(Док,Т);
+EndFunction
+
+

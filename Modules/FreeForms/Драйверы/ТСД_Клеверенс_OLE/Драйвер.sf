@@ -1,0 +1,220 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+//Функции:
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, UploadPositions, DownloadPositions
+//https://www.cleverence.ru/devlib/comconnector_v3/Cleverence.Warehouse.StorageConnector.html
+//https://www.cleverence.ru/support/category:735/
+
+Function DriverInit(спНастройки)
+  Try
+    аДрайвер:=CreateOLE("Cleverence.Warehouse.StorageConnector");
+    спНастройки["Драйвер"]:=аДрайвер;
+  Except
+    Exit PopError()+_NEWLINE+"(1) Драйвер не установлен или в нерабочем состоянии!";
+  EndTry;
+EndFunction
+
+Function DriverDeinit(спНастройки)
+  Try
+    спНастройки["Драйвер"]:=0;;
+    спНастройки["Соединено"]:=0;
+  Except
+    Exit PopError()+_NEWLINE+"(3) Драйвер не установлен или в нерабочем состоянии!";
+  EndTry;
+EndFunction
+
+Function DriverConnect(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    СтрДоп:=Str(спНастройки["ДопУстановки"]);
+    Ини:=Ini.Create();
+    Ини.AddFromString(СтрДоп);
+    БазаДанных:=Ини.GetData("БазаДанных","");
+    Документ:=Trim(Ини.GetData("ИмяДокумента",""));
+    НеУдалять:=Number(Ини.GetData("НеУдалять",""));
+    If БазаДанных="" Then
+      Raise "В настройках драйвера не выбрана база данных!";
+    EndIf;
+    СтрИД:=Trim(TearStr(БазаДанных,":"));
+    аДрайвер.SelectCurrentApp(СтрИД);
+    If аДрайвер.GetCurrentApp().Id<>СтрИД Then
+      Raise "Невозможно выполнить подключение к базе "+СтрИД+"!";
+    EndIf;
+    спНастройки["ИмяДокумента"]:=Документ;
+    спНастройки["НеУдалять"]:=НеУдалять;
+    спНастройки["Соединено"]:=1;
+  Except
+    Exit PopError()+_NEWLINE+"(2) Драйвер не установлен, в нерабочем состоянии или выбранная база данных не найдена!";
+  EndTry;
+EndFunction
+
+Function DriverDisconnect(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    аДрайвер.Disconnect();
+    спНастройки["Соединено"]:=0;
+  Except
+    Exit PopError()+_NEWLINE+"(3) Драйвер не установлен или в нерабочем состоянии!";
+  EndTry;
+EndFunction
+
+Function UploadPositions(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    ФлОчистка:=Number(спНастройки["Очистка"]);
+    спНастройки["Очистка"]:=0;
+    Try
+      аДрайвер.ResetUploadProducts();
+    Except
+    EndTry;
+  
+    аДрайвер.BeginUploadProducts(1,ФлОчистка,1);
+    аПродукты:=CreateOLE("Cleverence.Warehouse.ProductCollection");
+    //aTab:"Элемент,Наименование,Код,Штрихкод,Количество,Цена,ЭтоПапка,КодПапки"
+    ФлОстатки:=0;
+    aTab:=спНастройки["Позиции"];
+    aTab.Select();
+    While aTab.Next() Do
+      Form.StatusText("Выгрузка позиций: "+aTab.CurLine+" из "+aTab.Size());
+      If aTab.ЭтоПапка=1 Then
+        Continue;
+      EndIf;
+      If аПродукты.Count()>1000 Then
+        аДрайвер.UploadProducts(аПродукты);
+        аПродукты:=CreateOLE("Cleverence.Warehouse.ProductCollection");
+      EndIf;
+      If aTab.Количество<>0 Then
+        ФлОстатки:=1;
+      EndIf;
+      аПродукт:=CreateOLE("Cleverence.Warehouse.Product");;
+      аПродукт.Id:=?(aTab.Код="",aTab.Штрихкод,aTab.Код);
+      аПродукт.Name:=aTab.Наименование;
+      аПродукт.Barcode:=aTab.Штрихкод;
+      зН:=aTab.Элемент;
+      If зН.DBName()="тмцПартииТМЦ" Then
+        зН:=зН.Parent();
+        аУпаковка:=CreateOLE("Cleverence.Warehouse.Packing");
+        аУпаковка.Id:="1";
+        аУпаковка.Name:="Шт.";
+        аУпаковка.UnitsQuantity:=1;
+        аПродукт.Packings.Add(аУпаковка);
+        аПродукт.BasePackingId="1";
+      ElseIf зН.DBName()<>"тмцНоменклатура" Then
+        Raise "При выгрузке обнаружен элемент справочника типа "+зН.DBName()+"! Такие элементы не поддерживаются!";
+      Else
+        аУпаковка:=CreateOLE("Cleverence.Warehouse.Packing");
+        аУпаковка.Id:=зН.базЕдиница.Code;
+        аУпаковка.Name:=зН.базЕдиница.Name;
+        аУпаковка.UnitsQuantity:=1;
+        аПродукт.Packings.Add(аУпаковка);
+        аПродукт.BasePackingId=зН.базЕдиница.Code;
+      EndIf;
+      If aTab.Цена>0 Then
+        Try
+          аПродукт.SetField("Цена",aTab.Цена);
+        Except
+        EndTry;
+      EndIf;
+      аПродукты.Add(аПродукт);
+    EndDo;
+    If аПродукты.Count()>0 Then
+      аДрайвер.UploadProducts(аПродукты);
+    EndIf;
+    аДрайвер.EndUploadProducts();
+    
+    Документ:=Trim(спНастройки["ИмяДокумента"]);
+    If (ФлОстатки)And(Документ<>"") Then
+      //Создаем документ с указанием "желаемого" количества
+      аДок:=CreateOLE("Cleverence.Warehouse.Document");
+      аДок.Id:="TEMP_"+FormatDate(Date(),"YYYYmmddhhttss");
+      аДок.Name:=Документ+" "+FormatDate(Date(),"dd.mm.YYYY hh:tt:ss");
+      аДок.CreateDate:=Date();
+      аДок.DocumentTypeName:=Документ;
+      аДок.InProcess:=0;
+      аДок.Finished:=0;
+      аДок.WarehouseId:=1;
+      аДок.Appointment:="оператор";
+      аДок.AutoAppointed:=1;
+      
+      aTab:=спНастройки["Позиции"];
+      aTab.Select();
+      While aTab.Next() Do
+        Form.StatusText("Создание документа: "+aTab.CurLine+" из "+aTab.Size());
+        If aTab.ЭтоПапка=1 Then
+          Continue;
+        EndIf;
+        If aTab.Количество=0 Then
+          Continue;
+        EndIf;
+        аСтрока:=CreateOLE("Cleverence.Warehouse.DocumentItem");
+        аСтрока.ProductId:=?(aTab.Код="",aTab.Штрихкод,aTab.Код);
+        If aTab.Элемент.DBName()="тмцПартииТМЦ" Then
+          аСтрока.PackingId:="1";
+        Else
+          аСтрока.PackingId:=зН.базЕдиница.Code;
+        EndIf;
+        аСтрока.DeclaredQuantity:=aTab.Количество;
+        аСтрока.SetField("Цена",aTab.Цена);
+        аДок.DeclaredItems.Add(аСтрока);
+      EndDo;
+      //аДокументы:=CreateOLE("Cleverence.Warehouse.DocumentCollection");
+      //аДокументы.Add(аДок);
+      //аДрайвер.SetDocuments(аДокументы);
+      аДрайвер.SetDocument(аДок);
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Ошибка при выгрузке данных в терминал!";
+    
+    Try
+      аДрайвер.ResetUploadProducts();
+    Except
+    EndTry;
+  EndTry;
+EndFunction
+
+Function DownloadPositions(спНастройки)
+  Try
+    //aTab:"Код,Штрихкод,Количество"
+    aTab:=Tab.Create("Код,Штрихкод,Количество");
+    спНастройки["Позиции"]:=aTab;
+    аДрайвер:=спНастройки["Драйвер"];
+    Документ:=Trim(спНастройки["ИмяДокумента"]);
+    аДокументы:=аДрайвер.GetDocuments(Документ,1);
+    aList:=List.Create();
+    For i:=0 To аДокументы.Count()-1 Do
+      аДок:=аДокументы.Item(i);
+      aList.Add(аДок,аДок.Name+" ("+аДок.DocumentTypeName+") от "+аДок.CreateDate);
+    EndDo;
+    If aList.Size()=0 Then
+      Box("В выбранной базе не найдено ни одного документа для загрузки!",Q_WARNING);
+      Exit;
+    EndIf;
+    aNum:=aList.Select(,0,"Выберите документ для загрузки:");
+    If aNum=0 Then
+      //Raise "Оператор отказался от выбора";
+      Exit;
+    EndIf;
+    аДок:=aList[aNum];
+    aList:=0;
+    For i:=0 To аДок.CurrentItems.Count()-1 Do
+      аСтрока:=аДок.CurrentItems.Item(i);
+      Код:=аСтрока.ProductId;
+      Количество:=Number(аСтрока.CurrentQuantity);
+      Штрихкод:=аСтрока.FirstStorageBarcode;
+      aTab.AddLine("Код,Штрихкод,Количество",Код,Штрихкод,Количество);
+    EndDo;
+    If Number(спНастройки["НеУдалять"])=0 Then
+      Try
+        Ид:=аДок.Id;
+        аДок:=0;
+        аДрайвер.RemoveDocument(Ид);
+      Except
+      EndTry;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Ошибка при получении данных из терминала!";
+  EndTry;
+EndFunction

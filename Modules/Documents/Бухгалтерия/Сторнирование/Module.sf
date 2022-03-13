@@ -1,0 +1,228 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var флВидимостьПартий Export;
+
+
+Function Видимость()
+  aEl:=Form.Object;
+  MainTab:=Form.MainTab.Value;
+  флВидимостьПартий:=0;
+  If aEl.ДокОснование.Selected()<>0 Then
+    ВидОснование:=aEl.ДокОснование.DBName();
+    If not isEmpty(Struct.Doc(ВидОснование).LineParts("Номенклатура")) Then
+      If not isEmpty(Struct.Doc(ВидОснование).LineParts("Номенклатура").Props("Партия")) Then
+        флВидимостьПартий:=1;
+      EndIf;
+    EndIf;
+  EndIf;
+  флВидимостьПартий:=Min(флВидимостьПартий,aEl.Склад.БезПартионногоУчета=0);
+   
+  ФлПроводка:=aEl.ТипПроводки.Selected()<>0;
+  ФлБылаПроводка:=0;
+  If _And(aEl.ДокОснование.DBName()="КорректировкаДолга",(aEl.ДокОснование.КодОперации=Enum.коКорректировкаДолга.ПокупательТары)or(aEl.ДокОснование.КодОперации=Enum.коКорректировкаДолга.ПоставщикТары)) Then
+    Form.тСклад.isDisabled:=0;
+    Form.Склад.isDisabled:=0;
+  Else
+    Form.тСклад.isDisabled:=1;
+    Form.Склад.isDisabled:=1;
+  EndIf;
+  MainTab.Column("Договор").isVisible:=0;
+  MainTab.Column("ТекСклад").isVisible:=0;
+  MainTab.Column("СтавкаНДС").isVisible:=1;
+  MainTab.Column("СтараяСумма").isVisible:=1;
+  MainTab.Column("СуммаНДС").isVisible:=1;
+  Form.оЗакладки.Pages.Page("ВхНомера").isInvisible:=0;
+  
+  If aEl.КодОперации=Enum.коСторнирование.СторнированиеВзаиморасчетовПрочее Then
+    If aEl.ДокОснование.Selected()<>0 Then
+      If aEl.ДокОснование.DBName()="ПоступлениеПрочее" Then
+        MainTab.Column("Счет").isVisible:=not ФлПроводка;
+        MainTab.Column("Субконто1").isVisible:=not ФлПроводка;
+        MainTab.Column("Субконто2").isVisible:=not ФлПроводка;
+        MainTab.Column("Субконто3").isVisible:=not ФлПроводка;
+        ФлБылаПроводка:=1;
+      EndIf;
+    EndIf;
+    MainTab.Column("Номенклатура").isVisible:=0;
+    MainTab.Column("КоличествоВОсновных").isVisible:=0;
+    MainTab.Column("КоличествоВБазовых").isVisible:=0;
+    MainTab.Column("КодНоменклатуры").isVisible:=0;
+    MainTab.Column("Цена").isVisible:=0;
+    MainTab.Column("Единицы").isVisible:=0;
+    MainTab.Column("СтараяСумма").isVisible:=1;
+    MainTab.Column("Сумма").Caption:="Новая сумма";
+    MainTab.Column("Партия").isVisible:=0;
+  Else
+    MainTab.Column("Номенклатура").isVisible:=1;
+    MainTab.Column("КоличествоВОсновных").isVisible:=1;
+    MainTab.Column("КоличествоВБазовых").isVisible:=1;
+    MainTab.Column("КодНоменклатуры").isVisible:=1;
+    MainTab.Column("Цена").isVisible:=1;
+    MainTab.Column("Единицы").isVisible:=1;
+    MainTab.Column("СтараяСумма").isVisible:=0;
+    MainTab.Column("Сумма").Caption:="Сумма";
+    MainTab.Column("Партия").isVisible:=Min(флВидимостьПартий,глПользователь.бухБухгалтер);
+    MainTab.Column("Партия").isReadonly:=1-глПользователь.бухБухгалтер;
+  EndIf;
+  
+  If not ФлБылаПроводка Then
+    MainTab.Column("Счет").isVisible:=0;
+    MainTab.Column("Субконто1").isVisible:=0;
+    MainTab.Column("Субконто2").isVisible:=0;
+    MainTab.Column("Субконто3").isVisible:=0;
+  EndIf;
+
+EndFunction
+
+Function OnAfterCustomBuhChanged()
+  Видимость();
+EndFunction
+
+Function OnBeforeChangeOperationCode(ByRef Стр)
+  Стр:="";
+  aEl:=Form.Object;
+  If aEl.Status()>1 Then
+    Box("Нельзя менять тип операции в обработанном документе этого вида!",Q_STOP);
+    Exit 0;
+  EndIf;
+  If aEl.ДокОснование.Selected()<>0 Then
+    ДВид:=aEl.ДокОснование.DBName();
+    Фл:=Enum.коСторнирование.СторнированиеВзаиморасчетовПрочее;
+    If not isEmpty(Struct.Doc(ДВид).LineParts("Номенклатура")) Then
+      If ДВид="КорректировкаДолга" Then
+        If (aEl.ДокОснование.КодОперации=Enum.коКорректировкаДолга.ПокупательТары)or(aEl.ДокОснование.КодОперации=Enum.коКорректировкаДолга.ПоставщикТары) Then
+          Стр:="СторнированиеВзаиморасчетов";
+        Else
+          Стр:="СторнированиеВзаиморасчетовПрочее";
+        EndIf;
+      Else
+        Стр:="СторнированиеВзаиморасчетов";
+      EndIf;  
+    Else
+      Стр:="СторнированиеВзаиморасчетовПрочее";
+    EndIf;
+  EndIf;
+  
+  Exit Стр<>"";
+EndFunction
+
+
+Function OnAfterChangeOperationCode()
+  aEl:=Form.Object;
+  aEl.ТипПроводки:=0;
+  Видимость();
+EndFunction
+
+
+Function ЗаполнитьПоОснованию()
+  aEl:=Form.Object;
+  If aEl.ДокОснование.Selected()=0 Then
+    Exit;
+  EndIf;
+  aTab:=aEl.LineParts("Номенклатура");
+  
+  If aTab.Size()>0 Then
+    If AskQuestion("Текущие строки документа будут удалены. Вы уверены?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Exit;
+    EndIf;
+  EndIf;
+  aTab.ClearLines();
+  bEl:=aEl.ДокОснование;
+  
+  If aEl.КодОперации=Enum.коСторнирование.СторнированиеВзаиморасчетовПрочее Then
+    If isEmpty(Struct.Doc(bEl.DBName()).LineParts("Содержание")) Then
+      bTab:=bEl.LoadStorage("Взаиморасчеты");
+      bTab.Select();
+      While bTab.Next() Do
+        If bTab.Тара.Selected()<>0 Then
+          Continue;
+        EndIf;
+        aTab.NewLine();
+        aTab.Сумма:=bTab.Сумма;
+        aTab.СтараяСумма:=bTab.Сумма;
+        aTab.СтавкаНДС:=bTab.СтавкаНДС;
+        глПересчитатьСтроку(aEl,aTab,"СуммаНДС");
+      EndDo;
+    Else
+      bTab:=bEl.LineParts("Содержание");
+      bTab.Select();
+      While bTab.Next() Do
+        aTab.NewLine();
+        For i:=1 to Struct.Doc(bEl.DBName()).LineParts("Содержание").Props.Count() Do
+          ИмяР:=Struct.Doc(bEl.DBName()).LineParts("Содержание").Props(i).Name;
+          If aTab.GetColumnIndex(ИмяР)>0 Then
+            aTab.Set(aTab.CurLine,ИмяР,bTab.Get(bTab.CurLine,ИмяР));
+            If ИмяР="Сумма" Then
+              aTab.СтараяСумма:=aTab.Сумма;
+            EndIf;
+          EndIf;
+        EndDo;
+        глПересчитатьСтроку(aEl,aTab,"СуммаНДС");
+      EndDo;
+    EndIf;  
+  Else
+    глЗаполнениеПоДокументуОснованию(aEl,1,0);
+  EndIf;
+EndFunction
+
+Function OnCreateFromObject()
+  //Ввод на основании
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  
+  ДВид:=aEl.ДокОснование.DBName();
+  If not isEmpty(Struct.Doc(ДВид).LineParts("Номенклатура")) Then
+    If ДВид="КорректировкаДолга" Then
+      If (aEl.ДокОснование.КодОперации=Enum.коКорректировкаДолга.ПокупательТары)or(aEl.ДокОснование.КодОперации=Enum.коКорректировкаДолга.ПоставщикТары) Then
+        aEl.КодОперации:=Enum.коСторнирование.СторнированиеВзаиморасчетов;
+      Else
+        aEl.КодОперации:=Enum.коСторнирование.СторнированиеВзаиморасчетовПрочее;
+      EndIf;
+    Else
+      aEl.КодОперации:=Enum.коСторнирование.СторнированиеВзаиморасчетов;
+    EndIf;  
+  Else
+    aEl.КодОперации:=Enum.коСторнирование.СторнированиеВзаиморасчетовПрочее;
+  EndIf;
+  
+  If aEl.КодОперации=Enum.коСторнирование.СторнированиеВзаиморасчетовПрочее Then
+    if not глКопированиеИзДокументаВДокумент(aEl.ДокОснование,aEl,"",0,-1) Then
+      Form.Close(0);
+      Exit;
+    EndIf;
+    ЗаполнитьПоОснованию();
+  Else
+    if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+      Form.Close(0);
+      Exit;
+    EndIf;
+  EndIf;
+  
+  Видимость();
+EndFunction
+
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  If aEl.КодОперации=Enum.коСторнирование.СторнированиеВзаиморасчетов Then
+    //Проверяем строки
+    Фл:=1;
+    aTab:=aEl.LineParts("Номенклатура");
+    aTab.Select();
+    While aTab.Next() Do
+      If isEmpty(aTab.Номенклатура) Then
+        Message("В строке "+aTab.CurLine+" не выбрана номенклатура!","!");
+        Фл:=0;
+      EndIf;
+    EndDo;
+    If not Фл Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+

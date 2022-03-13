@@ -1,0 +1,43 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=100
+  Height=25
+  OnTimerInterval=0
+  MaxControlSerial=2
+  LoadModes=0
+  Object BUTTON
+    LayerName=Main
+    Left=0
+    Top=0
+    Width=100
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=bPanelSettings
+    ControlSerial=1
+    Caption=Настройки...
+    HotKey=
+    Picture=9
+    OnClick
+      @@>@e@D@X_8@4_Fd5@L_e@X@>@N@t}_E@s@7B_6t~C@(D@m5hqM@;6C9@I&S3?_Fb@%Y}z@\_h!/@+_5_
+      @/R@Ja7f2@/_FSKP@r@c@w_R_H]_K_<_k]^@u_&_Q@H_>_Z@J_Rk@S@xf_,_$@i1@P_W@T@*x@N@2@<@p
+      @.@a@O:@-@H@F@FoKNg'_,@e&n*_fS@p,_5@+-@2_9@G_i_K@D_4@Y8#P@]e@2@,/T(_l@7_]_7_]@O}?
+      @_M7_,@c@$tK@|_?_U@.[$@D2@t_;_Sp_JKsFg@74_/_T0@WY_;_St@u@b_b6@W5@O@p_l_jK9@+_e@IE
+      @$@#_g_K_-@>_d@Oz.@-_O@L@a@xy_4_iO@D_0_C_2_0@e3_AP_f@o@T(_#qV@\V_^@AS(_8?@<U(!_Bk
+      @@NJ_1@8]_A@4C:m_<+_FE@$@'@=@2z_I_e_.b_B@W@#@A@1_Ez@|}@v@f_F_GL_B_+_._*O_g@F_9_V
+      @@n@Z@pNk@riGn@$_*S_1?@7@M@w@Mb@3@&n@5D[@'@Y_9_[_#@G@\@Wn_-N>a@U@m_:_0F@&_4@v_=_<
+      @e@dh5F._Nj_>_cR_#@U@p@z@K|_=_\I_K_TQ@X_<Z@5_'@z_X@,@~@$@B_BZ@F@-_E@~_%_l_j_0_Wh
+      @@na@n_GuD_I0_+_^@t)8_V_^@p@ax@e"@w@~P@zz:@UP_8F@j_JV@r_W@L@D@g_L_B_3HE_YCX@W@P?_
+      @l_"@$_i@Jg_F_(_RR*@<h@$_m_iTIg_Xy_1@4]_E@X_V_8E;@s_&@nP_,E<4_N_#8@$_$_C@8QRv_J_(
+      @4_O_d@a_L@f_[c@]k_Q@E"_H$@XR
+    End
+  End
+End

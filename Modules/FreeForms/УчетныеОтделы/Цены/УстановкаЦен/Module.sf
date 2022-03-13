@@ -1,0 +1,348 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var флУстановкаРучныхЦен Export;
+Var спОсновныеЦены Export;
+Var рознТипЦен Export;
+Var постТипЦен Export;
+Var спИзменные Export;
+Var Ширина Export;
+Var З2 Export;
+Var ФлЗапретУстановкиТиповЦен Export;
+
+Function Доступность()
+  оСпр:=Form.оСпр.Value;
+  Form.оТЦ.isDisabled:=1-оСпр;
+  Form.bPanelSpecial.isDisabled:=флУстановкаРучныхЦен;
+  //Form.bPanelProceed.isDisabled:=флУстановкаРучныхЦен;
+EndFunction
+
+
+Function OnExecute()
+  оДата:=Form.оДата.Value;
+  Т:=Form.Таблица.Value;
+  Т.SetSourceName("Table");
+  If ФлЗапретУстановкиТиповЦен Then
+    оТЦ:=Form.оТЦ.Value;
+    For i:=1 To оТЦ.Size() Do
+      If оТЦ.Check(i)>0 Then
+        аТЦ:=оТЦ.Get(i);
+        If not аТЦ.ФлРазрешитьУстановкуВручную Then
+          Box("Вам запрещено устанавливать цены для типа цен "+аТЦ+" с помощью этой обработки! Воспользуйтесь обработкой пересчета цен!",Q_STOP);
+          Т.Clear();
+          Exit;
+        EndIf;
+      EndIf;
+    EndDo;
+  EndIf;
+  
+  
+  If CurDate()-оДата>3 Then
+    If not глПользователь.общиеАдминистратор Then
+      Box("Нельзя устанавливать цены поступлений за прошлые периоды, это может привести к неверному подсчету прибыли!",Q_STOP);
+      Т.Clear();
+      Exit;
+    ElseIf AskQuestion("Внимание! Нельзя устанавливать цены поступлений за прошлые периоды, это может привести к неверному подсчету прибыли! Вы действительно хотите игнорировать предупреждение?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Т.Clear();
+      Exit;
+    EndIf;
+  EndIf;
+  
+  Т.Lock();
+  Try
+    Т.Clear();
+    
+    оН:=Form.оН.Value.Get(1);
+    оННЕ:=Form.оН.Value.Get(2);
+    
+    З2:=0;
+    Проверять:=0;
+    If BegOfDay(оДата)<=BegOfDay(Date()) Then
+      КДата:=оДата+14;
+      ТЗ:="Period From оДата to КДата;
+      |зС:=Storage.ДвижениеТМЦ.Сумма;
+      |зК:=Storage.ДвижениеТМЦ.Количество;
+      |зН:=Storage.ДвижениеТМЦ.Номенклатура;
+      |зДок:=Storage.ДвижениеТМЦ.@LINK;
+      |зМрТип:=Storage.ДвижениеТМЦ.ТипЗаписи;Condition(зМрТип=2);
+      |зМрТУ:=Storage.ДвижениеТМЦ.ТипУчета;Condition(зМрТУ=0);
+      |зСм:=SUM(зС);
+      |зКл:=SUM(зК);
+      |Condition(зН IN оН);
+      |Condition(зН NOT IN оННЕ);
+      |Group зН,зДок;";
+      З2:=Query.Create();
+      З2.Execute(ТЗ);
+      спПоступления:=List.Create();
+      While З2.Next(1) Do
+        While З2.Next(2) Do
+          If спПоступления.Find(З2.зДок)=0 Then
+            спПоступления.Add(З2.зДок,"0");
+          EndIf;
+        EndDo;
+      EndDo;
+      Проверять:=1;
+    EndIf;
+    
+    
+    оСпр:=Form.оСпр.Value;
+    оТЦ:=Form.оТЦ.Value;
+    оДата:=Form.оДата.Value;
+    
+    ТЗ:="зН:=Ref.тмцНоменклатура;
+    |зСтатус:=Ref.тмцНоменклатура.@STATUS;
+    |зПапка:=Ref.тмцНоменклатура.@ISFOLDER;
+    |Condition(зПапка=0);
+    |Condition(зСтатус=0);
+    |Condition(зН IN оН);
+    |Condition(зН NOT IN оННЕ);
+    |Group зН"+?(Form.оГруппы.Value=1," with folders","")+";";
+    З:=Query.Create();
+    З.Execute(ТЗ);
+    Ширина:=1+спОсновныеЦены.Size();
+    If оСпр=1 Then
+      For а:=1 to оТЦ.Size() Do
+        Ширина:=Ширина+оТЦ.Check(а);
+      EndDo;
+    EndIf;
+    
+    Высота:=1;
+    Т.CopyByX("v1",1);
+    Т.CopyByX("v2|h1",1);
+    For а:=1 to спОсновныеЦены.Size() Do
+      пЦена:=спОсновныеЦены.Get(а);
+      Т.CopyByX("v2|h5");
+    EndDo;
+    If оСпр=1 Then
+      For а:=1 to оТЦ.Size() Do
+        If оТЦ.Check(а)=1 Then
+          пЦена:=оТЦ.Get(а);
+          Т.CopyByX("v2|h2");
+        EndIf;
+      EndDo;
+    EndIf;
+    Т.CopyByX("v2|h3");
+    
+    Н:=0;
+    While З.Next(1) Do
+      пН:=З.зН;
+      пКод:=пН.Code;
+      пНаименование:=пН.Name;
+      Стл:="4";
+      
+      If пН.IsFolder() Then
+        Стл:="3";
+      Else
+        Н:=Н+1;
+        пЕд:=Str(пН.базЕдиница)+", "+Str(пН.оснЕдиница)+" ("+пН.оснКоэффициент+")";
+        пШт:=глПолучитьШтрихкод(пН);
+      EndIf;
+      Т.CopyByX("v"+Стл+"|h1",1);
+      Form.StatusText(Н);
+      
+      For а:=1 to спОсновныеЦены.Size() Do
+        ТЦ:=спОсновныеЦены.Get(а);
+        Ц:=Ref.цЦены;
+        пЦ:="";
+        If Ц.Find("@Parent,ТипЦен,@Status",пН,ТЦ,0)>0 Then
+          пЦ:=FormatNumber(Ц.GetValue("Цена",оДата),1,"",2);
+        EndIf;
+        Т.CopyByX("v"+Стл+"|h5");
+      EndDo;
+      
+      If оСпр Then
+        For а:=1 to оТЦ.Size() Do
+          If оТЦ.Check(а) Then
+            ТЦ:=оТЦ.Get(а);
+            Ц:=Ref.цЦены;
+            пЦ:="";
+            If Ц.Find("@Parent,ТипЦен,@Status",пН,ТЦ,0)>0 Then
+              пЦ:=FormatNumber(Ц.GetValue("Цена",оДата),1,"",2);
+            EndIf;
+            Т.CopyByX("v"+Стл+"|h2");
+          EndIf;
+        EndDo;
+      EndIf;
+      Т.CopyByX("v"+Стл+"|h3");
+    EndDo;
+    
+    пКолВо:=Н;
+    Т.CopyByX("v5|h1",1);
+    For а:=1 to спОсновныеЦены.Size() Do
+      Т.CopyByX("v5|h5");
+    EndDo;
+    If оСпр Then
+      For а:=1 to оТЦ.Size() Do
+        If оТЦ.Check(а) Then
+          Т.CopyByX("v5|h2");
+        EndIf;
+      EndDo;
+    EndIf;
+    Т.CopyByX("v5|h3");
+  Finally  
+    Т.Unlock();
+    Т.EditorMode:=1;
+  EndTry;  
+EndFunction
+
+
+Function УстановитьЦенуПоТипуЦен(зН,ТипЦен,Цена)
+  Ц:=Ref.цЦены;
+  Фл:=0;
+  If Ц.Find("@Parent,ТипЦен",зН,ТипЦен) Then
+    If Ц.Status()=1 Then
+      Ц.Mark(0);
+    EndIf;
+  Else
+    Ц.New();
+    Ц.Parent(зН);
+    Ц.ТипЦен:=ТипЦен;
+    If not глЗаписать(Ц) Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  Ц.SetValue("Цена",Цена,Form.оДата.Value);
+  If флУстановкаРучныхЦен Then
+    If not спИзменные.Find(зН) Then
+      спИзменные.Add(зН);
+    EndIf;
+  EndIf;
+  Exit 1;
+EndFunction
+
+
+Function ВвестиШтрихкод()
+  aList:=List.Create();
+  LoadModule(10,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\СканированиеШтрихкода",aList,0,"Module","Form");
+  If aList["Ответ"]<>1 Then
+    Exit;
+  EndIf;
+  Стр:=aList["Результат"];
+  аН:=0;
+  Фл:=глНайтиТМЦПоШтрихКоду(Стр,аН);
+  If not Фл Then
+    Box("Номенклатура или партия со штрихкодом "+Trim(Стр)+" не найдены!",Q_STOP);
+    Exit;
+  EndIf;
+  If аН.DBName()="тмцПартииТМЦ" Then
+    аН:=аН.Parent();
+  EndIf;
+  
+  If флУстановкаРучныхЦен then
+    оН:=Form.оН.Value.Get(1);
+    If not оН.Contains(аН) Then
+      Box("Вам запрещено устанавливать цены для номенклатуры "+аН+" ("+аН.Code+")!",Q_STOP);
+      Exit;
+    EndIf;
+  EndIf;  
+  
+  Таб:=Form.Таблица.Value;
+  Фл:=0;
+  б:=6;
+  While б<=Таб.Height() Do
+    зН:=Таб.Area(3,б,3,б).Value;
+    If зН=аН Then
+      Таб.SetCursor(6,б);
+      Таб.ResetCursor();
+      Form.Таблица.SetFocus();
+      Фл:=1;
+      If флУстановкаРучныхЦен then
+        Box("Найдена номенклатура: "+зН+" ("+зН.Code+")!",Q_INFORMATION);
+        СтЦ:=Number(Таб.Area(7,б,7,б).Text);
+      Else
+        СтЦ:=Number(Таб.Area(6,б,6,б).Text);
+      EndIf;  
+      
+      If флУстановкаРучныхЦен then
+        Знч:=0;
+        If not AskNumber(Знч,"Старая цена: "+СтЦ,10,2) Then
+          Exit;
+        EndIf;
+      
+        if not УстановитьЦенуПоТипуЦен(зН,рознТипЦен,Знч) Then
+          exit;
+        EndIf;
+        Таб.Area(7,б,7,б).Text:=FormatNumber(Знч,1,"",2);
+        Box("Изменилась розничная цена для номенклатуры "+зН+" ("+зН.Code+") "+_NEWLINE+"с "+СтЦ+_NEWLINE+"на "+Знч,Q_INFORMATION);
+      EndIf;  
+      Break;
+    EndIf;
+    If IsEmpty(зН) Then
+      Break;
+    EndIf;
+    б:=б+1;
+  EndDo;
+  If not Фл Then
+    Box("Номенклатура номенклатуры "+аН+" ("+аН.Code+") в таблице не найдена!",Q_STOP);
+    Exit;
+  EndIf;
+
+EndFunction;
+
+Function OnBeforeEdit(SourceTable,EditMode,ObjectType,ObjectIndex,Line,Column,AttButtons,EditValue,EditMask)
+  EditMode:=2;
+  Таб:=Form.Таблица.Value;
+  If (Column<6)or(Column>5+Ширина) Then
+    Exit;
+  EndIf;
+  зН:=Таб.Area(3,Line,3,Line).Value;
+  if _Or(isEmpty(зН),зН.IsFolder()) Then
+    Exit;
+  EndIf;
+  EditValue:=Number(Таб.Area(Column,Line,Column,Line).Text);
+  EditMask:="!10.2";
+  EditMode:=1;
+  AttButtons:=""+_AB_CALC;
+EndFunction
+
+Function OnAfterEdit(SourceTable,EditMode,ObjectType,ObjectIndex,Line,Column,isChanged)
+  Таб:=Form.Таблица.Value;
+  If (Column<6)or(Column>5+Ширина) Then
+    Exit;
+  EndIf;
+  зН:=Таб.Area(3,Line,3,Line).Value;
+  if _Or(isEmpty(зН),зН.IsFolder()) Then
+    Exit;
+  EndIf;
+
+  If (Column=6)And(флУстановкаРучныхЦен) Then
+    Box("Вам запрещено изменять основные цены, они даны здесь только для справки!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  О:=Таб.Area(Column,Line,Column,Line);
+  Знч:=О.Value;
+  О.Value:=GetNothing();
+  
+  //Ищем тип цен
+  ТЦ:=0;
+  Стр:=0;
+  For б:=1 to спОсновныеЦены.Size() Do
+    Стр:=Стр+1;
+    If Стр=Column-5 Then
+      ТЦ:=спОсновныеЦены.Get(б);
+      Break;
+    EndIf;
+  EndDo;
+  If ТЦ=0 Then
+    оТЦ:=Form.оТЦ.Value;
+    For б:=1 to оТЦ.Size() Do
+      If оТЦ.Check(б) Then
+        Стр:=Стр+1;
+        If Стр=Column-6 Then
+          ТЦ:=оТЦ.Get(б);
+          Break;
+        EndIf;
+      EndIf;
+    EndDo;
+  EndIf;
+  
+  If ТЦ<>0 Then
+    if not УстановитьЦенуПоТипуЦен(зН,ТЦ,Знч) Then
+      exit;
+    EndIf;
+    О.Text:=FormatNumber(Знч,1,"",2);
+  EndIf;
+EndFunction
+

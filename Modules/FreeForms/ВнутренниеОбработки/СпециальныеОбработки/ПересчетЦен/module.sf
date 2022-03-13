@@ -1,0 +1,128 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var Д Export;
+Var ФлТЦДок Export;
+
+Function ОбновитьДоступность()
+  Фл:=1-Form.оОсновные.Value;
+  Form.тТ3.isDisabled:=1-Фл;
+  Form.оТЦ.isDisabled:=1-Фл;
+EndFunction
+
+Function Пересчитать()
+
+  Вид:=Д.DBName();
+  aTab:=0;
+  If not isEmpty(Struct.Doc(Вид).LineParts("Номенклатура")) Then
+    aTab:=Д.LineParts("Номенклатура");
+  ElseIf not isEmpty(Struct.Doc(Вид).LineParts("Содержание")) Then
+    aTab:=Д.LineParts("Содержание");
+  EndIf;
+  Logs.Write("Пересчитаны цены в документе "+Д,Д,"USER",0);
+  
+  //Находим коэффициент распределенной скидки
+  МаксСкидка:=Form.оРСкидка.Value;
+  СпЦены:=0;
+  оРСкидка:=0;
+  ФлКоэффСкидки:=0;
+  If (Form.оРаспСк.Value=1)And(Form.оРСкидка.Value>0) Then
+    СпЦены:=List.Create();
+    См:=0;
+    aTab.Select();
+    While aTab.Next() Do
+      If (aTab.Номенклатура.ВидНоменклатуры=Enum.ВидыНоменклатуры.Тара)And(aTab.СтавкаНДС=Enum.СтавкиНДС.БезНДС) Then
+        СпЦены.Add(-1);
+        Continue;
+      EndIf;
+      If Form.оОсновные.Value=1 Then
+        Цена:=глПолучитьОсновнуюЦену(aTab.Номенклатура,Д.Магазин,Д.DocDate);
+      Else
+        Цена:=глНайтиЦену(aTab.Номенклатура,Form.оТЦ.Value,Д.DocDate);
+      EndIf;
+      СпЦены.Add(Цена);
+      См:=См+Цена*aTab.Количество;
+    EndDo;
+    ФлКоэффСкидки:=?(См=0,0,МаксСкидка/См);
+  EndIf;
+  
+  aTab.Select();
+  While aTab.Next() Do    
+    If Form.оСкидка.Value<>0 Then
+      fTab1:=Form.оГРП.Value.Get(1);
+      fTab2:=Form.оГРП.Value.Get(2);
+      If fTab1.Size()>0 Then
+        If not fTab1.Contains(aTab.Номенклатура) Then
+          Continue;
+        EndIf;
+      EndIf;
+      If fTab2.Size()>0 Then
+        If fTab2.Contains(aTab.Номенклатура) Then
+          Continue;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    ФлТара:=0;
+    If aTab.GetColumnIndex("СтавкаНДС")>0 Then
+      If (aTab.Номенклатура.ВидНоменклатуры=Enum.ВидыНоменклатуры.Тара)And(aTab.СтавкаНДС=Enum.СтавкиНДС.БезНДС) Then
+        ФлТара:=1;
+      EndIf;
+    EndIf;
+    If (Form.оБезТары.Value=1)And(ФлТара=1) Then
+      Continue;
+    EndIf;
+    
+    Цена:=?(СпЦены=0,-1,СпЦены[aTab.CurLine]);
+    If Цена<0 Then
+      If Form.оОсновные.Value=1 Then
+        Цена:=глПолучитьОсновнуюЦену(aTab.Номенклатура,Д.Магазин,Д.DocDate);
+      Else
+        Цена:=глНайтиЦену(aTab.Номенклатура,Form.оТЦ.Value,Д.DocDate);
+      EndIf;
+    EndIf;
+    
+    If aTab.GetColumnIndex("Цена")>0 Then
+      aTab.Цена:=Цена;
+    EndIf;
+    If _And(Form.оРаспСк.Value=1,ФлТара=0) Then
+      Сумма:=Max(0,Цена*aTab.Количество);
+      Скидка:=Min(Round(ФлКоэффСкидки*Сумма,2),МаксСкидка,Сумма);
+      МаксСкидка:=МаксСкидка-Скидка;
+      Сумма:=Сумма-Скидка;
+      aTab.Сумма:=Сумма;
+    Else
+      aTab.Сумма:=Цена*aTab.Количество;
+    EndIf;
+    
+    If Form.оСкидка.Value<>0 Then
+      aTab.Сумма:=aTab.Сумма*(1-Form.оСкидка.Value/100);
+    EndIf;
+    
+    Фл:=1;
+    If глЕстьРеквизитДокумента("УчитыватьВНалоговомУчете",Вид) Then
+      Фл:=Д.УчитыватьВНалоговомУчете;
+    EndIf;
+    
+    If aTab.GetColumnIndex("СуммаНДС")>0 Then
+      aTab.СуммаНДС:=?(Фл=0,0,aTab.Сумма*глКоэффНДС(aTab.СтавкаНДС));
+    EndIf;
+  EndDo;
+  
+  Form.IsChanged(0);
+EndFunction
+
+Function OnExecute()
+  Пересчитать();
+  Form.Close(0);
+EndFunction
+
+Function OnOpen()
+  If not глПользователь.общиеРедактированиеЦенВДокументах Then
+    Box("Вам запрещается пользоваться пересчетом цен!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  Exit 1;
+EndFunction

@@ -1,0 +1,433 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var спАкт Export;
+Var СтарТипАктива Export;
+Var флРежимПланов Export;
+
+Function ПриПереносеЭлементаВДругуюГруппу(Эл,Гр)
+  if IsEmpty(Гр) Then
+    Гр:=GetNothing("Ref.кнтКонтрагенты");
+  EndIf;
+  If (Эл.IsFolder())And(not глПользователь.общиеАдминистратор) Then
+    Box("Вы не имеете права переносить папки!",Q_STOP);
+    Exit 0;
+  ElseIf Эл.IsFolder() Then
+    Exit 1;
+  EndIf;
+  а:=Гр;
+  While а.Selected()<>0 Do
+    If а.ТипАктива>0 Then
+      If а.ТипАктива-1<>Эл.ТипАктива Then
+        Box("В папке "+а+" ("+а.Code+") должны находиться только контрагенты вида """+спАкт.Get(а.ТипАктива)+"""!",Q_STOP);
+        If not глРаботаетРобот Then
+          Exit 0;
+        EndIf;
+      EndIf;
+      Break;
+    EndIf;
+    а:=а.Folder();
+  EndDo;
+  
+  ФлЗапретПер:=0;
+  Род:=Эл;
+  While Род.Folder().Selected()<>0 Do
+    Род:=Род.Folder();
+    If Trunc(Род.флЗапреты/2)%2=1 Then
+      ФлЗапретПер:=1;
+      Break;
+    EndIf;
+  EndDo;
+  If ФлЗапретПер=1 Then
+    If Гр<>Род Then
+      Род2:=Гр;Фл:=0;
+      While Род2.Folder().Selected()<>0 Do
+        Род2:=Род2.Folder();
+        If Род2=Род Then
+          Фл:=1;
+          Break;
+        EndIf;
+      EndDo;
+      If Фл=0 Then
+        Box("Из папки "+Род+" ("+Род.Code+") запрещено перемещение контрагентов во внешние папки!",Q_STOP);
+        If not глРаботаетРобот Then
+          Exit 0;
+        EndIf;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  If (Эл.Folder().Selected()<>0)And(not Эл.IsFolder()) Then
+    If Гр.Selected()=0 Then
+      Box("Запрещено перемещать контрагентов в корневую папку!",Q_STOP);
+      If not глРаботаетРобот Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  If Гр.Selected()<>0 Then
+    If Trunc(Гр.флЗапреты/16)%2=1 Then
+      Box("Запрещено перемещать контрагентов в корень папки "+Гр+" ("+Гр.Code+"), вы можете переместить этого контрагента только в одну из вложенных папок!",Q_STOP);
+      If not глРаботаетРобот Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  Род:=Гр;
+  While Род.Selected()<>0 Do
+    If Trunc(Род.флЗапреты/8)%2=1 Then
+      а:=Ref.кнтДоговоры;
+      а.Select("@Parent",Эл);
+      While а.Next() Do
+        If not глПроверитьОстаткиПоДоговору(а,"переместить контрагента в группу """+Гр+"""",1) Then
+          If not глРаботаетРобот Then
+            Exit 0;
+          EndIf;
+        EndIf;
+      EndDo;
+      Break;
+    EndIf;
+    Род:=Род.Folder();
+  EndDo;
+  
+  Exit 1;
+EndFunction
+
+Function OnChangeName()
+  If not глИсправитьНаименованиеКонтрагента(Form.Object) Then
+    Exit 0;
+  EndIf;
+  Exit 1;
+EndFunction
+
+Function ПоКнопкеОткрытьСправочник(Вид,флГруппа=0,ИмяФормы="SelectForm")
+  aEl:=Form.MainTab.SelectedElement;
+  If IsEmpty(aEl) Then
+    Exit;
+  EndIf;
+  If aEl.Selected()<0 Then
+    Exit;
+  EndIf;
+  If (not флГруппа)and(aEl.IsFolder()) Then
+    Exit;
+  EndIf;
+  глОткрытьФормуСправочника(Вид,ИмяФормы,,aEl);
+EndFunction
+
+Function ПоКнопкеОткрытьСправочникИзЭлемента(Вид)
+  aEl:=Form.Object;
+  If IsEmpty(aEl) Then
+    Exit;
+  EndIf;
+  If aEl.Selected()<0 Then
+    Box("Сначала запишите элемент!",Q_STOP);
+    Exit;
+  EndIf;
+  глОткрытьФормуСправочника(Вид,,,aEl);
+EndFunction
+
+Function ИзменитьМаскуИНН(ФлОткрытие=0)
+  aEl:=Form.Object;
+  Стр:=Trim(Form.ИНН.Value);
+  Стр:=TearStr(Стр,"/");
+  Дл:=Length(Form.ИНН.Value);
+  if aEl.ВидКонтрагента=Enum.ВидыКонтрагентов.ФизЛицо Then
+    Form.ИНН.Mask:="000000000000;1;_";
+    if (Дл>12)Or(Pos("/",Form.ИНН.Value)>0)Or(Trim(Form.ИНН.Value)="") Then
+      If not ФлОткрытие Then
+        aEl.ИНН:="";
+      EndIf;
+    EndIf;
+  ElseIf aEl.ВидКонтрагента=Enum.ВидыКонтрагентов.ЮрЛицо Then
+    Form.ИНН.Mask:="0000000000/000000000;1;_";
+    If (Дл<20)And(not ФлОткрытие) Then
+      aEl.ИНН:="";
+    EndIf;
+  Else
+    Form.ИНН.Mask:="cccccccccccccccccccc;1;_";
+  EndIf;
+EndFunction
+
+Function УстановитьВидимость()
+  aEl:=Form.Object;
+  Фл:=Max(1-глПользователь.общиеОсновныеСправочники,?(Form.Mode()=4,1,0));
+  Form.DisableControls(Фл);
+  If Фл Then
+    Form.кнВводаЮрАдреса.isDisabled:=1;
+    Form.кнВводаФактАдреса.isDisabled:=1;
+    Form.кнВводаУдостоверения.isDisabled:=1;
+    Exit;
+  EndIf;
+  
+  Form.УникальныйИдентификатор.isDisabled:=1-глПользователь.бухБухгалтер;
+  Form.КодТочкиЕГАИС.isDisabled:=1-глПользователь.бухБухгалтер;
+  Ном:=aEl.ВидКонтрагента.Index();
+  ФЛ:=?(Ном=1,1,0)*Min(Ном,1);
+  ЮЛ:=?(Ном>1,1,0)*Min(Ном,1);
+  СЮЛ:=?(Ном=3,1,0)*Min(Ном,1);
+  
+  Form.ОКПО.isDisabled:=1-ЮЛ;
+  Form.кнВводаУдостоверения.isDisabled:=1-ФЛ;
+  Form.СвоеЮрЛицо.isInvisible:=1-СЮЛ;
+  Form.СвоеЮрЛицо.isInvisible:=1-СЮЛ;
+  Form.тСЮЛ.isInvisible:=1-СЮЛ;
+  Form.тУЛ.isInvisible:=1-ФЛ;
+EndFunction
+
+
+Function ПриИзмененииИНН()
+  aEl:=Form.Object;
+  If ((aEl.флИностранныйКонтрагент)or(aEl.фоРозничныйПокупатель))And(Trim(aEl.ИНН)<>"") Then
+    Box("Поле ИНН зарезервировано для обычных контрагентов. Иностранные контрагенты или розничные покупатели не имеют кода ИНН! Проверьте, корректность вводимой информации!",Q_WARNING);
+    Exit 1;
+  EndIf
+    
+  If (aEl.флИностранныйКонтрагент=0)And(aEl.фоРозничныйПокупатель=0) Then
+    aEl.ИНН:=Replace(Replace(aEl.ИНН,"\","/")," ","");
+    If not ContainsOnlyCharacters(Trim(aEl.ИНН),"0123456789/") Then
+      Box("Вы вводите неверный ИНН! Правильно и внимательно введите все цифры в ИНН! Сознательная ошибка является серьезным нарушением!",Q_STOP);
+      aEl.ИНН:="";
+      Exit 0;
+    EndIf;
+    
+    //Проверка контрольной суммы
+    пИНН:=Trim(aEl.ИНН);
+    пИНН:=Trim(TearStr(пИНН,"/"));
+    aNum:=0;
+    If Length(пИНН)=10 Then
+      aList:=List.Create(2,4,10,3,5,9,4,6,8);
+      For i:=1 To aList.Size() Do
+        aNum:=aNum+Number(пИНН[i])*aList[i];
+      EndDo;
+      aNum:=(aNum%11)%10;
+      Фл:=aNum=Number(пИНН[10]);
+    ElseIf Length(пИНН)=12 Then
+      aList:=List.Create(7,2,4,10,3,5,9,4,6,8,0);
+      bList:=List.Create(3,7,2,4,10,3,5,9,4,6,8);
+      bNum:=0;
+      For i:=1 To aList.Size() Do
+        aNum:=aNum+Number(пИНН[i])*aList[i];
+        bNum:=bNum+Number(пИНН[i])*bList[i];
+      EndDo;
+      aNum:=(aNum%11)%10;
+      bNum:=(bNum%11)%10;
+      Фл:=(aNum=Number(пИНН[11]))And(bNum=Number(пИНН[12]));
+    Else
+      Box("ИНН имеет неверную длину! Допустимы значения с 10 или 12 символами!",Q_STOP);
+      Exit 0;
+    EndIf;
+    If not Фл Then
+      Box("Введенный ИНН содержит ошибку (несовпадение контрольной суммы)! Правильно и внимательно введите все цифры в ИНН! Сознательная ошибка является серьезным нарушением!",Q_STOP);
+      Exit 0;    
+    EndIf;
+    
+  
+    пИНН:=Trim(aEl.ИНН);
+    if aEl.ТипАктива=0 Then
+      пИНН:=Trim(TearStr(пИНН,"/"));
+      
+      аЭл:=Ref.кнтКонтрагенты;
+      aList:=аЭл.Load(0,"%ИНН,=ТипАктива,<>Code",пИНН,aEl.ТипАктива,aEl.Code);
+      аЭл:=0;
+      For i:=1 To aList.Size() Do
+        аЭл:=aList.Get(i);
+        If аЭл.СотрудникКомпании<>aEl.СотрудникКомпании Then
+          аЭл:=0;
+          Continue;
+        EndIf;
+        пИНН2:=аЭл.ИНН;
+        пИНН2:=Trim(TearStr(пИНН2,"/"));
+        if пИНН=пИНН2 Then
+          break;
+        EndIf;
+        аЭл:=0;
+      EndDo;
+    Else
+      аЭл:=Ref.кнтКонтрагенты;
+      aList:=аЭл.Load(0,"%ИНН,=ТипАктива,<>Code",пИНН,aEl.ТипАктива,aEl.Code);
+      аЭл:=0;
+      For i:=1 To aList.Size() Do
+        аЭл:=aList.Get(i);
+        пИНН2:=Trim(аЭл.ИНН);
+        if пИНН=пИНН2 Then
+          break;
+        EndIf;
+        аЭл:=0;
+      EndDo;
+    EndIf;  
+  
+    If not isEmpty(аЭл) Then
+      If глПользователь.бухГлавныйБухгалтер Then
+        If AskQuestion("Внимание! В базе данных уже есть контрагент с таким ИНН, это "+аЭл+" с кодом "+аЭл.Code+"! Проверьте, не вводите ли вы повторно этого же контрагента! Хотите исправить ИНН?",Q_QUESTION+Q_YESNO)=R_YES Then
+          aEl.ИНН:="";
+          Exit 0;
+        EndIf;
+      Else
+        Box("Внимание! В базе данных уже есть контрагент с таким ИНН, это "+аЭл+" с кодом "+аЭл.Code+"! Проверьте, не вводите ли вы повторно этого же контрагента! Запрещается вводить "+
+          "одинаковых покупателей более одного раза, если необходимо вести отдельно взаиморасчеты по разным точкам одного покупателя, заведите второй договор! Искажение ИНН недопускается и является серьезным "+
+          "нарушением!",Q_STOP);
+        aEl.ИНН:="";
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;  
+  
+  Exit 1;
+EndFunction
+
+Function ОбновитьАдреса()
+  aEl:=Form.Object;
+  Form.тЮрАдрес.Caption:="Юридический адрес: "+глПредставлениеАдреса(aEl.ЮрАдрес,1);
+  Form.тФактАдрес.Caption:="Фактический адрес: "+глПредставлениеАдреса(aEl.ФактАдрес,1);
+  Form.тУЛ.Caption:="Удостоверение личности: "+глПредставлениеУдостоверения(aEl.ДокументУдЛичность,,,1);
+EndFunction
+
+
+Function OnBeforeElementSave()
+  aEl:=Form.Object;
+  If aEl.isFolder() Then
+    If Trim(aEl.Name)="" Then
+      Box("Не указано наименование группы!",Q_STOP);
+      Form.cName.SetFocus();
+      Exit 0;
+    EndIf;
+    Exit 1;
+  EndIf;
+  If флРежимПланов=1 Then
+    Exit 1;
+  EndIf;
+  
+  If (aEl.флИностранныйКонтрагент)Or(aEl.фоРозничныйПокупатель) Then
+    If Trim(aEl.ОГРН)<>"" Then
+      Message("Для иностранных контрагентов и розничных попкутелей заполнение поля ОГРН не имеет смысла","!");
+    EndIf;
+  ElseIf Trim(aEl.ОГРН)<>"" Then
+    Стр:=Trim(aEl.ОГРН);
+    If ((aEl.ВидКонтрагента=Enum.ВидыКонтрагентов.ФизЛицо)And(Length(Стр)<>15))or
+       ((aEl.ВидКонтрагента=Enum.ВидыКонтрагентов.ЮрЛицо)And(Length(Стр)<>13)) Then
+      Box("Неверная длина ОГРН или ОГРНИП! ОГРН имеет длину 13 символов для юр. лиц и 15 символов для ИП.",Q_STOP);
+      Exit 0;
+    ElseIf not ContainsOnlyCharacters(Стр,"0123456789") Then
+      Box("ОГРН или ОГРНИП должен содержать только цифры.",Q_STOP);
+      Exit 0;    
+    EndIf;
+    //Проверка контрольной суммы ОГРН
+    aNum:=?(Length(Стр)=13,Number(Left(Стр,12))%11%10,Number(Left(Стр,14))%13%10);
+    if aNum<>Number(Стр[Length(Стр)]) Then
+      Box("ОГРН или ОГРНИП введен неверно (несовпадение контрольной суммы)! Внимательно проверьте все цифры на корректность!",Q_STOP);
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  aEl.Name:=Replace(Trim(aEl.Name),"""","");
+  If Trim(aEl.Name)="" Then
+    Box("Нельзя записать элемент с пустым представлением! Это поле обязательно для заполнения!",Q_STOP);
+    Exit 0;
+  EndIf;
+  If Trim(aEl.ПолнНаименование)="" Then
+    Box("Нельзя записать элемент с пустым именем для печати! Это поле обязательно для заполнения!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  пКПП:=Trim(aEl.ИНН);
+  пИНН:=TearStr(пКПП,"/");
+  пИНН:=Length(пИНН);
+  пКПП:=Length(пКПП);
+  If (aEl.флИностранныйКонтрагент=0)And(aEl.фоРозничныйПокупатель=0) Then
+    If (((пИНН<>12)Or(пКПП<>0))And(aEl.ВидКонтрагента=Enum.ВидыКонтрагентов.ФизЛицо))
+       Or(((пИНН<>10)Or(пКПП<>9))And(aEl.ВидКонтрагента=Enum.ВидыКонтрагентов.ЮрЛицо)) Then
+      Box("Неверная длина ИНН (или КПП)! Пожалуйста, введите корректный ИНН"+?(aEl.ВидКонтрагента<>Enum.ВидыКонтрагентов.ФизЛицо," и КПП","")+"!",Q_STOP);
+      If not глРаботаетРобот Then
+        Exit 0;
+      EndIf;
+    EndIf;
+    If ПриИзмененииИНН()=0 Then
+      Exit 0;
+    EndIf;  
+  EndIf;  
+  
+  If aEl.ВидКонтрагента<>Enum.ВидыКонтрагентов.СвоеЮрЛицо Then
+    aEl.СвоеЮрЛицо:=0;
+  ElseIf aEl.ТипАктива<>3 Then
+    Box("Собственное юридическое лицо должно иметь соотвутствующий тип контрагента!",Q_STOP);
+    Exit 0;
+  ElseIf not глПользователь.бухГлавныйБухгалтер Then
+    Box("Вам запрещено создавать или изменять контрагентов с видом ""Собственное юр. лицо""!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  Фл:=0;
+  If aEl.ВидКонтрагента<>Enum.ВидыКонтрагентов.ФизЛицо Then
+    aEl.ДокументУдЛичность:="";
+  ElseIf Trim(aEl.ДокументУдЛичность)="" Then
+    Фл:=1;
+  EndIf;
+  If (Trim(aEl.ЮрАдрес)="")Or(Trim(aEl.ФактАдрес)="") Then
+    Фл:=1;
+  EndIf;
+  If (Фл=1)And(aEl.ТипАктива>0)And(aEl.флИностранныйКонтрагент=0)And(aEl.фоРозничныйПокупатель=0) Then
+    Box("Пожалуйста заполните сначала корректно юр. адрес, почт. адрес и удостоверение личности!",Q_STOP);
+    If not глПользователь.бухГлавныйБухгалтер Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  //Правильный ли тип?
+  а:=aEl.Folder();
+  While а.Selected()<>0 Do
+    If а.ТипАктива>0 Then
+      If а.ТипАктива-1<>aEl.ТипАктива Then
+        Стр:=Form.ТипАктива.Value.GetName(Max(Min(а.ТипАктива,5),1));
+        Box("В папке "+а+" ("+а.Code+") должны находиться только контрагенты вида """+Стр+"""!",Q_STOP);
+        Exit 0;
+      EndIf;
+    EndIf;
+    а:=а.Folder();
+  EndDo;
+  
+  If isEmpty(aEl.ВидКонтрагента) Then
+    Box("Выберите вид контрагента!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  If aEl.Selected()>0 Then
+    If СтарТипАктива<>aEl.ТипАктива Then
+      ДКон:=Date();
+      ТЗ:="Period from '01.01.1981' to ДКон;
+      |зК:=Storage.Взаиморасчеты.Договор.@Parent;
+      |Condition зК=aEl;
+      |зСмП:=Income(Сумма);
+      |зСмР:=Expense(Сумма);
+      |зДок:=Storage.Взаиморасчеты.@Link;
+      |Group зДок;";
+      З:=Query.Create();
+      З.Execute(ТЗ);
+      
+      If З.Next(1) Then
+        Box("Внимание! Запрещается менять тип актива на контрагентах, у которых уже были движения! Это может нарушить календарь оплаты или кредитную ведомость! Обратитесь к администратору!",Q_STOP);
+        If not глПользователь.общиеАдминистратор Then
+          Exit 0;
+        EndIf;
+      EndIf;
+    EndIf;
+    If aEl.Copy().Name<>aEl.Name Then
+      If AskQuestion("Внимание! Запрещено менять наименование существующего контрагента -- если на этого контрагента были выписаны документы, это приведет серьезным ошибкам в учете! "+
+          "Если вы исправляете или уточняете наименование, игнорируйте это сообщение, иначе создайте новый элемент! Игнорировать?",Q_QUESTION+Q_YESNO)<>R_YES Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+Function OnOpenPeriodicalsEditor(Путь,Эл,ByRef НачДатаРедактирования,ByRef НачДатаПросмотра)
+  Result:=?(глПользователь.бухБухгалтер=1,1,2);
+EndFunction
+
+
+спАкт:=List.Create("Покупатель","Пост. товара","Пост. услуг","Соб. юл.","Кредит.");
+

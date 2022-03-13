@@ -1,0 +1,561 @@
+//Глобальные (root) модули загружаются при старте системы. Загрузка начинается с модуля "module" и продолжается в алфавитном порядке.
+//Переменные и функции, объявленные с постфиксом export, будут доступны в любых других модулях в любых потоках системы.
+//Модуль может содержать специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+//Производит расчет цен по правилам ценообразования от основной цены (либо указанной)
+//Используется при ценообразовании
+//спБуфер: пустой список для ускорения многочисленных вызовов
+//         без него функция будет работать очень медленно для типов с цен с большим числом отклонений
+//спБуфер использует память (не так много, так как справочник номенклатуры он загружает только в виде заговков)
+Function глРассчитатьЦену(Н,ТипЦен,Цена0,ByRef резПроцент=0,ByRef резСумма=0,флОкр=0,спБуфер=0) Export
+
+  Function _Содержит(ТСтруктура,Папка,Элемент)
+    If Папка=Элемент Then
+      Exit 1;
+    EndIf;
+    If ТСтруктура.FindAndGoto(Элемент,,"Элемент",1)=0 Then
+      Exit Папка.Contains(Элемент);
+    EndIf;
+    While not IsEmpty(ТСтруктура.Папка) Do
+      If ТСтруктура.Папка=Папка Then
+        Exit 1;
+      EndIf;
+      Элемент:=ТСтруктура.Папка;
+      If ТСтруктура.FindAndGoto(Элемент,,"Элемент",1)=0 Then
+        Exit Папка.Contains(Элемент);
+      EndIf;
+    EndDo;
+    Exit 0;
+  EndFunction
+
+  ТТвердыеЦены:=0;
+  спНаценки:=0;
+  If not IsEmpty(спБуфер) Then
+    ТСтруктура:=спБуфер.GetByName("ТСтруктура");
+    If isEmpty(ТСтруктура) Then
+      aTemp:=TempDB.Create("Папка:DB,Элемент:DB");
+      спВиды:=List.Create(Enum.ВидыНоменклатуры.Товар,Enum.ВидыНоменклатуры.Тара);
+      aTemp.LoadFrom("Ref.тмцНоменклатура","@Folder->Папка,@ELEMENT->Элемент","@Status=0","(ВидНоменклатуры IN спВиды)or(@IsFolder=1)");
+      ТСтруктура:=Tab.Create();
+      aTemp.CopyTo(ТСтруктура);
+      MassLoadObjects(ТСтруктура,,,0,1,"Code");
+      ТСтруктура.Sort("Элемент+");
+      спБуфер.SetByName("ТСтруктура",ТСтруктура);
+    EndIf;  
+    
+    ТТвердыеЦены:=спБуфер.GetByName("Тв_"+ТипЦен.Code);
+    If IsEmpty(ТТвердыеЦены) Then
+      ТТвердыеЦены:=Tab.Create("Номенклатура,Цена");
+      а:=Ref.цНаценкиНаГруппы;
+      а.Select("~(@Parent=ТипЦен)And(@Status=0)And(Процент=-100)And(ГруппаНоменклатуры.@IsFolder=0)");
+      While а.Next() Do
+        ТТвердыеЦены.AddLine("Номенклатура,Цена",а.ГруппаНоменклатуры,а.Сумма);
+      EndDo;
+      ТТвердыеЦены.Sort("Номенклатура+");
+      спБуфер.SetByName("Тв_"+ТипЦен.Code,ТТвердыеЦены);
+    EndIf;
+    
+    спНаценки:=спБуфер.GetByName("спНаценки_"+ТипЦен.Code);
+    If isEmpty(спНаценки) Then
+      спНаценки:=Ref.цНаценкиНаГруппы.Load(0,"~(@Parent=ТипЦен)And(@Status=0)And((Процент<>-100)or(ГруппаНоменклатуры.@IsFolder=1))");
+      спБуфер.SetByName("спНаценки",спНаценки);
+    EndIf;
+  EndIf;
+  
+  фОткл:=0;
+  If not IsEmpty(спНаценки) Then
+    If ТТвердыеЦены<>0 Then
+      If ТТвердыеЦены.FindAndGoto(Н,,"Номенклатура",1)>0 Then
+        резСумма:=ТТвердыеЦены.Цена;
+        резПроцент:=-100;
+        Exit резСумма;
+      EndIf;
+    EndIf;
+  
+    For i:=1 To спНаценки.Size() Do
+      а:=спНаценки.Get(i);
+      If _Содержит(ТСтруктура,а.ГруппаНоменклатуры,Н) Then
+        If а.флРучная Then
+          Exit -1;
+        EndIf;
+        If фОткл<>0 Then
+          If not _Содержит(ТСтруктура,фОткл.ГруппаНоменклатуры,а.ГруппаНоменклатуры) Then
+            Continue;
+          EndIf;
+        EndIf;
+        фОткл:=а;
+      EndIf;
+    EndDo;
+  Else
+    //Очень медленный пересчет
+    а:=Ref.цНаценкиНаГруппы;
+    а.Select("@Parent,@Status",ТипЦен,0);
+    While а.Next() Do
+      If а.ГруппаНоменклатуры.Contains(Н) Then
+        If а.флРучная Then
+          Exit -1;
+        EndIf;
+        If фОткл<>0 Then
+          If not фОткл.ГруппаНоменклатуры.Contains(а.ГруппаНоменклатуры) Then
+            Continue;
+          EndIf;
+        EndIf;
+        фОткл:=а.Copy();
+      EndIf;
+    EndDo;
+  EndIf;  
+  
+  If фОткл<>0 Then
+    пЦ1:=Round((Цена0*(100+фОткл.Процент)/100)+фОткл.Сумма,2);
+    резПроцент:=фОткл.Процент;
+    резСумма:=фОткл.Сумма;
+    If флОкр=0 Then
+      флОкр:=фОткл.флОкругление;
+    EndIf;  
+  Else
+    пЦ1:=Round((Цена0*(100+ТипЦен.Процент)/100)+ТипЦен.Сумма,2);
+    резПроцент:=ТипЦен.Процент;
+    резСумма:=ТипЦен.Сумма;
+  EndIf;
+  //Округление
+  If флОкр>0 Then
+    If флОкр=1 Then
+      пЦ1:=Trunc(пЦ1*20+0.99)/20;
+    ElseIf флОкр=2 Then
+      пЦ1:=Trunc(пЦ1*10+0.99)/10;
+    ElseIf флОкр=3 Then
+      пЦ1:=Trunc(пЦ1*5+0.99)/5;
+    ElseIf флОкр=4 Then
+      пЦ1:=Trunc(пЦ1*2+0.99)/2;
+    ElseIf флОкр=5 Then
+      пЦ1:=Trunc(пЦ1+0.99);
+    ElseIf флОкр=6 Then
+      пЦ1:=Trunc(пЦ1/5+0.99)*5;
+    ElseIf флОкр=7 Then
+      пЦ1:=Trunc(пЦ1/10+0.99)*10;
+    ElseIf флОкр=8 Then
+      пЦ1:=Trunc(пЦ1/20+0.99)*20;
+    Else
+      пЦ1:=Trunc(пЦ1/50+0.99)*50;
+    EndIf;
+  EndIf;
+  
+  Exit пЦ1;
+EndFunction
+
+
+
+Function глПопыткаИзменитьРезервыВДокументе(aEl) Export
+  If not глРаботаетРобот Then
+    а:=Ref.общСнятиеРезервов;
+    а.Select("@Parent",aEl.Склад);
+    If а.Next() Then
+      If not isEmpty(а.Документ) Then
+        If BegOfDay(aEl.DocDate)<BegOfDay(а.Документ.DocDate) Then
+          Exit "Во избежание возникновения отрицательных резервов, этот документ изменять нельзя!";
+        EndIf;
+      EndIf;
+    EndIf;
+  EndIf;
+  Exit;
+EndFunction
+
+//До начала транзакции отмены обработки любого документа
+Function глВоВремяОтменыОбработкиДокумента(aEl,флПарам=0) Export
+  If aEl.ФлагОбмена<>9 Then
+    aEl.ФлагОбмена:=1;
+  ElseIf ((Trim(aEl.ПрефиксУдаленнойБазы)<>"")Or(aEl.ФлагОбмена=9))And(not глРаботаетРобот) Then
+    Exit "Документы, выгруженные из удаленной базы, не разрешается изменять в данной!";
+  EndIf;
+  
+  Вид:=aEl.DBName();
+  If глЕстьРеквизитДокумента("Склад",Вид) Then
+    If (aEl.Склад.флЗапретитьЛюбыеНовыеДокументы)And(not глРаботаетРобот) Then
+      Exit "Нельзя создавать или изменять документы по складам, которые находятся в другой базе или запрещены к изменению!";
+    EndIf;
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("Контрагент",Вид) Then
+    If (Trunc(aEl.Контрагент.Folder().флЗапреты/32)%2=1)And(not глРаботаетРобот) Then
+      Exit "Нельзя создавать или изменять документы по контрагентам, которые находятся в другой базе или запрещены к изменению!";
+    EndIf;
+  EndIf;
+  If (глЕстьРеквизитДокумента("УникальныйИдентификатор2",Вид))And(глЕстьРеквизитДокумента("УникальныйИдентификатор3",Вид)) Then
+    If (Trim(aEl.УникальныйИдентификатор)<>"")Or(Trim(aEl.УникальныйИдентификатор2)<>"")Or(Trim(aEl.УникальныйИдентификатор3)<>"") Then
+      If not глПользователь.общиеАдминистратор Then
+        If Pos("КОМИССИЯ",UpperCase(Trim(aEl.КодОперации)))=0 Then
+          Exit "Документ запрещен к изменению, так как ему присвоен внешний уникальный номер!";
+        EndIf;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  If (BegOfDay(aEl.DocDate)<=DBVar.ДатаГлобальногоЗапрета)And(not глРаботаетРобот) Then
+    Exit "Изменение документов за эту дату запрещается!";
+  ElseIf (BegOfDay(aEl.DocDate)<=aEl.ЮрЛицо.ДатаЗапрета)And(not глРаботаетРобот) Then
+    Exit "Изменение документов по этому юр. лицу за эту дату запрещается!";
+  EndIf;
+  
+  Exit;
+EndFunction
+
+Function глТаблицаНакопителяОстаткиСПартиямиИЦенами(зДок) Export;
+  ТДок:=зДок.LineParts("Номенклатура").Copy();
+  
+  Фл:=1;
+  aTab:=зДок.LoadStorage("ОстаткиТМЦ");
+  aTab.AddColumn("Цена",,"Number");
+  aTab.AddColumn("Сумма",,"Number");
+  aTab.AddColumn("СуммаНДС",,"Number");
+  aTab.AddColumn("СтавкаНДС");
+  aTab.Select();
+  While aTab.Next() Do
+    Кл0:=aTab.Количество;
+    Сумма:=0;
+    СтавкаНДС:=aTab.Номенклатура.СтавкаНДС;
+    While Кл0>0 Do
+      If _Or(aTab.Партия.Selected()=0,ТДок.FindAndGoto(aTab.Партия,,"Партия")=0) Then
+        If ТДок.FindAndGoto(aTab.Номенклатура,,"Номенклатура")=0 Then
+          Raise "Движения документа не совпадают со строчной частью документа! Расхождения в количестве номенклатуры "+aTab.Номенклатура+"!";
+        EndIf;  
+      EndIf;
+      Кл:=Min(ТДок.Количество,Кл0);
+      Кл0:=Round(Кл0-Кл,6);
+      If Round(Кл-ТДок.Количество,6)=0 Then
+        Сумма:=Сумма+ТДок.Сумма;
+        ТДок.Номенклатура:=0;
+        ТДок.Партия:=0;
+      Else
+        зЦ:=ТДок.Сумма/ТДок.Количество;
+        См:=Round(зЦ*Кл,2);
+        ТДок.Сумма:=ТДок.Сумма-См;
+        Сумма:=Сумма+См;
+        ТДок.Количество:=Round(ТДок.Количество-Кл,6);
+      EndIf;
+      СтавкаНДС:=ТДок.СтавкаНДС;
+    EndDo;
+    aTab.Сумма:=Round(Сумма,2);
+    aTab.Цена:=Round(aTab.Сумма/aTab.Количество,2);
+    aTab.СуммаНДС:=aTab.Сумма*глКоэффНДС(aTab.Номенклатура.СтавкаНДС);
+    aTab.СтавкаНДС:=СтавкаНДС;
+  EndDo;
+  Exit aTab;
+EndFunction
+
+
+//Работает как с визуальной, так и с реальной частью
+//Возможет пересчет только Сумма,Цена,Количество,КоличествоВБазовых,КоличествоВОсновных,
+//Пересчитать цену: Цена@Сумма@СуммаНДС
+//Изменили Номенклатуру: Цена@Сумма@СуммаНДС[@Код]
+//Изменили Сумму: [Цена2@СуммаНДС]
+//Изменили Цену: Сумма@СуммаНДС
+//Изменили Количество: Сумма@СуммаНДС[@Количество2]
+//Изменили КоличествоВБазовых: Количество@Количество2@Сумма@СуммаНДС
+//Изменили КоличествоВОсновых: Количество@Количество2@Сумма@СуммаНДС
+Function глПересчитатьСтроку(aEl,aTab,Реквизиты,спПотолокАкции=0) Export
+  if aTab=0 Then
+    aTab:=Form.MainTab.Value;
+  EndIf;
+  If aTab.CurLine<1 Then
+    Exit;
+  EndIf;
+  ФлФорма:=_And(Form.Type=0,Form.Object=aEl);
+  
+  Вид:=aEl.DBName();
+  While Trim(Реквизиты)<>"" Do
+    ИмяР:=UpperCase(TearStr(Реквизиты));
+    If (ИмяР="СУММА")Or(ИмяР="СУММА2") Then
+      If ИмяР="СУММА" Then
+        aTab.Сумма:=aTab.Цена*aTab.Количество;
+      EndIf;
+    ElseIf ИмяР="ЦЕНА2" Then
+      aTab.Цена:=?(aTab.Количество=0,0,aTab.Сумма/aTab.Количество);
+    ElseIf ИмяР="ЦЕНА3" Then
+      aTab.ЦенаБезСкидки:=глПолучитьОсновнуюЦену(aTab.Номенклатура,aEl.Склад,aEl.DocDate,1);
+    ElseIf ИмяР="ЦЕНА" Then
+      Дог:=0;
+      ТЦ:=0;
+      If глЕстьРеквизитДокумента("ТипЦен",Вид) Then
+        ТЦ:=aEl.ТипЦен;
+      ElseIf глЕстьРеквизитДокумента("Магазин",Вид) Then
+        If Pos(aEl.DBName(),"ПоступлениеТМЦ,ВозвратПоставщику")>0 Then
+          ТЦ:=aEl.Магазин.ТипЦенПоступления;
+        Else
+          ТЦ:=aEl.Магазин.ТипЦенРеализации;
+        EndIf;
+      EndIf;
+      Ном:=aTab.Номенклатура;
+      aTab.Цена:=глНайтиЦену(Ном,ТЦ,aEl.DocDate);
+    ElseIf ИмяР="КОЛИЧЕСТВО2" Then
+      К:=aTab.Номенклатура.оснКоэффициент;
+      К:=?(К=0,1,К);
+      If _And(aTab.GetColumnIndex("КоличествоВОсновных")>0,aTab.GetColumnIndex("КоличествоВБазовых")>0) Then
+        If К=1 Then
+          Кл:=aTab.Количество;
+          If aTab.КоличествоВОсновных<>Кл Then
+            aTab.КоличествоВОсновных:=Кл;
+          EndIf;
+          If aTab.КоличествоВБазовых<>0 Then
+            aTab.КоличествоВБазовых:=0;
+          EndIf;  
+        Else
+          Кл:=Trunc(Round((aTab.Количество)/К,6));
+          If aTab.КоличествоВОсновных<>Кл Then
+            aTab.КоличествоВОсновных:=Кл;
+          EndIf;
+          Кл:=(aTab.Количество)-aTab.КоличествоВОсновных*К;
+          If aTab.КоличествоВБазовых<>Кл Then
+            aTab.КоличествоВБазовых:=Кл;
+          EndIf;  
+        EndIf;
+      EndIf;
+    ElseIf ИмяР="КОЛИЧЕСТВО" Then
+      К:=aTab.Номенклатура.оснКоэффициент;К:=?(К=0,1,К);
+      aTab.Количество:=aTab.КоличествоВОсновных*К+aTab.КоличествоВБазовых;
+    ElseIf ИмяР="СУММАНДС" Then
+      If aTab.GetColumnIndex("СуммаНДС")>0 Then
+        Фл:=1;
+        If глЕстьРеквизитДокумента("УчитыватьВНалоговомУчете",Вид) Then
+          Фл:=aEl.УчитыватьВНалоговомУчете*aEl.ЮрЛицо.УчитыватьНДС;
+        EndIf;
+        aTab.СуммаНДС:=?(Фл=0,0,aTab.Сумма*глКоэффНДС(aTab.СтавкаНДС));
+      EndIf;  
+    ElseIf ИмяР="СУММАНДС2" Then
+      Фл:=1;
+      If глЕстьРеквизитДокумента("УчитыватьВНалоговомУчете",Вид) Then
+        Фл:=aEl.УчитыватьВНалоговомУчете*aEl.ЮрЛицо.УчитыватьНДС;
+      EndIf;
+      aTab.СуммаНДС:=?(Фл=0,0,aTab.Сумма*глКоэффНДС(aTab.СтавкаНДС,0));
+    ElseIf ИмяР="СУММАНДС3" Then
+      aTab.СуммаНДС:=aTab.Сумма*глКоэффНДС(aTab.СтавкаНДС);
+    ElseIf ИмяР="КОД" Then
+      If aTab.GetColumnIndex("СтавкаНДС")>0 Then
+        aTab.СтавкаНДС:=aTab.Номенклатура.СтавкаНДС;
+        If Pos(","+Вид+",",",ПоступлениеТМЦ,ВозвратПоставщику,")>0 Then
+          If (aEl.Контрагент.ТипАктива=3)And(aEl.Контрагент.СвоеЮрЛицо.Selected()<>0) Then
+            If aEl.Контрагент.СвоеЮрЛицо.УчитыватьНДС=0 Then
+              aTab.СтавкаНДС:=Enum.СтавкиНДС.БезНДС;
+            EndIf;
+          EndIf;
+        EndIf;
+      EndIf;
+      If aTab.GetColumnIndex("КодНоменклатуры")>0 Then
+        If (Trim(aTab.КодНоменклатуры)="")Or(Number(aTab.КодНоменклатуры)<>0) Then
+          aTab.КодНоменклатуры:=aTab.Номенклатура.Code;
+        EndIf;
+      EndIf;
+      If aTab.GetColumnIndex("Партия")>0 Then
+        If _And(not isEmpty(aTab.Партия),aTab.Партия.Parent()<>aTab.Номенклатура) Then
+          aTab.Партия:=0;
+        EndIf;
+      EndIf;
+      If aTab.GetColumnIndex("Спецификация")>0 Then
+        If _And(not isEmpty(aTab.Спецификация),aTab.Спецификация.Parent()<>aTab.Номенклатура) Then
+          aTab.Спецификация:=0;
+        EndIf;
+      EndIf;
+      If aTab.GetColumnIndex("Сорт")>0 Then
+        If _And(not isEmpty(aTab.Сорт),aTab.Сорт.Parent()<>aTab.Номенклатура) Then
+          aTab.Сорт:=0;
+        EndIf;
+      EndIf;
+    ElseIf ИмяР="КОД2" Then
+      If aTab.GetColumnIndex("КодНоменклатуры")>0 Then
+        If (Trim(aTab.КодНоменклатуры)="")Or(Number(aTab.КодНоменклатуры)<>0) Then
+          aTab.КодНоменклатуры:=aTab.Номенклатура.Code;
+        EndIf;
+      EndIf;
+    EndIf;
+  EndDo;
+EndFunction
+
+
+//"STRING[.XXX]","ANY","NUMBER[.XX...]","DATE[.XX...]","REF.<XXX>,REF.<XXX2>"...
+Function глСравнитьТипыДанных(Тип1,Тип2,флТип1ПодмножествоТипа2=0) Export
+  Сп:=List.Create();
+  Сп.FromString(Тип1,",");
+  Сп2:=List.Create();
+  Сп2.FromString(Тип2,",");
+  For i:=1 To Сп.Size() Do
+    Стр:=Сп.Get(i);
+    Стр:=TearStr(Стр,".");
+    If Pos(Стр,"STRING,NUMBER,DATE")>0 Then
+      Сп.Set(i,Стр);
+    EndIf;
+  EndDo;
+  For i:=1 To Сп2.Size() Do
+    Стр:=Сп2.Get(i);
+    Стр:=TearStr(Стр,".");
+    If Pos(Стр,"STRING,NUMBER,DATE")=0 Then
+      Стр:=Сп2.Get(i);
+    EndIf;
+    аСтр:=Сп.Find(Стр);
+    If (аСтр=0)And(not флТип1ПодмножествоТипа2) Then
+      Exit 0;
+    ElseIf аСтр>0 Then
+      Сп.Remove(аСтр);
+    ElseIf (флТип1ПодмножествоТипа2)And((Стр="REF")or(Стр="ENUM")or(Стр="DOC")) Then
+      //REF & REF.тмцНоменклатура
+      For i2:=1 To Сп.Size() Do
+        If Pos(Стр,Сп.Get(i2))=1 Then
+          Сп.Remove(i2);
+          Break;
+        EndIf;
+      EndDo;
+    EndIf;
+  EndDo;
+  Exit Сп.Size()=0;
+EndFunction
+
+Function глЗашифроватьЗначениеУД(Зн) Export
+  Function _ПолучитьРодителя(Зн)
+    Result:="";
+    If _And(not isEmpty(Зн),pos("DB.REF.",TypeStr(Зн))=1,Struct.Ref(Replace(TypeStr(Зн),"DB.REF.","")).Parents.Count()>0,not isEmpty(Зн.Parent())) Then
+      Result:=""+_ПолучитьРодителя(Зн.Parent());
+      Result:=?(Result="","",Result+"@")+Replace(TypeStr(Зн.Parent()),"DB.REF.","")+"."+Зн.Parent().Code;
+    EndIf;
+  EndFunction
+
+  ТипДанных:=Replace(TypeStr(Зн),"DB.","");
+  If ТипДанных="DB" Then
+    ТипДанных:="";
+  EndIf;
+  Result:=ТипДанных+"@";
+  Try
+    If ТипДанных="NOTHING" Then
+      Result:="@";
+    ElseIf Pos("STRING",ТипДанных)=1 Then
+      Result:=Result+Зн;
+    ElseIf Pos("NUMBER",ТипДанных)=1 Then
+      Result:=Result+Зн;
+    ElseIf Pos("DATE",ТипДанных)=1 Then
+      Result:=Result+Зн;
+    ElseIf Pos("ENUM",ТипДанных)=1 Then
+      If _And(not isEmpty(Зн),Зн.Index()>0) Then
+        Result:=Result+Зн.Index();
+      EndIf;  
+    ElseIf Pos("REF",ТипДанных)=1 Then
+      If Зн.Selected()>0 Then
+        //[<ТипРодительX>.<КодРодительX>@...<ТипРодитель1>.<КодРодитель1>@][<Тип>.]<Код>
+        Стр:=_ПолучитьРодителя(Зн);
+        Result:=Result+Стр+?(Стр="","","@")+Зн.Code;
+      EndIf;  
+    ElseIf Pos("DOC",ТипДанных)=1 Then
+      //<Number>@<Date>
+      Result:=Result+Зн.DocNum+"@"+Зн.DocDate;
+    EndIf;
+  Except
+  EndTry;
+  Result:=Replace(Replace(Result,"&","&&"),"###","&#&#&#");
+EndFunction
+
+
+//ТипДанных: "STRING","NOTHING","NUMBER","DATE","REF.<XXX>","DOC.<XXX2>"... -- no ambiguous types
+//СтрЗначение: [<ТипРодительX>.<КодРодительX>@...<ТипРодитель1>.<КодРодитель1>@][<Тип>.]<Код>
+Function глНайтиЗначениеУДПоТипуДанных(ByRef Зн,ТипДанных,СтрЗначение) Export
+  Try
+    If Pos("STRING",ТипДанных)=1 Then
+      Зн:=СтрЗначение;
+      Exit 1;
+    ElseIf Pos("NUMBER",ТипДанных)=1 Then
+      Зн:=Number(СтрЗначение);
+      Exit 1;
+    ElseIf Pos("DATE",ТипДанных)=1 Then
+      Зн:=Date(СтрЗначение);
+      Exit 1;
+    ElseIf Pos("NOTHING",ТипДанных)=1 Then
+      Зн:=GetNothing();
+      Exit 1;
+    ElseIf Pos("ENUM",ТипДанных)=1 Then
+      TearStr(ТипДанных,".");
+      If ТипДанных="" Then
+        Зн:=DB("ENUM");
+        Exit 1;
+      Else
+        Зн:=Enum.Get(ТипДанных+"."+СтрЗначение);
+        Exit 1;
+      EndIf;  
+    ElseIf Pos("REF",ТипДанных)=1 Then
+      TearStr(ТипДанных,".");
+      If ТипДанных="" Then
+        Зн:=DB("REF");
+        Exit 1;
+      Else
+        //[<ТипРодительX>.<КодРодительX>@...<ТипРодитель1>.<КодРодитель1>@]<Тип>.<Код>
+        Зн:=0;
+        While СтрЗначение<>"" Do
+          If ТипДанных="бухПланСчетов" Then
+            Зн:=DB("REF."+ТипДанных);
+            Exit Зн.Find("Code",СтрЗначение);
+          Else
+            Родитель:=Зн;
+            Код:=TearStr(СтрЗначение);
+            Тип:=TearStr(Код,".");
+            If Код="" Then
+              Код:=Тип;
+              Тип:=ТипДанных;
+            EndIf;
+            //TODO: расширить код
+            Зн:=DB("REF."+Тип);
+            If not isEmpty(Родитель) Then
+              If not Зн.Find("Code,@Parent",Код,Родитель) Then
+                Exit 0;
+              EndIf;
+            ElseIf not Зн.Find("Code",Код) Then
+              Exit 0;
+            EndIf;
+          EndIf;  
+        EndDo;
+        Exit 1;
+      EndIf;  
+    ElseIf Pos("DOC",ТипДанных)=1 Then
+      TearStr(ТипДанных,".");
+      If ТипДанных="" Then
+        Зн:=DB("DOC");
+        Exit 1;
+      Else
+        //<Number>@<Date>
+        Номер:=TearStr(СтрЗначение);
+        ДатаГод:=BegOfYear(Date(СтрЗначение));
+        Зн:=DB("DOC."+ТипДанных);
+        If Зн.Find("DocNum,<DocDate,>=DocDate",Номер,EndOfYear(ДатаГод)+1,BegOfYear(ДатаГод)) Then
+          Exit 1;
+        EndIf;
+      EndIf;  
+    ElseIf ТипДанных="" Then
+      Зн:=GetNothing();
+      Exit 1;
+    EndIf;
+    Exit 0;
+  Except
+    Exit 0;
+  EndTry;  
+EndFunction
+
+Function глНайтиПлатежныйДокумент(Д,флПриход=1) Export
+  If Д.ДокОснование.Selected()<>0 Then
+    зДО:=Д.ДокОснование;
+    If флПриход=0 Then
+      If (зДО.DBName()="РКО")Or(зДО.DBName()="ВыпискаБанкаРасход") Then
+        Exit зДО;
+      EndIf;
+    ElseIf (зДО.DBName()="ПКО")Or(зДО.DBName()="ВыпискаБанкаПриход") Then
+      Exit зДО;
+    EndIf;
+  EndIf;
+  aList:=Д.LoadLinkedDocuments(1);
+  For i:=1 To aList.Size() Do 
+    aDoc:=aList.Get(i);
+    If флПриход=0 Then
+      If (aDoc.Status()>1)And((aDoc.DBName()="РКО")Or(aDoc.DBName()="ВыпискаБанкаРасход")) Then
+        Exit aDoc;
+      EndIf;
+    ElseIf (aDoc.Status()>1)And((aDoc.DBName()="ПКО")Or(aDoc.DBName()="ВыпискаБанкаПриход")) Then
+      Exit aDoc;
+    EndIf;
+  EndDo;
+  Exit 0;
+EndFunction
+
+

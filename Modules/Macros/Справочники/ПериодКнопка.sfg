@@ -1,0 +1,49 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=100
+  Height=25
+  OnOpen
+    @@>@e@Lv_,@4_Fd1_(E_]0Er|#4@Ap@d@$;DCWD@0@l_J>R@sG@)k_Dx_g_+?@s?@Y_d0@]@L@T{_!@=@
+    @3@xgw@*@c@:@Sm_.@n_Y_0_J_c_'_e_R_(:@=\$@-@6@/\_;pv@]7@[^@u:@Jp_9,_0@b'_Y_d_>_$&x
+    @'@I@N6@GfN@)H5l6@o|@E@K]@b_1i_(_B_U@C@U@so@t@su_-_N@(@L%PT@\_RG@Ph<C@)l_EO@V:V@|
+    @|@N_"@wS\@=@#_i_/@frB@J@K@mF@,+A=/@Gg{_._d@yF@k_Py@MZN@+@o_^h5@il@>_6B@'Kg@;u@y_
+    @=_0@bSWHO9@"_h@]_W@i_-@r]T_X@=@oY@|_k_B7_%F@--%o@*@M_epu@*o_L"_H_QD_j@H>_d@#_U_
+    @\_"@&@[Q@7B}3y_>l@W@jB_m_7@LK@$@.@v_=@-?@Y@G@[@o_e_jcI@l3@L_E@08_g@7@L6)_3_l_/@
+    @;_f3B@R*_jd_M@^_N@t@-@j6_7_a@+@w_5_0_<@[@u}K)@})_;I_k@bcd@Y_5&_h@P@9_(@$h_C@9CK
+    @{@d@xfHC_*@'K@^o@E_:@{@W@x_)@z@W_^@GMm@d@#_Y@+_(X_!0@V7_<@T@SX@H@mh@z@.@l_6_g@c@
+    @|_W-GR_+_eFGx_J_O_K_-2_IA_.@z@1@AIU@-|P@l@=@+@?@E@|_<_e_9_7@r_Q@U_J<@hp^qN_KYk_S
+    @_1@L@3X~@#._9c@cr_('t_!_V@#@b_.@b@5b*_j@V@RO@B_9@qc_1_e@<@786|_"_'@)_6Me@l_.@l@4
+    @@B@2{_B_!@WY@w_Os@#_&_EZWN(@L;_F@t_C(@F^@2C_&_57@Q_2@f$@1@._DA-@B@,@A@q_$_C_#@$_
+    @i.2['@R
+  End
+  OnTimerInterval=0
+  MaxControlSerial=7
+  LoadModes=0
+  Object BUTTON
+    LayerName=Main
+    Left=0
+    Top=0
+    Width=100
+    Height=25
+    Font=Default, 8, B
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=ƒата просмотра периодических реквизитов
+    Name=bPeriod
+    ControlSerial=6
+    Caption=01.01.2001
+    HotKey=
+    Picture=59
+    OnClick
+      @@>@eW_1e+@It1'_L_(_L>@,@r@W*@3@<@G/_<L@Q@w@c_I@&@}H@F_R[@lb@P@OJ@si@t_[M_6_c@'@
+      @~_K@4@<@[_])_&.@4_Rf@l_C_:)_4@rJ_l@hu_O@ve_g_k1@j@E!@/@G@E_S_b+_=@P_0@P1d_1{@U_f
+      @m@0_J_WVs@Z@9@q_#_d_3@p@l-_\,_ZTL\x@k.~h_Z@WO_^@+@c@m_4(_4@9@-@6
+    End
+  End
+End

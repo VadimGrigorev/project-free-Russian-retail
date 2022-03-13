@@ -1,0 +1,545 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=495
+  Height=315
+  OnOpen
+    @@>@e@D@X_:r#S1_1_[F_i/@9@K@*"_c_V_I@Z'@)@C@Hq_L@&#Ne@Cg0_H@S@5t_5/_GN@3_"@F|@[@u
+    @@I@|@ujP@A@/_Fr_*@5@E_K@}_G_Y@T@B@Z_,9@c_$ew@8_!_KC@I_A@R_=*@2e_&_k@|0@H_Wx@P@u@
+    @E_+e@0@P_5@H@<@b@j_^"X_F_3T@.@:_&_:_W_h1_BW_9t@]&*@K@{_9_fn_/_BAnoR_#33@j@/@+(@w
+    @_O@q@FA_2_.@t@>\#,[Up@k@li_+:)Z@5u@Bl@a@s@:W@W@Gh_S@9y@I@)_E+Ck@J_P@wn@uJ@4@l@/
+    @V+@jY@ba_/@)@8_#@P_i_<_\@4_\_fV@e@L_2@p*]@YCJ_7@~@n@|@;@e_?;h+<@x@{O@;Z@n_V_+@%_
+    @,_#l@.BX@%_C_>@0_;@b@(_m_R@k58@v@y_N_b:o}&@D_-_m@d@S@1T_1_N]_^@j@i+@m_X@:_N>@a@
+    @p@mfi8=b@fJ@E@T+|_f_/_&_V_O_#@']@u-@H@^K@7_^@=_*@N_H_TG_]l_K*;e@)@wLg_!6@N8_k_h@
+    @M_9Y@^e_O,r_Y@C_W
+  End
+  OnTimerInterval=0
+  MaxControlSerial=25
+  LoadModes=0
+  Object GROUPBOX
+    LayerName=Main
+    Left=5
+    Top=155
+    Width=490
+    Height=125
+    Font=Default, 8
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=10
+    Caption= —чет списани€: 
+  End
+  Object GROUPBOX
+    LayerName=Main
+    Left=5
+    Top=55
+    Width=490
+    Height=95
+    Font=Default, 8
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=3
+    Caption= ќсновные свойства: 
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\—правочники\«аголовок.sfg
+    LayerName=Main
+    Left=5
+    Top=5
+    Width=490
+    Height=47
+    Font=Default, 8
+    Color=00000000
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=1
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\—правочники\ќсновные нопки.sfg
+    LayerName=Main
+    Left=5
+    Top=290
+    Width=280
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=2
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=215
+    Top=70
+    Width=125
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=ќбща€—умма–асходов
+    ControlSerial=4
+    AttachedButtons=0#0@5#0###
+    Caption=
+    HotKey=
+    HAlign=2
+    Mask=
+    Length=16
+    DBSource
+      @@>@e@)VU@*T_?U@~_?U_;UT@}@*#!3n#@(
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=10
+    Top=72
+    Width=200
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=5
+    Caption=ќбща€ сумма расходов:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=215
+    Top=95
+    Width=125
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=ƒатаЌачала—писани€
+    ControlSerial=6
+    AttachedButtons=0#0@6#0###
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=!00.00.00;1; 
+    Length=8
+    DBSource
+      @@>@e@)VU@*T_?U@~_?U_;UTT!T@T";@1#_X
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=10
+    Top=97
+    Width=200
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=7
+    Caption=ƒата начала списани€:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=215
+    Top=120
+    Width=125
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=ƒатаќкончани€—писани€
+    ControlSerial=8
+    AttachedButtons=0#0@6#0###
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=!00.00.00;1; 
+    Length=8
+    DBSource
+      @@>@e@)VU@*T_?U@~_?U_;UT#S@T";@6#_Y
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=10
+    Top=122
+    Width=200
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=9
+    Caption=ƒата окончани€ списани€:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=100
+    Top=172
+    Width=180
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=327688
+    Hint=
+    Name=—чет
+    ControlSerial=12
+    AttachedButtons=0#0@1#0###@2#0###
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=
+    Length=0
+    DBSource
+      @@>@e@)VU@*T_?U@~_?U_;UTV@+#!3f#@$
+    End
+    OnAfterChange
+      @@>@eWp]/@Id5_Xm_#_.MC@H@6!M_O"^@J&@0i@'^@m@f_]',_f_P@+@^@DN@R_]4D_#LX_a_6_7F_4T@
+      @d@x_e_U@4@z@#@+@d5@I_1@i_U,S^2@j_Q_'_"@KC_/_]@%kt@6@nm_l+._"_5@jCa~;e@R@R_f@yx@k
+      @@i(ed@Qd@8@f@Z7Y;@o^@Sdu_9_>|+_4G_2_K_P@2_%_=:@i@sj@T_Fa_(5\@/@L_[>_b@\q_Y@4_1E@
+      @h_Z@._&B@e_g_J<@q@u@Sm
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=175
+    Width=80
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=13
+    Caption=—чет:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object LABEL
+    LayerName=Main
+    Left=285
+    Top=175
+    Width=200
+    Height=15
+    Font=Default, 8
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=т—чет
+    ControlSerial=14
+    Caption=т—чет
+    HAlign=0
+    VAlign=0
+    AttachedButtons=
+  End
+  Object BEVEL
+    LayerName=Main
+    Left=15
+    Top=200
+    Width=470
+    Height=10
+    Font=Default, 8
+    Color=00000000
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=15
+    Shape=0
+    Style=0
+  End
+  Object LABEL
+    LayerName=Main
+    Left=285
+    Top=210
+    Width=200
+    Height=15
+    Font=Default, 8
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=т—уб1
+    ControlSerial=16
+    Caption=т—уб1
+    HAlign=0
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=100
+    Top=207
+    Width=180
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=327688
+    Hint=
+    Name=—убконто1
+    ControlSerial=17
+    AttachedButtons=0#0@1#0###@2#0###
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=
+    Length=0
+    DBSource
+      @@>@e@)VU@*T_?U@~_?U_;UTV@)#!3h#@%
+    End
+    OnAfterChange
+      @@>@eWp]/@Id5_Xm_#_.M_E%_-"@u@S(_\-7@q6@L_]@cX@g_L"b@?_E@+@^@+q_j%&{_0@,@E@b@bV@#
+      @_R_a_cb_GO_!@t@C@Ze_?~@{@D@P_.@J)\w_b@Umd@Y_j@;-@n@rW_6@%@jW@f_^@.}@V@Uk_;@>_10o
+      @@LG_K:Dz-_=V&@1_'_^R_QD'_0@L@b_13@n@rp_^qr_dv@?$@"Y@mm_i@p@^DQ>@M_,"@1@TY@<_:E_"
+      @@X@a@L_,<_K@)@N@j
+    End
+    OnBeforeSelect
+      @@>@e@fxs@5_Oh5_*{_V@=@>_2jn_>_Y@;_<@$d_V"@z5@z@I@Bh@T@q@[_/_3@7_)Bf@(@5o_089sa_]
+      @@:@2c@V@-ng@7_!_R_8_D_9_%@R_D$[_E_9_i_e_i_a_J_E_E_Q_V_a_L_2R+_J%@R_L@N9rLO@:_._E
+      @_>@l1t@)_=9KH@6@A\^s@H@)zn_A&@6J@y1@n"_JF@q:_'_:@L@B@+t{@c@7_H_$d@W_$@K5@\_Y_l_M
+      @@i@L_NT@Z'v_4@8_'_Y#_F@f_#w7-o@8_g_;_7_L>@,=_az9@W:Gn@|@N@c_O@#@3Z]_P@;q@V@V_9_9
+      @_J*_Y;@^._8{@'@4@=p5@T@ixRD@-_k_X@v$IKMg_Z@y@nf@5@b@H@u@*]@0_;vD_D#_a>M_Q_>_P@nM
+      @_i\@O@F+@x@&_f@f_-q@Lx@1d@R_4_Kf2@m@Z8@UB/@"@ohmw@z_?@z@9Y@GC_5@0@l@b_PV5_J@H@8_
+      @Uv_&@^_-?_3@ywZAy_$k@#V4Y_._2_\@*q!_e@b@D@A@[@k@4C_8_G@'=_2_Xz7@D@{(_\@+_#@Pz_a_
+      @05@$@N{@diR@L@RR~@Ea@%'@K_Q0_0T@IL@iF&@Q7_!z@^N@-w@YV@~_g?@m@x@)m+<5_O9dk;E@7@g
+      @_2\_-MzKm@}M_iJ@4@7_L@._R@o_$_H_/_K_7@l_g@8+_b@:_g@9@C>@w@.@U@%@X!@X_+D_K4d@qj|6
+      @;_?_bO@z@rG_&@&@3@2yX%x@'m>@S!VnY@M|_c@aeS&_)&q_?W_f@h5_li_:_S_0_cD/@k_c_D1@{j_
+      @Qp_C._WF@n@/@P@bn@l@u_m_/_?[_e@$_R@B@8_+$@b@u@x_B}_]_(_,#T@<@R[@8D@v_K?_P@}b@{@o
+      @_8_U@6_e_OD@-@,@%_"w0@Y^v;@?s_W_Q9\_#@Ov_i@$@Z:_H5U@0@p_!_/3@\_av_K_Gval*@|@R_W_
+      @A_A@P_e_C@dR@QQ@l@tB\dT;@r@=@L_%q@\_G>@3@m_d_a>@]_aw@\_*(_)@"{_k@R@6@z}@wj@K_(_
+      @k_:_,@=@mtj@2x@v@zsA@1_:<PJ_>@/s@,_74@(@6@:Lb_X@v,_/@}WFM@L_Y6@Y/D@v._O_$_K_]$_0
+      @@E_#_8\/@^_I_M_i_V@A>@V_cF@;@.5TH@n_4@$@{U_[_G/@9_<_eh@|@v{@,_T@._k@([Q@9JiS_b@
+      @m]_+j_Z@M_Jow_f@i@G@K@H@x@w_%_a_;@3@P_F_]_:_5@,_\_^T_*H@"_1]@Q|@l6V_7>@kJ|@57_]
+      @@*_V_i@m_7@%=_*@K@cG@}L@}I_kK_b@4_l_Bk_*@A@71_S_P_E*@K_K}@o_0@%_9_+_I@c@X_7_:s@x
+      @w$_<@6@'_TP4q_c"@BC_U1@.z)@{@(Ck_8_90_8@E@)/_-I@sAA.(_O_QM@=_"@,Y]@'@,_K_:8@d@&_
+      @d@Rp@5@2_N_9!@g@F@<@C_b0@\_f@},
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=210
+    Width=80
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=т—1
+    ControlSerial=18
+    Caption=—убконто 1:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object LABEL
+    LayerName=Main
+    Left=285
+    Top=232
+    Width=200
+    Height=15
+    Font=Default, 8
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=т—уб2
+    ControlSerial=19
+    Caption=т—уб2
+    HAlign=0
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=100
+    Top=229
+    Width=180
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=327688
+    Hint=
+    Name=—убконто2
+    ControlSerial=20
+    AttachedButtons=0#0@1#0###@2#0###
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=
+    Length=0
+    DBSource
+      @@>@e@)VU@*T_?U@~_?U_;UTV@-#!3j#@&
+    End
+    OnAfterChange
+      @@>@eWp]/@Id5_Xm_#_.M_E%_-"@u@S(_\-7@q6@L_]@cX@g_L"b@?_E@+@^@+q_j%&{_0@,@E@b@bV@#
+      @_R_a_cb_GO_!@t@C@Ze_?~@{@D@P_.@J)\w_b@Umd@Y_j@;-@n@rW_6@%@jW@f_^@.}@V@Uk_;@>_10o
+      @@LG_K:Dz-_=V&@1_'_^R_QD'_0@L@b_13@n@rp_^qr_dv@?$@"Y@mm_i@p@^DQ>@M_,"@1@TY@<_:E_"
+      @@X@a@L_,<_K@)@N@j
+    End
+    OnBeforeSelect
+      @@>@e@fxo@5_Ph1_)k_5@F@q@)j@8H_&=8_Y&@m=1o1M_#@V@O{h@c(_^@>_lBf@(@5o_/A_T_U_#_2@f
+      @_!@#@4@=@N-_,@|S_A_Y_2\@R_D$@9@{a_c_h?y@-@-8_6Q_-Y@tJ@C>_9_.A@)ZK@~_;W@-@V0fd@L_
+      @G_FlS@H_>_>_l[!@U@/Cy<_+C_2@"5'@>_(i_8_L@DH_HM@J@s_?@S_O_J&@I_7FF@q@2_i0(O5@^@rV
+      @@Wl@]_Mq<_;_X_0@v@{@&_DX@Z_e_c5_J@'_5S@1@K"@bv@kV(@qZ_Jz@M@|C@x@3@A@C@:@<_dr@._C
+      @_#@q@/_)3U_&@-D@x&@n@I2:_W@,@5=Zm}K@8@NO2@A_2-@m&_Gw@J@M3_,_R@a_Y}CAIQ@"_E{@'_j_
+      @>_V3_h_KK@"@^l@~@A@}_#_kJ@I@:_^_72_/@H_6@KJ@ro@]Z@<@4@BRh}@+V@Z@e@M_-tP@#@0_e@
+      @Y_G@H-<_+_au@\]_?@?a@7U@C-sz%_\@W_F_2(K@s'@Y@u_U_2@7_7_Z@*_JG@B!@%@vX_<@8X0_L_A_
+      @V@8U0$Z@%i@R@5@,@R@W@y_j@j|nt&5@md_J_+_9_V@I@+NBm4@d>d_h\@]@m@y@\eS@U"@:@mS3_S@/
+      @@uE_'@*@n@Yh_&@{0_N'@B@U@o@4@c@Rq_j_YN@cO#@i@p@R@h_O@t_A@Y_R_f6*1*N@{$"@K@8@Ky@j
+      @eq_K_!X@z@*8@u@SO@R@c@GLN@q@J2@Gj_U_F1@t?UJ@o_+_"@i@P_F'_m@Z_-@F@t_T_g^_*@c_2@'@
+      @}?<fz@q@e_U_F@'@f@mVOSw@0@[_A@h@aZ_S_J_4_Xd/_#I@Z@;_A~M_)Y@ag_5@4Rgr@m@;_G@J@e_B
+      @kz@}[O_Z@4@"_P_7=@sH_\B_4E@L@X@=@}@$@U@j_,i@[_F_c@cp_M\@hv]@~E@]@q@e@^_h_97_V@$n
+      @@a@g@%OQs_'_*@$@x@k_fD_%-@l"@Y_<l_(o_?q@k_H_Z@.E@~@h@5|_9sy_l@E>_h@8@3_cQ{_a_8@(
+      @[D_X_Y@F/_)I@Lv@(@l@2@S@D_j|@B@$@9e@br@BT@)_!G'k@p_N_._J_%dp;g@{v_DeC_UB@Y_5R@g_
+      @g>AJ_d_.@3_B_]@0_<?_)@x@x_B_]|sv@NjC@)v@c_X@}G]_a@w@3c8@D_K@0_!_a_5_b>@v@%N_S@+/
+      @@L_3_i@g@:(_D_3_I_;@?K@G0+l_T_g@0@t]0_I5@q>_m@u@q@BQ_*G_a@1_-@+_'@l@OW~e_._HC@Q_
+      @-_c@,?s#_KI@'_l_N_fG_?@2o@tf@B_=@ff_[_R_[@C_b_6@-@JZIsrB_j_9vO_l@8'@4_C@S@*@E@A@
+      @A@f;@O@M,g@=@b@.@s'_X_$@mg@i}P_3@Q_$=W@BbV_i@T[)@h@q@E@C_?A@S8Q_I_I@c@$_[@L@b_lR
+      @@d@5_-_UQT_$_!@='_\@|_:@V@V@U@V_l"_lk@}E
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=232
+    Width=80
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=т—2
+    ControlSerial=21
+    Caption=—убконто 2:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object LABEL
+    LayerName=Main
+    Left=285
+    Top=254
+    Width=200
+    Height=15
+    Font=Default, 8
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=т—уб3
+    ControlSerial=22
+    Caption=т—уб3
+    HAlign=0
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=100
+    Top=251
+    Width=180
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=327688
+    Hint=
+    Name=—убконто3
+    ControlSerial=23
+    AttachedButtons=0#0@1#0###@2#0###
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=
+    Length=0
+    DBSource
+      @@>@e@)VU@*T_?U@~_?U_;UT@}@&#!3l#@'
+    End
+    OnAfterChange
+      @@>@eWp]/@Id5_Xm_#_.M_E%_-"@u@S(_\-7@q6@L_]@cX@g_L"b@?_E@+@^@+q_j%&{_0@,@E@b@bV@#
+      @_R_a_cb_GO_!@t@C@Ze_?~@{@D@P_.@J)\w_b@Umd@Y_j@;-@n@rW_6@%@jW@f_^@.}@V@Uk_;@>_10o
+      @@LG_K:Dz-_=V&@1_'_^R_QD'_0@L@b_13@n@rp_^qr_dv@?$@"Y@mm_i@p@^DQ>@M_,"@1@TY@<_:E_"
+      @@X@a@L_,<_K@)@N@j
+    End
+    OnBeforeSelect
+      @@>@e@fxo@5_Ph1_)k_5@F@q@)j@8H_&_N_!@.QB_Q@G|@I|_,@Dh_'D_=^@W_2_a(23@BD_lds_2a_Z
+      @@}_Y@8_&]@*)@g@T@r@4c_B}_/?@a@Z_Y@r_C_e@q\]_&|@E2_)}i_M_W@6?_l9_.m@r@L@w[@B@C1#L
+      @_H_Bj@Q*@e@g_d_:"@6p,@r_F!/[_R@kR_+_WO@0'_[U_M@$:x@n@,=_eP1@*HCe@+_G@FZ@.@j_#p@n
+      @@Hh@{-@5_F@G@,Q@4@\&_._!@b_'@x@p_\/w@U}E-_3@[3@n[d_0_]_!T@e.@?@3_>_O@l@|@|@=f_&_
+      @1iq_a@\@a_Ea4@?OJ6@S_3|Y@B_O_+m_5n@X]@2@P_;]@,BO_D@g;V@[)X_2@2_:+_gZ@?_M_5_)+_O@
+      @hz@^_;_mr_M_%h@s_A@l_0_Y_Kf2@m@Z@-@UB/@"Hhm@#@{_/@z@9_G@JC_5L@l@b_PV5_J@I@8_Uv_&
+      @@^_H/@*_D!@g@V@s_H@j_9_W@P@d_M@)@>@{D@G@N_?bbluW@W@*qc@U@)@<I_aP_E$_f@0@~@P@]@|@
+      @?!@xz@^@d@?9_+_gL~@CU@K@K_Q0_0v@IL@iB&_^'@<z8N@)"m@c_D_X!_=_C@zF@L@v-@Q@7-@iE@T
+      @@XZs@)>_MGM@\F_F@\@D1Y_D@9V@;_>@"@2_N@5@-_<@22!a@#_j=@%@v@]V_2@xl@Gl@&@X>)B@[E@u
+      @+.@0_h_!@~@PG_&@&@+@2}_?%x@'e>@S!Vn_C@M|_c@aeS&_)&q_?X_f@h5_li_:_S_g_A^/@l_c_D1
+      @@{f_Qp_C/_WF@n@/@P@bv@l@u_l_/_/[_er@,(@8_+a@b@u@t_B~_]_(_,=v@<@J:@8D@v_G?_P@}b@{
+      @@k_8@/@7@=_OD@-_RtW@H(m?K@S_'@l_c@8-.P@k_?@w_C@*+_C_g@[_F@r>@zh_Q_'_?@=_!t_ev_-_
+      @b_j@0@?@?_N_k_c@A6_08_<@+9.@W@Sj_V@#@k@43_Q@<k<@r_k@C_.@8@E@s_^_e_W_;@^@1@t@F_$@
+      @c@57_62@'@5_m@9_\aK@[3<@+@)_X_O_2_F_a@c,_5@:_F@Z:@|OSZ\6A_d_B&@(_=9@Y@\_-/+m(@Xx
+      @@M_]_7_[_fd@zA@4@|@U{@R_d_\@D@D@~@U_2@A@Y\V+:@Z_=@*@pO_E@b@=@3_i_$_T_iz@|@f{@o_[
+      @@._k@([Q@9Jh_J_e@m]_+j_Z@M_9o"@Ctdf_:{_I@?_T@od_Y_f@-i_I@B_gO@b@%4P_O>i@u_<+;_R
+      @/u5@wY_a@>3_fb*_a8_2Q@j@,~6_F@Z_Z5@AY@F_S@l@%b<_/[@?@8#_M@=@]@0_]@^U@6_&@,F_a_>
+      @_>_W_?dV@"9_%_6hwW@&_:G>#_8@8ez_7_Q@q_E_a@j_E@5_7e_fh_c_O@l_l@&_'@>_U_Z_B_b@AQ_7
+      @_b@N_E@C4r@F@X_4@~_I_%U@G@h@D@E@C@:@C_b0_lq@}F
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=254
+    Width=80
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=т—3
+    ControlSerial=24
+    Caption=—убконто 3:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+End

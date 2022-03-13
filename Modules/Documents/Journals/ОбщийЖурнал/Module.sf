@@ -1,0 +1,148 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Var спОтбор Export;
+Var ДокументПозиционирования Export;
+
+Function СохранитьУстановки()
+  спОтбор.SetByName("ДокументПозиционирования",Form.MainTab.SelectedElement);
+  StoreValue("ОбщийЖурналОтбор",спОтбор);
+EndFunction
+
+Function РеквизитВЖурнале(ИмяДок,ИмяРекв)
+  If IsEmpty(Struct.Doc(ИмяДок).Props(ИмяРекв)) Then
+    Exit 0;
+  EndIf;
+  aProp:=Struct.Doc(ИмяДок).Props(ИмяРекв);
+  For i:=1 To aProp.JournalPropsLinks.Count() Do
+    Стр:=Uppercase(aProp.JournalPropsLinks(i).ObjectLink.Name);
+    If Стр="ОБЩИЙЖУРНАЛ" Then
+      Exit 1;
+    EndIf;
+  EndDo;
+  Exit 0;
+EndFunction
+
+
+Function ПрименитьУстановки(ФлЗапись=0)
+  НачДата:=спОтбор.GetByName("НачДата");
+  КонДата:=спОтбор.GetByName("КонДата");
+  If isEmpty(НачДата)+isEmpty(КонДата)>0 Then
+    НачДата:=Date();
+    КонДата:=Date();
+    спОтбор.SetByName("НачДата",НачДата);
+    спОтбор.SetByName("КонДата",КонДата);
+    ФлЗапись:=1;
+  EndIf;
+  Фильтры:=">=DocDate,<DocDate";
+  Значения:="'"+BegOfDay(НачДата)+"','"+BegOfDay(КонДата+1)+"'";
+  Form.пПериод.Caption:="с "+FormatDate(НачДата,"DD MMM YYYY")+" по "+FormatDate(КонДата,"DD MMM YYYY");
+  
+  nStr:="";
+  nCount:=0;
+  nCurrent:=0;
+  аКонтрагент:=0;
+  аАвтор:=0;
+  аМагазин:=0;
+  аЮрЛицо:=0;
+  аСклад:=0;
+  аКодОперации:=0;
+  аВид:=0;
+  If not isEmpty(спОтбор.GetByName("Вид")) Then
+    Фильтры:=Фильтры+",=@LINKTYPE";
+    аВид:=спОтбор.GetByName("Вид");
+    Значения:=Значения+",аВид";
+    nCount:=nCount+1;
+    nCurrent:=3;
+    nStr:=глЗаголовокФильтра(аВид);
+    If pos("DOC.",nStr)=1 Then
+      TearStr(nStr,"DOC.");
+    EndIf;
+  EndIf;
+  If not isEmpty(спОтбор.GetByName("КодОперации")) Then
+    Фильтры:=Фильтры+",=КодОперации";
+    аКодОперации:=спОтбор.GetByName("КодОперации");
+    Значения:=Значения+",аКодОперации";
+    nCount:=nCount+1;
+    nCurrent:=4;
+    nStr:=глЗаголовокФильтра(аКодОперации);
+  EndIf;
+  If not isEmpty(спОтбор.GetByName("Контрагент")) Then
+    Фильтры:=Фильтры+",->Контрагент";
+    аКонтрагент:=спОтбор.GetByName("Контрагент");
+    Значения:=Значения+",аКонтрагент";
+    nCount:=nCount+1;
+    nCurrent:=2;
+    nStr:=глЗаголовокФильтра(аКонтрагент);
+  EndIf;
+  If not isEmpty(спОтбор.GetByName("Автор")) Then
+    Фильтры:=Фильтры+",->Автор";
+    аАвтор:=спОтбор.GetByName("Автор");
+    Значения:=Значения+",аАвтор";
+    nCount:=nCount+1;
+    nCurrent:=5;
+    nStr:=глЗаголовокФильтра(аАвтор);
+  EndIf;
+  If not isEmpty(спОтбор.GetByName("Магазин")) Then
+    Фильтры:=Фильтры+",->Магазин";
+    аМагазин:=спОтбор.GetByName("Магазин");
+    Значения:=Значения+",аМагазин";
+    nCount:=nCount+1;
+    nCurrent:=6;
+    nStr:=глЗаголовокФильтра(аМагазин);
+  EndIf;
+  If not isEmpty(спОтбор.GetByName("ЮрЛицо")) Then
+    Фильтры:=Фильтры+",->ЮрЛицо";
+    аЮрЛицо:=спОтбор.GetByName("ЮрЛицо");
+    Значения:=Значения+",аЮрЛицо";
+    nCount:=nCount+1;
+    nCurrent:=7;
+    nStr:=глЗаголовокФильтра(аЮрЛицо);
+  EndIf;
+  If not isEmpty(спОтбор.GetByName("Склад")) Then
+    Фильтры:=Фильтры+",->Склад";
+    аСклад:=спОтбор.GetByName("Склад");
+    Значения:=Значения+",аСклад";
+    nCount:=nCount+1;
+    nCurrent:=8;
+    nStr:=глЗаголовокФильтра(аСклад);
+  EndIf;
+  if (nCount>1)or(nCount<1) Then
+    Form.оЗначениеОтбора:="";
+    if nCount>1 Then
+      Form.оВидОтбора.Value.SelectedLine:=1;
+      Form.оВидОтбора.isDisabled:=1;
+      Form.оЗначениеОтбора.isDisabled:=1;
+    EndIf;  
+  Else
+    Form.оВидОтбора.Value.SelectedLine:=nCurrent;
+    Form.оЗначениеОтбора:=nStr;
+    Form.оВидОтбора.isDisabled:=0;
+    If Form.оВидОтбора.Value.SelectedLine=1 Then
+      Form.оЗначениеОтбора.isDisabled:=1;
+    Else  
+      Form.оЗначениеОтбора.isDisabled:=0;
+    EndIf;
+  EndIf;
+  
+  //Наложение фильтров одновременно, чтобы исключить множественные обновления.
+  If isEmpty(ДокументПозиционирования) Then
+    ДокументПозиционирования:=спОтбор.GetByName("ДокументПозиционирования");
+  EndIf;
+  If not isEmpty(ДокументПозиционирования) Then
+    Try
+      Exec("Form.MainTab.SetFiltersAndPositionOnElement(ДокументПозиционирования,"""+Фильтры+""","+Значения+")");
+    Except
+    EndTry;  
+  Else
+    Exec("Form.MainTab.SetFilters("""+Фильтры+""","+Значения+")");
+  EndIf;
+  ДокументПозиционирования:=0;
+  
+  If ФлЗапись Then
+    СохранитьУстановки();
+  EndIf;
+EndFunction
+

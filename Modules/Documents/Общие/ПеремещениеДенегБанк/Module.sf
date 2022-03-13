@@ -1,0 +1,153 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+
+Function Видимость()
+  aEl:=Form.Object;
+  
+  ФлОплата:=?(aEl.КодОперации=Enum.коПеремещениеДенегБанк.Оплата,1,0);
+  СтрСлои:=?(ФлОплата,"Main,Оплата","Main,Прочее");
+  If СтрСлои<>Form.Layers.GetLayers Then
+    Form.Layers.SetLayers(СтрСлои);
+  EndIf;  
+  
+  ФлКредиты:=0;
+  If not ФлОплата Then
+    If Form.ВидПлательщика.Value.SelectedLine=1 Then
+      If (aEl.Контрагент.СвоеЮрЛицо.Selected()=0)And(aEl.Контрагент.Selected()<>0) Then
+        Message("Контрагент "+aEl.Контрагент+" ("+aEl.Контрагент.Code+") должен иметь тип ""собственное юр. лицо""! Проверьте правильность настройки контрагента!","!");
+        aEl.Контрагент:=0;
+        aEl.Договор:=0;
+        aEl.БанковскийСчет:=0;
+      EndIf;
+    EndIf;
+    
+    If Form.ВидПолучателя.Value.SelectedLine=1 Then
+      If (aEl.КонтрагентПолучатель.СвоеЮрЛицо.Selected()=0)And(aEl.КонтрагентПолучатель.Selected()<>0) Then
+        Message("Контрагент "+aEl.КонтрагентПолучатель+" ("+aEl.КонтрагентПолучатель.Code+") должен иметь тип ""собственное юр. лицо""! Проверьте правильность настройки контрагента!","!");
+        aEl.КонтрагентПолучатель:=0;
+        aEl.ДоговорПолучатель:=0;
+        aEl.БанковскийСчетПолучатель:=0;
+      EndIf;
+    EndIf;
+    
+    ФлКредиты:=(aEl.Контрагент<>aEl.КонтрагентПолучатель)And(aEl.Контрагент.Selected()<>0)And(aEl.КонтрагентПолучатель.Selected()<>0);
+  EndIf;
+    
+  Стр:=?(aEl.БанковскийСчет.Selected()=0,"","№ р/с: "+aEl.БанковскийСчет.НомерСчета);
+  If Form.пБанковскийСчет.Caption<>Стр Then
+    Form.пБанковскийСчет.Caption:=Стр;
+  EndIf;  
+  
+  Стр:=?(aEl.БанковскийСчетПолучатель.Selected()=0,"","№ р/с: "+aEl.БанковскийСчетПолучатель.НомерСчета);
+  If Form.пБанковскийСчетПолучатель.Caption<>Стр Then
+    Form.пБанковскийСчетПолучатель.Caption:=Стр;
+  EndIf;  
+  
+  Form.тБухСчет.isDisabled:=1-ФлКредиты;
+  Form.БухСчет.isDisabled:=1-ФлКредиты;
+  Form.Счет.isDisabled:=1-ФлКредиты;
+
+  If (not ФлКредиты)And(aEl.бухПогашениеЗайма) Then
+    aEl.бухПогашениеЗайма:=0;
+    Form.БухСчет.Value.SelectedLine:=1;
+    aEl.Счет:=0;
+  EndIf;    
+
+  ФлНеСвое:=aEl.КонтрагентПолучатель.СвоеЮрЛицо.Selected()=0;
+  Form.ДоговорПолучатель.isDisabled:=1-Max(ФлОплата,aEl.бухПогашениеЗайма);
+  Form.тДоговорПолучатель.isDisabled:=1-Max(ФлОплата,aEl.бухПогашениеЗайма);
+  If Max(ФлОплата,aEl.бухПогашениеЗайма)=0 Then
+    If aEl.ДоговорПолучатель.Selected()<>0 Then
+      aEl.ДоговорПолучатель:=0;
+    EndIf;
+  EndIf;
+  
+  ФлНеСвое:=aEl.Контрагент.СвоеЮрЛицо.Selected()=0;
+  Form.Договор.isDisabled:=1-Max(ФлОплата,aEl.бухПогашениеЗайма);
+  Form.тДоговор.isDisabled:=1-Max(ФлОплата,aEl.бухПогашениеЗайма);
+  If Max(ФлОплата,aEl.бухПогашениеЗайма)=0 Then
+    If aEl.Договор.Selected()<>0 Then
+      aEl.Договор:=0;
+    EndIf;
+  EndIf;    
+  
+EndFunction
+
+Function ПриВыбореПлательщика()
+  aEl:=Form.Object;
+  If aEl.БанковскийСчет.Selected()<>0 Then
+    If aEl.БанковскийСчет.Parent()<>aEl.Контрагент Then
+      aEl.БанковскийСчет:=0;
+    EndIf;
+  EndIf;
+  If aEl.Договор.Selected()<>0 Then
+    If aEl.Договор.Parent()<>aEl.Контрагент Then
+      aEl.Договор:=0;
+    EndIf;
+  EndIf;
+  Видимость();
+EndFunction
+
+Function ПриВыбореПолучателя()
+  aEl:=Form.Object;
+  If aEl.БанковскийСчетПолучатель.Selected()<>0 Then
+    If aEl.БанковскийСчетПолучатель.Parent()<>aEl.КонтрагентПолучатель Then
+      aEl.БанковскийСчетПолучатель:=0;
+    EndIf;
+  EndIf;
+  If aEl.ДоговорПолучатель.Selected()<>0 Then
+    If aEl.ДоговорПолучатель.Parent()<>aEl.КонтрагентПолучатель Then
+      aEl.ДоговорПолучатель:=0;
+    EndIf;
+  EndIf;
+  Видимость();
+EndFunction
+
+
+Function OnAfterCustomBuhChanged()
+  Видимость();
+EndFunction
+
+Function OnAfterChangeOperationCode()
+  Видимость();
+EndFunction
+
+
+Function OnCreateFromObject()
+  //Ввод на основании
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+   
+  if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+    Form.Close(0);
+    Exit;
+  EndIf;
+  
+  Видимость();
+EndFunction
+
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  
+  If not Form.тДоговор.isDisabled Then
+    aEl.ЮрЛицо:=aEl.Договор.ЮрЛицо;
+  ElseIf not Form.тДоговорПолучатель.isDisabled Then
+    aEl.ЮрЛицо:=aEl.ДоговорПолучатель.ЮрЛицо;
+  ElseIf aEl.Контрагент.СвоеЮрЛицо.Selected()<>0 Then
+    aEl.ЮрЛицо:=aEl.Контрагент.СвоеЮрЛицо;
+  ElseIf aEl.КонтрагентПолучатель.СвоеЮрЛицо.Selected()<>0 Then
+    aEl.ЮрЛицо:=aEl.КонтрагентПолучатель.СвоеЮрЛицо;
+  EndIf;
+  If aEl.ЮрЛицо.Selected()=0 Then
+    Box("Выбранный договор клиента не имеет верно заполненного юр. лица либо контрагенты не являются собственными юр. лицами!",Q_STOP);
+    Exit 0;
+  EndIf;
+
+  Exit 1; 
+EndFunction
+
+

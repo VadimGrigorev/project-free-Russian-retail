@@ -1,0 +1,134 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+
+Function ИмяФормыПоКодуОперации()
+  aEl:=Form.Object;
+  Result:="Form";
+  If (aEl.КодОперации=Enum.коКорректировкаДолга.ПокупательТары)Or(aEl.КодОперации=Enum.коКорректировкаДолга.ПоставщикТары) Then
+    Result:="FormTab";
+  EndIf;
+EndFunction
+
+Function OnOpen(FormName)
+  aEl:=Form.Object;
+  
+  If aEl.Selected()<0 Then
+    If aEl.КодОперации.Selected()=0 Then
+      aEl.КодОперации:=Enum.коРегистрацияОС.ПоступлениеОС;
+    EndIf;  
+  EndIf;
+  
+  FormName:=ИмяФормыПоКодуОперации();
+EndFunction
+
+Function Видимость()
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("Номенклатура");
+  
+  If aEl.ТипПроводки.Selected()<>0 Then
+    Form.оСчет.isInvisible:=1;
+  Else
+    Form.оСчет.isInvisible:=0;
+  EndIf;
+  
+  If Form.оЗатраты.Value=1 Then
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=0;
+  Else
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=1;
+  EndIf;
+  
+  If aEl.СуммаВзаиморасчетов<>aTab.Sum("Сумма")+aEl.СуммаДеньгами Then
+    aEl.СуммаВзаиморасчетов:=aTab.Sum("Сумма")+aEl.СуммаДеньгами;
+  EndIf;
+  
+  If not isEmpty(Form.ControlByName("пСуммаИнформация")) Then
+    If (aEl.КодОперации=Enum.коКорректировкаДолга.Поставщик)Or(aEl.КодОперации=Enum.коКорректировкаДолга.ПоставщикТары) Then
+      Form.пСуммаИнформация.Caption:=?(aEl.СуммаВзаиморасчетов>0,"Увеличение долга поставщика",?(aEl.СуммаВзаиморасчетов<0,"Уменьшение долга поставщика",""));
+    ElseIf (aEl.КодОперации=Enum.коКорректировкаДолга.Покупатель)Or(aEl.КодОперации=Enum.коКорректировкаДолга.ПокупательТары) Then
+      Form.пСуммаИнформация.Caption:=?(aEl.СуммаВзаиморасчетов>0,"Увеличение долга покупателя",?(aEl.СуммаВзаиморасчетов<0,"Уменьшение долга покупателя",""));
+    EndIf;  
+  EndIf;  
+  
+  If aEl.СтатьяМаркетинга.Selected()<>0 Then
+    Form.оТабМаркетинг.isDisabled:=1;
+  Else
+    Form.оТабМаркетинг.isDisabled:=0;
+  EndIf;
+EndFunction
+
+Function OnAfterSumChange()
+  Видимость();
+EndFunction
+
+
+Function OnAfterChangeOperationCode()
+  пИмя:=ИмяФормыПоКодуОперации();
+  If Uppercase(пИмя)<>Uppercase(RemoveExt(GetFileName(Form.GetFormFileName()))) then
+    Form.SwitchToForm(пИмя);
+  EndIf;
+  Видимость();
+EndFunction
+
+Function OnAfterCustomBuhChanged()
+  Видимость();
+EndFunction
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("Номенклатура");
+  
+  Фл:=(aEl.КодОперации=Enum.коКорректировкаДолга.ПоставщикТары)Or(aEl.КодОперации=Enum.коКорректировкаДолга.ПокупательТары);
+  If (Фл)And(aEl.СуммаДеньгами<>0) Then
+    aEl.СуммаДеньгами:=0;
+  ElseIf not Фл Then
+    If aTab.Size()>0 Then
+      aTab.ClearLines();
+    EndIf;
+  EndIf;
+  
+  If aEl.ТипПроводки.Selected()<>0 Then
+    If Trim(aEl.СубконтоТипаПроводки)="" Then
+      If not глРедактироватьСубконтоТипаПроводки(aEl,1) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  Else
+    If not глПроверитьКорректностьЗаполненияСубконто(aEl) Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If aEl.СуммаВзаиморасчетов<>aTab.Sum("Сумма")+aEl.СуммаДеньгами Then
+    aEl.СуммаВзаиморасчетов:=aTab.Sum("Сумма")+aEl.СуммаДеньгами;
+  EndIf;
+  
+  If Form.оЗатраты.Value=1 Then
+    If (aEl.ЦентрЗатрат.Selected()=0)Or(aEl.СтатьяЗатрат.Selected()=0) Then
+      Box("Не выбраны центр затрат или статья затрат!",Q_STOP);
+      Exit 0;
+    EndIf;
+  Else
+    aEl.ЦентрЗатрат:=0;
+    aEl.СтатьяЗатрат:=0;
+  EndIf;
+  
+  If not глКорректностьСуммыМаркетинга(aEl,aEl.СуммаВзаиморасчетов) Then
+    Exit 0;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+Function OnCreateFromObject()
+  //Ввод на основании
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  If not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+    Form.Close(0);
+    Exit;
+  EndIf;
+EndFunction
+

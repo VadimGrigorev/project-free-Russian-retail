@@ -1,0 +1,82 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var Т Export;
+Var Эл Export;
+
+
+Function ВывестиЭлемент(Т,ТекЭл)
+  If not isEmpty(ТекЭл.Parent()) Then
+    ВывестиЭлемент(Т,ТекЭл.Parent());
+  EndIf;
+  If not isEmpty(ТекЭл.Folder()) Then
+    ВывестиЭлемент(Т,ТекЭл.Folder());
+  EndIf;
+  Вид:=ТекЭл.DBName();
+  пЭл:=ТекЭл;
+  пЭлР:=пЭл;
+  If IsEmpty(пЭл) Then
+    пЭл:="< Не выбран >";
+  EndIf;
+  пКод:=глПолучитьКод(пЭлР);
+  пТип:=Struct.Ref(пЭлР.DBName()).Caption;
+  Т.CopyByX("v2",1);
+  If пЭлР=Эл Then
+    глРаскраситьСтроку(Т,1,,1,3,2,4,пЭлР);
+  Else
+    глРаскраситьСтроку(Т,1,,1,1,2,4,пЭлР);
+  EndIf;
+EndFunction
+
+
+
+Function Печать(Т)
+  Фл:=0;
+  If IsEmpty(Т) Then
+    Т:=Table.Create();
+  Else
+    Т.Lock();
+    Т.Clear();
+    Фл:=1;
+  EndIf;
+  Try
+    Т.SetSourceName("Table");
+    оЗагол:="Структура подчинения элемента """+Эл+""" ("+Эл.Code+")";
+    оСвойства:=глСвойстваПечатиПростые();
+    Т.CopyByX("v1",1);
+    Т.Options.FixedLine:=Т.Height();
+    ВывестиЭлемент(Т,Эл);
+    
+    Т.CopyByX("v3",1);
+    If not Фл Then
+      глПечатнаяФорма(Т,Param,"Структура подчиненности элемента");
+    EndIf;
+  Finally
+    If Фл Then
+      Т.Unlock();
+      Т.EditorMode:=1;
+    EndIf;
+  EndTry;  
+EndFunction
+
+Function OnOpen()
+  Result:=0;
+  If IsEmpty(Param)=1 Then
+    Exit;
+  EndIf;
+  
+  If not глПриОткрытииОтчета("СтруктураПодчиненностиЭлементаСправочника",Param,0) Then
+    Exit;
+  EndIf;
+  
+  If typestr(Param)="LIST" Then
+    Эл:=Param.GetByName("Эл").Copy();
+    Т:=Param.GetByName("Table");
+  Else
+    Эл:=Param.Copy();
+    Т:=GetNothing();
+  EndIf;
+  Печать(Т);
+EndFunction
+

@@ -1,0 +1,59 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function OnBeforeElementSave()
+  aEl:=Form.Object;
+  
+  If IsEmpty(aEl.Name) Then
+    Box("Введите наименование!",Q_STOP);
+    Form.cName.SetFocus();
+    Exit 0;
+  EndIf;
+  If aEl.isFolder() Then
+    Exit 1;
+  EndIf;
+
+  а:=Ref.общБанки;
+  If а.Find("БИК,<>@Element",aEl.БИК,aEl) Then
+    If AskQuestion("Найден совпадающий БИК у банка "+а.Name+". Вы уверены, что ввели БИК правильно?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  If aEl.БИК<>"" Then
+    If Length(aEl.БИК)<9 Then
+      Box("Длина БИК должна быть равна 9 символам.",Q_STOP);
+      Exit 0;    
+    ElseIf not ContainsOnlyCharacters(aEl.БИК,"0123456789") Then
+      Box("БИК должен содержать только цифры.",Q_STOP);
+      Exit 0;    
+    EndIf;
+    If aEl.КоррСчет<>"" Then
+      If Length(aEl.КоррСчет)<20 Then
+        Box("Длина корр. счета должна быть равна 20 символам.",Q_STOP);
+        Exit 0;    
+      ElseIf not ContainsOnlyCharacters(aEl.КоррСчет,"0123456789") Then
+        Box("Корр. счет должен содержать только цифры.",Q_STOP);
+        Exit 0;    
+      EndIf;
+      //Проверка контрольной суммы
+      Стр1:="0"+Mid(aEl.БИК,5,2)+aEl.КоррСчет;
+      Стр2:=Right(aEl.БИК,3)+aEl.КоррСчет;
+      aList:=List.Create(7,1,3,7,1,3,7,1,3,7,1,3,7,1,3,7,1,3,7,1,3,7,1);
+      aNum:=0;
+      bNum:=0;
+      For i:=1 To aList.Size() Do
+        aNum:=aNum+Number(Стр1[i])*aList[i];
+        bNum:=bNum+Number(Стр2[i])*aList[i];
+      EndDo;
+      If (aNum%10<>0)And(bNum%10<>0) Then
+        Box("Корр. счет неверен (ошибка контрольной суммы)! Внимательно проверьте все цифры счета и БИК на корректность!",Q_STOP);
+        Exit 0;    
+      EndIf;
+    EndIf;
+  EndIf;
+    
+  Exit 1;
+EndFunction
+

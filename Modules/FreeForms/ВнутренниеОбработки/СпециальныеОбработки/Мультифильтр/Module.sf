@@ -1,0 +1,84 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var Спр Export;
+Var Фрм Export;
+Var флОдинСписок Export;
+Var флПеречисление Export;
+Var Док Export;       //Из выбора документов
+Var флРежим Export;   //0 -- обычный фильтр, 1 -- выбор документов, 2 -- выбор строк/дат/чисел
+
+
+Function ДобавитьВСписокДокументов(aEl,oList)
+  If isEmpty(aEl) Then
+    Exit;
+  EndIf;
+  If aEl.DBName()<>Док Then
+    Box("Документ "+Str(aEl)+" несовместим с выбранным типом фильтра!",Q_STOP);
+    Exit;
+  EndIf;
+  а:=oList.Find(aEl);
+  If а>0 Then
+    Box("Документ "+Str(aEl)+" уже был выбран!",Q_STOP);
+  Else
+    oList.Add(aEl);
+  EndIf;  
+EndFunction
+
+Function ПолучитьОписание(aEl,Фл=0)
+  If _Or(isEmpty(aEl),not IsDBObject(aEl),not DBTypeStr(aEl)="REF",aEl.Struct.Parents.Count()=0) Then
+    Exit ?(Фл,aEl,GetNothing());
+  EndIf;
+  Exit ""+aEl+" / "+ПолучитьОписание(aEl.Parent(),1);
+EndFunction;
+
+Function ДобавитьВСписок(aEl,oList)
+  If isEmpty(aEl) Then
+    Exit;
+  EndIf;
+  а:=oList.Find(aEl);
+  If а>0 Then
+    Box("Элемент "+Str(aEl)+" уже был выбран!",Q_STOP);
+  Else
+    oList.Add(aEl,ПолучитьОписание(aEl));
+  EndIf;  
+EndFunction
+
+Function ПриПодбореДокументов(aEl,oList)
+  ДобавитьВСписокДокументов(aEl,oList);
+EndFunction
+
+Function ПриПодбореЭлементов(aEl,ФлСписок)
+  If ФлСписок=0 Then
+    ДобавитьВСписок(aEl,Form.oList1.Value);
+  Else
+    ДобавитьВСписок(aEl,Form.oList2.Value);
+  EndIf;
+EndFunction
+
+Function OnExecute()
+  If флРежим>0 Then
+    aList:=Param.GetByName("Фильтр");
+    aList.Get(1).Clear();
+    Form.oList1.Value.CopyTo(aList.Get(1));
+    Form.Close(0);
+    Exit;
+  EndIf;
+
+  aList:=Param.GetByName("Фильтр");
+  aList.Get(1).Clear();
+  if not флОдинСписок Then
+    aList.Get(2).Clear();
+  EndIf;
+  Param.SetByName("Ответ",1);
+  
+  Form.oList1.Value.CopyTo(aList.Get(1));
+  if not флОдинСписок Then
+    Form.oList2.Value.CopyTo(aList.Get(2));
+  EndIf;
+  
+  Form.Close(0);
+EndFunction
+
+

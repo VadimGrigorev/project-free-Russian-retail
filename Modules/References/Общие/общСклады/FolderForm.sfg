@@ -1,0 +1,66 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=385
+  Height=90
+  OnTimerInterval=0
+  MaxControlSerial=4
+  LoadModes=0
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\Заголовок.sfg
+    LayerName=Main
+    Left=5
+    Top=5
+    Width=380
+    Height=47
+    Font=Default, 8
+    Color=00000000
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=1
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\ОсновныеКнопки.sfg
+    LayerName=Main
+    Left=5
+    Top=65
+    Width=280
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=2
+  End
+  Object BUTTON
+    LayerName=Main
+    Left=290
+    Top=65
+    Width=90
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=3
+    Caption=Отчеты
+    HotKey=
+    Picture=0
+    OnClick
+      @@>@e@+_7S+_-d1@L_Mb@W]-@r3R_R!X@I(_\1z@k@>kwo+,_WW\@,_H@*I_&4h@*yV@Q@\_A_i_M@J@^
+      @@+_>_A@*[@hOBz@U_7_0@{S@S_L@>_[@LR@HV_k_c!n@w-@/_c_'Cf@1*@:q_h@#-@V;<V_="_A%j@f@
+      @[t_*@i._"_%<@M_,@j@$@BI_B@h@9@%@7}_36i_0u_Mh@PH_D@4@<_O=@V_H@y@Z@B_m_2At_8_*|@u_
+      @;@]@%@P@Yu9@K_,,@#H@S_Q
+    End
+  End
+End

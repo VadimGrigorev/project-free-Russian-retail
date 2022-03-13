@@ -1,0 +1,227 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Var флВидимостьПартий Export;
+Var СуммаМаржПрибыли Export;
+Var флТипЦенРеализации Export;
+Var ТЦеныЗакупок Export;
+
+Function Видимость()
+  aEl:=Form.Object;
+  ФлЗП:=aEl.КодОперации=Enum.коПоступлениеТМЦ.ЗаявкаПоставщику;
+  флВидимостьПартий:=aEl.Склад.БезПартионногоУчета=0;
+  
+  Form.УчитыватьВНалоговомУчете.isDisabled:=1-глПользователь.бухБухгалтер*(1-ФлЗП);
+  Form.MainTab.Value.Column("Партия").isVisible:=флВидимостьПартий;
+  Form.MainTab.Value.Column("Партия").isReadonly:=1-глПользователь.бухБухгалтер;
+  If aEl.флПересчетРозничныхЦенВыполнен Then
+    Form.кнЦены.FontColor:=_CLR_WINDOWTEXT;
+    Form.кнЦены.FontStyle:=0;
+    Form.кнЦены.Glyph:=1;
+  EndIf;
+  
+  If aEl.СтатьяМаркетинга.Selected()<>0 Then
+    Form.оТабМаркетинг.isDisabled:=1;
+  Else
+    Form.оТабМаркетинг.isDisabled:=0;
+  EndIf;
+EndFunction
+
+Function ОбновитьЦеныЗакупокВТаблице()
+  aEl:=Form.Object;
+  If (Form.Mode<>3)And(aEl.Status()<2) Then
+    Exit;
+  EndIf;
+  aTab:=aEl.LineParts("Номенклатура");
+  aTab.Select();
+  While aTab.Next() Do
+    If _And(aTab.ЦенаБезСкидки>0,aTab.Номенклатура.Selected()<>0) Then
+      Continue;
+    EndIf;
+    зЦ:=глПолучитьОсновнуюЦену(aTab.Номенклатура,aEl.Склад,aEl.DocDate,1,ТЦеныЗакупок);
+    If зЦ>0 Then
+      aTab.ЦенаБезСкидки:=зЦ;
+    EndIf;
+  EndDo;
+EndFunction
+
+Function ОбновитьМаржПрибыль()
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("Номенклатура");
+  СуммаМаржПрибыли:=0;
+  aTab.Select();
+  While aTab.Next() Do
+    If (aTab.Номенклатура.ВидНоменклатуры=Enum.ВидыНоменклатуры.Товар)And(aTab.ЦенаБезСкидки>0) Then
+      СуммаМаржПрибыли:=СуммаМаржПрибыли+aTab.ЦенаБезСкидки*aTab.Количество-aTab.Сумма;
+    EndIf;
+  EndDo;
+  Form.пСуммаМаржПрибыли.Caption:=глФРМ(СуммаМаржПрибыли,"");
+EndFunction
+
+Function ПриИзмененииСклада()
+  aEl:=Form.Object;
+  if Form.IsFullyInitialized() Then
+    aTab:=aEl.LineParts("Номенклатура");
+    Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,aTab.Size());
+  EndIf;  
+  If aEl.Магазин<>aEl.Склад.Магазин Then
+    aEl.Магазин:=aEl.Склад.Магазин;
+  EndIf;
+  Form.ТипЦен.Value:=aEl.Склад.рзТипЦенПоступления;
+EndFunction
+
+Function OnAfterChangeOperationCode()
+  ПриИзмененииСклада();
+  Видимость();
+EndFunction
+
+Function ОбновитьПеремещение2()
+  Сп:=List.Create();
+  aEl:=Form.Object;
+  aList:=aEl.LoadLinkedDocuments(1);
+  For i:=1 To aList.Size() Do
+    bEl:=aList[i];
+    If _And(bEl.DBName()="Регистр2ЕГАИС",bEl.Status()<>1) Then
+      Сп.Add(bEl);
+    EndIf;
+  EndDo;
+  If Сп.Size()=0 Then
+    Form.пЕГАИС2.Tag:=0;
+    Form.пЕГАИС2.Value:="";
+  ElseIf Сп.Size()=1 Then
+    Form.пЕГАИС2.Tag:=Сп;
+    Form.пЕГАИС2.Value:=Сп[1];
+  Else
+    Form.пЕГАИС2.Tag:=Сп;
+    Form.пЕГАИС2.Value:="Документов: "+Сп.Size();
+  EndIf;
+EndFunction
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  If not глПроверитьДокументПриходаНаОтрицательныеОстатки(aEl) Then
+    Exit 0;
+  EndIf;
+  If _And(not isEmpty(aEl.ОтложитьНДСНаПериод),BegOfMonth(aEl.ОтложитьНДСНаПериод)<=BegOfMonth(aEl.DocDate)) Then
+    Box("В документе неверно указана дата отложенного НДС!",Q_STOP);
+    Exit 0;
+  EndIf;
+  If not глПроверкаКорректностиНоменклатурыВДокументе(aEl) Then
+    Exit 0;
+  EndIf;
+  Фл:=0;
+  aTab:=aEl.LineParts("Номенклатура");
+  aTab.Select();
+  While aTab.Next() Do
+    зН:=aTab.Номенклатура;
+    If зН.ВидНоменклатуры=Enum.ВидыНоменклатуры.Услуга Then
+      Continue;
+    EndIf;
+    If aTab.ЦенаБезСкидки=0 Then
+      Message("Для строки документа "+aTab.CurLine+" не указана цена закупки. Если это первый приход необходимо установить цену закупки равной цене документа!","!");
+      Фл:=1;
+    EndIf;
+  EndDo;
+  If Фл Then
+    Exit 0;
+  EndIf;
+  
+  
+  If aEl.Договор.Selected()=0 Then
+    Box("Необходимо выбрать контрагента и договор, прежде чем записывать или обрабатывать документ!",Q_STOP);
+    Exit 0;
+  EndIf;
+
+  If (aEl.Склад.Selected()<>0)And(not глПользователь.общиеАдминистратор) Then
+    If aEl.Склад.Магазин<>глПользователь.Магазин Then
+      Box("Вам запрещено создавать документы для выбранного склада!",Q_STOP);
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If aEl.ТипПроводки.Selected()<>0 Then
+    If Trim(aEl.СубконтоТипаПроводки)="" Then
+      If not глРедактироватьСубконтоТипаПроводки(aEl,1) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;
+
+  If isEmpty(aEl.ДатаДоставки) Then
+    aEl.ДатаДоставки:=aEl.DocDate+1;
+  EndIf;
+  
+  aTab:=aEl.LineParts("Номенклатура");
+  Фл:=1;
+  aTab.Select();
+  While aTab.Next() Do
+    If aTab.Количество<0 Then
+      Message("У номенклатуры "+aTab.Номенклатура+" ("+aTab.Номенклатура.Code+") указано отрицательное количество!","!");
+      Фл:=0;
+    EndIf;
+    If aTab.Номенклатура.Selected()=0 Then
+      Message("В строке "+aTab.CurLine+" не выбрана номенклатура!","!");
+      Фл:=0;
+    EndIf;
+  EndDo;
+  If Фл=0 Then
+    Exit 0;
+  EndIf;
+  
+  If (aEl.Контрагент.ТипАктива=1)And(aEl.Склад.ИспользоватьВАктиве>0) Then
+    ОбновитьМаржПрибыль();
+    СуммаМаржПрибыли:=?(aEl.КодОперации=Enum.коПоступлениеТМЦ.ПоступлениеТМЦ,СуммаМаржПрибыли,0);
+    If not глКорректностьСуммыМаркетинга(aEl,СуммаМаржПрибыли) Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  //флПарам:=List.Create();
+  //флПарам.SetByName("ПересчитатьРозничныеЦены",Form.оФорсЦен.Value);
+  
+  Exit 1;
+EndFunction
+
+
+Function OnCreateFromObject()
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  ФлБезЗаполнения:=0;
+  If aEl.ДокОснование.DBName()="АктПоСкладу" Then
+    If aEl.ДокОснование.КодОперации=Enum.коАктПоСкладу.Инвентаризация Then
+      aTab:=aEl.LineParts("Номенклатура");
+      aTab.Lock();
+      try
+        ФлПартии:=1-Min(aEl.ДокОснование.Склад.БезПартионногоУчета,1);
+        Т:=Tab.Create();
+        aEl.ДокОснование.LineParts("Номенклатура").CopyTo(Т,,,"Номенклатура,"+?(ФлПартии=0,"","Партия,")+"Цена,Количество,КоличествоФактическое");
+        Т.Group("Номенклатура,"+?(ФлПартии=0,"","Партия,")+"Цена","Количество,КоличествоФактическое");
+        Т.Select();
+        While Т.Next() Do
+          If Т.КоличествоФактическое<=Т.Количество Then
+            Continue;
+          EndIf;
+          aTab.NewLine();
+          aTab.Количество:=Т.КоличествоФактическое-Т.Количество;
+          aTab.Номенклатура:=Т.Номенклатура;
+          If ФлПартии Then
+            aTab.Партия:=Т.Партия;
+          EndIf;          
+          aTab.Цена:=Т.Цена;
+          глПересчитатьСтроку(aEl,aTab,"Код@Количество2@Сумма@СуммаНДС");
+        EndDo;
+      Finally
+        aTab.Unlock();
+      EndTry;  
+      ФлБезЗаполнения:=1;
+    EndIf;
+  EndIf;
+  
+  If not ФлБезЗаполнения Then
+    if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+      Form.Close(0);
+      Exit;
+    EndIf;
+  EndIf;
+EndFunction

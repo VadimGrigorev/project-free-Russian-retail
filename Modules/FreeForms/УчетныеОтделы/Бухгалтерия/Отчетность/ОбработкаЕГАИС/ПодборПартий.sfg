@@ -1,0 +1,151 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=Подбор партий для перемещения в ЕГАИС внутри одной базы
+  Width=605
+  Height=430
+  OnOpen
+    @@>@e@Du_,@4_>d1_(_^c@S@8@{G_CK=,_Q!@0u@mf1@P_#_/6@\=]n=@P_l?_N@G_/@T0d@d@v_"@$
+    @[_J@~_(@wuMg_6@u.nP@6}_8_9_G_e_R_(_E_M@6=@U8@E)zu@{@{@n_P_l@US@q_P@oy@e_E@6@6_\_
+    @"@<@G_5x_\@u@FdC@^[4+@m_5n@KA_Lj@]@?@1;_._M_S@3@F@7@A@S3@]_".3_#@qx}@13_E_l5T@N@
+    @Y@#_a@e@Hy_QP@ei_J@2;i_,@/@}@eg&&Km_95?=/@H_.E<_2gf@K_R_c@MZF@{v@;C~tF_&@,t@y@Y@
+    @j_%@.@b@<_]_1@A@9(_1@R_fD+u_MyV_a@I_"_l@0>_/r_eVC@fU'@I6@{_-@B@nJ@{G_\5@4@0@X_k
+    @_+*_i@w@"_f{R_54@"ly@2_i_Y@#m@W@bB_m_8@LK?_G@U_d}@-FG_F_b@g_m@#TLu@aW@FDcV@Odn_d
+    @Y_Z_-@^5}p@&@J_-Q_0@d@ft$@d\@r@\_lZ~@Y]@o&@H_!K_h@m_"_ca5@n_'fc@?_Y@cj8u@EE<@=_N
+    @_2@p_<_i_c_5@{@h@a@M_Z=>_[_+@=@$@y_d@z@5;@l@9@a@$P_jm_'@}_%@#_Gs@h._9j@Z_U!@oA_j
+    @_;V!\_B@RB~_g_B@j_B#Z_g@>2@)@73_9j_S~_j_i_Cs@I_I?>@=#_Zoc@E@E_g_F@d_i_B!@X@H_I@T
+    @_g.NU@mH
+  End
+  OnTimerInterval=0
+  MaxControlSerial=7
+  LoadModes=0
+  Object LABEL
+    LayerName=Main
+    Left=5
+    Top=10
+    Width=595
+    Height=25
+    Font=Arial, 12, B
+    Color=FF00000F
+    AnchorType=11
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=1
+    Caption=Подбор партий для перемещения в ЕГАИС внутри одной базы
+    HAlign=0
+    VAlign=0
+    AttachedButtons=
+  End
+  Object TABLE
+    LayerName=Main
+    Left=5
+    Top=35
+    Width=595
+    Height=340
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=15
+    Flags=33554440
+    Hint=
+    Name=оТаб
+    ControlSerial=2
+    AttachedButtons=0#0@10020#0###@10021#2###@10022#0###@10023#0###
+    HotKey=
+    Folders=0
+    OnAttachedButtons
+      @@>@e@;vqs_Gd1_(k_5@F9_g@*o@M_+Wy/@j@mv@m'F_FosJ1E@qfv@'E_<_*{_c_+@n@Q_f"@\_BHo7@
+      @F@SY@1e_A\G@f@~_4ky@0A_'@g@f@?_a_J@d@r_A_d(q_:_W?@h\_(@fo_:</@"Rw_4@+?@y@p@h@e_.
+      @5_k@"*@4_,_1_1_N@2g@G@Zh@K@+fL&F_X@UK@j_*R._R4@]F_ga_j@U@>_74&@,@a@&;@,z@~v@t@T_
+      @#_?_,FI@W@[_9@)7R?_S=#t^_-_S/_a_%_9@30@A_96N@h.@._[PR@b_)_[Z_J_U@y_"@<@F@ZD_Ag@W
+      @sR@&@&@46@[}_'J@{@'k+X@S@{@C@[_7@M@/L@P$@i~@(8h_e@Vb\_2_J;_f_cV_0@.X_4_#@c_9@P@
+      @3_-gxJ_a@N_S@<0Fw2@9@b_E@LI@qf@b@1w#@W_j@UPd_6.@\@W@[@g@O_$@+g7@{*_g_7@\X/_k@%^
+      @x@G@*,@B5f@Z_#r5@^V-i@H[@\s@{@.@o@aD@38@U@B_E_e@u@;4_]7*gT@h;_O_k@%r?5_E@T@v@n9U
+      @i_3@(@S@E1@XI,@4_5_$P_5}@IB@}P_N@o@,@6<@j_:@k}@I_6@+B_c@iF_e,U_B;@2@xj@zn@"@H_F_
+      @L@-@)3o_3@H_Z_]#_\,_6Z@TY@'@S@'z_7_R@X_TzM_An_i%@Q_c@.=X@=@</@d_&_&_i@BO@>@F_V-@
+      @s6!_da@sY_J[@D;@&[j_>Z@6rXy_j_f.*G@S@a_5FU_XO@A@T_9@y@=_E@=-_GJ,_J-Q_9._W@\@M@j?
+      @@-@4_W_j@Z_e_EFh@1*0_;_%\_a@Q@[_B@i_CbKrE=_>b@T@ax_N_lM_4+@K@c@\S@S_8_"@-@w_"_g_
+      @h_-_U@Ar"@n_]@D_C_gki@p_$_e@'_E@p_>@;_I@;6@w@/@u@=:mu_l@8D_m@F@D_SQ_T@|@3_G_f@Y
+      @_i@"+@nk@K_l$@Ui@eae@{@s_:_V%@yB@s_U@[U@wY_!@;_X}@=@~_^(@A_Y@Fs
+    End
+    HeaderColumnsData
+      @R#R#R#R#S#R#R#R#R#S#T#STR#ZV#]G@(GzGfC@'G@(G@$G{G@'G@"G@#GvG@,G@-G@*G@5G####]G@(
+      @GzGbG@(G@$G{G@'G@"G@#GvG@,G@-G@*G@5G###R#"R#R#S#R#S#S#R#R#R#R#T#SRRRR#S[V#bG@(G@
+      @$G{G@'G@"G@#GvG@,G@-G@*GvG####bG@(G@$G{G@'G@"G@#GvG@,G@-G@*GvG###R#"R#R#R#R#S#R#
+      @R#R#R#S#T#SRRRR#SUZ#eGvG@*G@,G~G@9G####eGvG@*G@,G~G@9G###R#"R#R#R#R#S#R#R#R#R#S#
+      @T#SRRRR#SYU#gG@)G@*GvGxG@"G~G####gG@)G@*GvGxG@"G~G###R#
+    End
+  End
+  Object BUTTON
+    LayerName=Main
+    Left=100
+    Top=405
+    Width=90
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=кнЗагрузить
+    ControlSerial=3
+    Caption=Отмена
+    HotKey=
+    Picture=0
+    OnClick
+      @@>@eW_1S+_-d1&_;@E@'_[_\_6%p@(@5:@y_c1@Yf@S'_b_-@tR\_7\@Z@*@J@L@O@k7z_[y_A@0@%_"
+      @@d_c7}9}_[@J@r;@'@}_>US_QJ@Q_m@-Z_Gy}_-_ie@K@E@&l@*_g_9_\@Q@:Eq4ZTV@"f_N@h1@~@$@
+      @o_=]_[@]_I@'{_B@3@=@2@{@?_)_\_Z$M@0p@h
+    End
+  End
+  Object BUTTON
+    LayerName=Main
+    Left=5
+    Top=405
+    Width=90
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=bPanelProceed
+    ControlSerial=4
+    Caption=Принять
+    HotKey=Ctrl+Enter
+    Picture=1
+    OnClick
+      @@>@e@;u_,@0_Gd1_(<_j0w@fF@kJ_9W@r=_2O@MD_C@z_>_;wt_O.S@XG@y6@6_m@w@m5@An@P_U(@u
+      @5@3_'@\_&M@?i@Q@._>@#@bFaF@p@?_'@b_"_a_d_8_1j_2@1_%_.@lw_;_]@Y@{A:@-@S4|_^@y1@[
+      @9@y_)@E@Rq@O_f@e_<%_m_kq)@m:@L@*e4@PZ_j}@W_[@K@P=_T@I#_._C|tyC@'^q@8@t~@rz_f-@N
+      @_c8_l@>@*K@._(@7_HU@}@#@v@C@#@2_A@1@{_9@*_"_[_'@|@c@)_P%l_C_)_Lp_;<_8@W@v_dS@u@:
+      @_So@8@z5|F@:G@x_C@i@F@I_'@0&@i@C@|@N@"@:5_Tn$@6@6T@:_<@Q_"_<x@{@y_WM?@&7~@T_,_L_
+      @A_;_&@%@)@]@9@^@/@M@l@K@w_b!_5_F@,@P_J@&_C@^l_B_d_]_!_h@U_b@m@B@EB@-@S@MY_;A_a@
+      @-_H:_H_]@p_%@<@$!E16@'@Myt5@>_7_fYl@\*@0fjFa_2c_U@T;,_a@a):_l^_1-c_<_7_Z_Me@)_:@
+      @4_GQ@\_*@]]e_V}_U@lS[_Y@g@jmR_b_(@8g?@X@S@y_-@K@%@I_.68^LB@Hx@Y@/_1@)@CqdvZ_._Vd
+      @@7@]@%m$@hb@E_f@C*V_!@g@tW_I_kz@x_K_Z_D@1_I_._"@v@g_IS@gb_Gw_T_ZQT@W_UR_#q@op%_L
+      @@~U@<j_^%_,_9@B_G:_4@.Qhh@K@,@4;0_"_[_._=_7@N_O@BhZ,W@97;_m@f@l@[Y@#@F@I_b@cu@g_
+      @SA'@8@.@g
+    End
+  End
+  Object CHECKBOX
+    LayerName=Main
+    Left=5
+    Top=380
+    Width=600
+    Height=20
+    Font=Default, 8
+    Color=FF00000F
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=оВсеОстатки
+    ControlSerial=6
+    Caption=Переместить все остатки на выбранном рег. ид. ЕГАИС
+    HotKey=
+    HAlign=2
+  End
+End

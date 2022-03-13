@@ -1,0 +1,140 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=0
+  Caption=–едактор множител€
+  Width=195
+  Height=85
+  OnOpen
+    @@>@e@D@Ys@5_Fd1_0_[l@C@N2IE2-=*@6@.@\zlFx&_Qr_6@kD"j_/l_8_e_6@j@N@s@0_Ag@x<@N@L@
+    @\_]@w_Y@;@O;@b@M@U_Y_\@xv@A@z_(_&@5_J_i_8@>@;_([@0@U_4)V_C@)@$@._<@pk_1_+@^_"@j_
+    @NN,II_G_[=|@8C_#@f)N@6@m_.@K#@r@20@VY@6QaIp@p@:_k@,@bN@8_4@bi@b4@w@y@G,@%@?exh@^
+    @@1C>_\_D@e]-V_K_4g_._T@:_G@MS@>@)p@M_L@Joa_VR@L0/&_Lt_7@(^_7@q@O_V3B/U_U@t_+6CJ@
+    @0_::_#_7@)_TPf7u_'_Wp\_.=V_2@,_K9@j_._$_<_Y-_J@Z@t_U_+_7_0_=:@T_49)_RnA_C_)@{@y~
+    @#@%_+@DB_X(pZ@m_5_.o@T}@C@M$_]_I@+T_(]*_=7_b_*@D@'8@n@2P_N-@2_%@i2_b"_m_)Uo@kSa
+    @_"_'}_M*N_T_M_/_a_\@+@Hyp_L@M&@F5@%_Y@Tz@6<_7#6_kZ_6@l@VNT%M@"B@p_c]@>#_C@Z@=_3_
+    @O%_g@:@s_J@J_d_c@a@}_7@P7@VP@r@+;_cz]$_Ys@*@[r"_/g@>aR@w@Oz_3@gj]@-@h_iH@E@e@T_
+    @%_c?_)_>K_g.@|_U$_K@[@t@z@A_"_9@%@<'w3@1_)+[_S@QO_C_Q@0@B_=AH@/_g_"_/@C@;@D_<:3O
+    @@|4@*@{up@(5@3HH_Q@0_MV_1_I_U@W_bA_5E@?_])u_CM@q~_Q8_e@^@{@]r_kt@$_$_FBaw_G@b_R
+    @@Q_i_\|_!@~_&@a/c@W@P@<_J_[?@OoS_V_)_I7:@W@VH_UX_h@l@-#%_1@[@0j_K@l_)FQ>"@F_2@d@
+    @0M_U@3_.Xc@Di@L@}_#~_KF_C%@h@1O_5_m,_b@>l_/
+  End
+  OnTimerInterval=0
+  MaxControlSerial=6
+  LoadModes=0
+  Object CHECKBOX
+    LayerName=Main
+    Left=10
+    Top=10
+    Width=185
+    Height=15
+    Font=Default, 8
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=оћнож
+    ControlSerial=1
+    Caption=»спользовать множитель
+    HotKey=
+    HAlign=2
+    OnClick
+      @@>@eW_1a/_-R-d_M_(v_[_L@z@\Ja!E(_L1p)_/K::@W_#d@q@6@z@e_Fm=SB_5s:|_J_i_F@<@~@%_Z
+      @X_WOxP@X_H@l@QJf_=_6_>)@1@.@c_*@-_;_Uq@O_I_i@H)C3@yI@g@m_\_^Z@i|'_^%_N@A@-_b]@y@
+      @._L^Q@R4@$>@d_1@l@.s@M_l@9r_Rh]@{_]@i_4@8@W@r@)yQ_5_N,w@}@1@)
+    End
+  End
+  Object COMBOBOX
+    LayerName=Main
+    Left=10
+    Top=30
+    Width=90
+    Height=21
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=оќпераци€
+    ControlSerial=2
+    Caption=
+    HotKey=
+    AttachedButtons=
+    DropDownCount=10
+    Items
+      @@>@e_>W@*V@&_=v_;_f_j_R_Y_&@-Qb_k_<@*@(T!@Q_TM@.@C@>_\_j_4_>_CtC!rv3A
+    End
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=105
+    Top=30
+    Width=90
+    Height=21
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=о„исло
+    ControlSerial=3
+    AttachedButtons=0#0@5#0###
+    Caption=
+    HotKey=
+    HAlign=2
+    Mask=
+    Length=16
+    DBSource
+      @@>@e@)V@*@(TV_AU&!$@7"!
+    End
+  End
+  Object BUTTON
+    LayerName=Main
+    Left=10
+    Top=60
+    Width=90
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=bPanelClose
+    ControlSerial=4
+    Caption=ѕрин€ть
+    HotKey=
+    Picture=1
+    OnClick
+      @@>@e@3@Teo_.d5@K_[,_g0@V@evq4_W@zC8@Rfext_'@N@<o@Rm+@~?_j@V_=@t_C|_D_h_D@;Y_47&_
+      @<@s}g@J@Q@pY@V@b_g_1_es_>@$^:@"@H@Z@\J@h,G@n@(t@s@NY@T@u&_Y_dz_&@yx@V3@?_d_]_59_
+      @P&#8_3M@n@&E_D4@Z@A.J1@*_!_5V@c,@"@s@e@xa@R|_Pr@s6@0H_J_&@j@3(7_U@V_L@.\o^@+-_[T
+      @@Q@5@._D@H@RSqO#_\U_(@)_N!q@'@X@|D@B_,_:_%_P@f_>@a/_R@:@>^m@/_#_K1@EU_j@c@7@a/_i
+      @@l_L_:dE@=@1_la@]f_A_\L_%@v|_PN@cimWYc_#a@P3_V_Dq_<@<<_E+_l*P_b@Y@/_G_Y9_a@B@l8s
+      @@x@r@|@-_lQ?@u_5_g
+    End
+  End
+  Object BUTTON
+    LayerName=Main
+    Left=105
+    Top=60
+    Width=90
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=bPanelClose1
+    ControlSerial=5
+    Caption=«акрыть
+    HotKey=
+    Picture=0
+    OnClick
+      @@>@eW_1S+_-d1&_;@E@'_[_\o&@Z=B@+_+_Bg@O@L9._/,@x_-_TR_Wp@Y.73@[@.@'_c@$u@2ry_(_K
+      @?@y)$_W@|YyE-@<@b3_>3}_d_m+{_&Mo_f_'@O_;_c-@PN_K:_J@X?@m@/%k@M@Ml_j4@k_B_4@a@B_
+      @S_I_%@/@V@?yY_S@#_U_I-i@9p?
+    End
+  End
+End

@@ -1,0 +1,2571 @@
+//Глобальные (root) модули загружаются при старте системы. Загрузка начинается с модуля "module" и продолжается в алфавитном порядке.
+//Переменные и функции, объявленные с постфиксом export, будут доступны в любых других модулях в любых потоках системы.
+//Модуль может содержать специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function глОбновитьИнформациюВДокументе(aEl,флОпцииДолга=0) Export Forward;
+
+Function глПересчитатьСуммыНДС(aEl) Export
+  Вид:=aEl.DBName();
+  If not isEmpty(Struct.Doc(Вид).LineParts("Номенклатура")) Then
+    Фл:=Min(aEl.УчитыватьВНалоговомУчете*aEl.ЮрЛицо.УчитыватьНДС,1);
+    aLP:=aEl.LineParts("Номенклатура");
+    If aLP.GetColumnIndex("СуммаНДС")>0 Then
+      aLP.Select();
+      While aLP.Next() Do
+        aLP.СуммаНДС:=Фл*aLP.Сумма*глКоэффНДС(aLP.СтавкаНДС);
+      EndDo;
+    EndIf;  
+  EndIf;  
+EndFunction
+
+Function глВсеРеквизитыДокументаЗаполнены(aEl,Спис) Export 
+  If BegOfDay(aEl.DocDate)>BegOfDay(Date()) Then
+    Message("Внимание! Вы обрабатываете документ будущей датой!","I");
+  EndIf;
+  Вид:=aEl.DBName();
+  While Спис<>"" Do
+    ИмяР:=tearStr(Спис,",");
+    If глЕстьРеквизитДокумента(ИмяР,Вид) Then
+      If IsEmpty(aEl.GetValue(ИмяР)) Then
+        Exit "Не заполнен реквизит: "+ИмяР;
+      EndIf;
+    EndIf;
+  EndDo;
+  Exit "";
+EndFunction
+
+Function глЗапретитьИзменениеЦен(aEl) Export;
+  If not глПользователь.общиеРедактированиеЦенВДокументах Then
+    Вид:=aEl.DBName();
+    If (Вид<>"РегистрацияОС")And(Вид<>"ПодотчетнаяОперация") Then
+      Фл:=0;
+      Try
+        Фл:=Min(Pos("КОМИССИЯ",UpperCase(Trim(aEl.КодОперации))),1)*(1-Form.cDocDate.isDisabled);
+      Except EndTry;
+      If not isEmpty(Form.ControlByName("MainTab")) Then
+        MainTab:=Form.ControlByName("MainTab").Value;
+        If MainTab.GetColumnIndex("Сумма")>0 Then
+          MainTab.Column("Сумма").isReadonly:=1-Фл;
+        EndIf;
+        If MainTab.GetColumnIndex("Цена")>0 Then
+          MainTab.Column("Цена").isReadonly:=1-Фл;
+        EndIf;
+        If MainTab.GetColumnIndex("СуммаНДС")>0 Then
+          MainTab.Column("СуммаНДС").isReadonly:=1-Фл;
+        EndIf;
+      EndIf;  
+    EndIf;
+  EndIf;
+EndFunction
+
+
+//Вызывать перед непосредственной записью
+Function глУстановитьНовыйНомер(aEl,Форс=0,ПослеКопирования=0) Export
+  If (aEl.Selected()>0)And(Форс=0) Then
+    Exit 1;
+  EndIf;
+  Вид:=aEl.DBName();
+  Инд:=Trim(DBVar.ПрефиксИБ);
+  If Инд="" Then
+    Raise "Не выбран префикс информационной базы в глобальных переменных!";
+  EndIf;
+  Инд:=Инд+Trim(aEl.ЮрЛицо.ПрефиксЮЛ);
+  
+  Дл:=0;
+  Стр:=Struct.Doc(Вид).Props("DocNum").DataType;
+  If Pos("STRING.",Стр)=1 Then
+    TearStr(Стр,"STRING.");
+    Дл:=Number(Стр);
+  Else
+    Exit 1;
+  EndIf;
+  
+  If (Left(aEl.DocNum,Length(Инд))<>Инд)Or(Length(Trim(aEl.DocNum))<>Дл)Or(ПослеКопирования=1) Then
+    aEl.SetPrefix("DocNum",Инд);
+  EndIf;
+  Exit 1;
+EndFunction
+
+
+
+Function глПроверитьАрендованноеИмущество(aEl,aLP,флПроверитьВесьДокумент=0,СтарыйКодОперации=0) Export
+  if aLP=0 Then
+    aLP:=Form.MainTab.Value;
+  EndIf;
+  Фл:=Pos("КОМИССИЯ",UpperCase(Trim(aEl.КодОперации)));
+  КОАр:=Enum.ВидыНоменклатуры.АрендованноеИмущество;
+  КООС:=Enum.ВидыНоменклатуры.Инвентарь;
+  If флПроверитьВесьДокумент=1 Then
+    //Проверка всего документа
+    //aLP:=aEl.LineParts("Номенклатура");
+    aLP.Select();
+    While aLP.Next() Do
+      If (aLP.Номенклатура.ВидНоменклатуры=КОАр)And(Фл=0) Then
+        Box("Нельзя изменить тип документа, так как в нем содержится арендованное имущество!",Q_STOP);
+        aEl.КодОперации:=СтарыйКодОперации;
+        глЗапретитьИзменениеЦен(aEl);
+        Exit 0;
+      ElseIf (aLP.Номенклатура.ВидНоменклатуры<>КОАр)And(aLP.Номенклатура.ВидНоменклатуры<>КООС)And(Фл>0) Then
+        Box("Нельзя изменить тип документа, так как в нем содержится номенклатура с типом отличным от арендованного имущества или основных средств!",Q_STOP);
+        aEl.КодОперации:=СтарыйКодОперации;
+        глЗапретитьИзменениеЦен(aEl);
+        Exit 0;
+      EndIf;
+    EndDo;
+  ElseIf not isEmpty(Form.ControlByName("MainTab")) Then
+    //Проверка текущей строки
+    If not aLP.Номенклатура.IsFolder() Then
+      If not isEmpty(aLP.Номенклатура) Then
+        If (aLP.Номенклатура.ВидНоменклатуры=КОАр)And(Фл=0) Then
+          Box("Арендованное имущество можно выбирать только в документах комиссии!",Q_STOP);
+          If aLP.GetColumnIndex("КодНоменклатуры")>0 Then
+            aLP.КодНоменклатуры:="";
+          EndIf;
+          aLP.Номенклатура:=0;
+          Exit 0;
+        ElseIf (aLP.Номенклатура.ВидНоменклатуры<>КОАр)And(aLP.Номенклатура.ВидНоменклатуры<>КООС)And(Фл>0) Then
+          Box("В документах комиссии можно выбирать только арендованное имущество или основные средства!",Q_STOP);
+          If aLP.GetColumnIndex("КодНоменклатуры")>0 Then
+            aLP.КодНоменклатуры:="";
+          EndIf;
+          aLP.Номенклатура:=0;
+          Exit 0;
+        EndIf;
+      EndIf;  
+    Else
+      Box("Выбирать группу справочника нельзя!",Q_STOP);
+      If aLP.GetColumnIndex("КодНоменклатуры")>0 Then
+        aLP.КодНоменклатуры:="";
+      EndIf;
+      aLP.Номенклатура:=0;
+      Exit 0;
+    EndIf;
+  EndIf;
+  Exit 1;
+EndFunction
+
+Function глВыбратьВидОперацииВДокументе(aEl,Способ=1) Export;
+  б:=TearStr(""+Struct.Doc(aEl.DBName()).Props("КодОперации").DataType,",");
+  TearStr(б,".");
+  Фл:=глПользователь.бухБухгалтер;
+  Стр:="";
+  For в:=1 to Struct.Enum(б).Values.Count() Do
+    Стр2:=Struct.Enum(б).Values(в).Name;
+    if (Стр2="ВнутреннееПеремещение")And(not Фл) Then
+      Continue;
+    EndIf;
+    Стр:=?(Стр="","",Стр+",")+Стр2;
+  EndDo;
+  
+  If DoesFunctionExist("OnBeforeChangeOperationCode",2) Then
+    If not ExecuteFunction("OnBeforeChangeOperationCode",2,Стр) Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  If Стр="" Then
+    Exit;
+  EndIf;
+  
+  а:=List.Create();
+  While Стр>"" Do
+    Стр2:=TearStr(Стр,",");
+    If Стр2="-" Then
+      а.Add(Стр2);
+    Else
+      а.Add(Enum.Get(б+"."+Стр2));
+    EndIf;  
+  EndDo;
+  КО:=0;
+  If а.Select(КО,Способ,"Выбор вида операции")>0 Then
+    if aEl.КодОперации=КО Then
+      Exit 1;
+    EndIf;
+    СтарыйКО:=aEl.КодОперации;
+    aEl.КодОперации:=КО;
+    If Form.IsFullyInitialized() Then
+      глЗапретитьИзменениеЦен(aEl);
+    EndIf;  
+    If глЕстьРеквизитДокумента("ТипПроводки",aEl.DBName()) Then
+      aEl.ТипПроводки:=0;
+    EndIf;
+    If pos("КОМИССИЯ",uppercase(КО.ValueName()))>0 Then
+      If aEl.LineParts("Номенклатура").Size()>0 Then
+        If not глПроверитьАрендованноеИмущество(aEl,aEl.LineParts("Номенклатура"),1,СтарыйКО) Then
+          Form.CallOnStatusChange();
+          Exit 0;
+        EndIf;
+      EndIf;  
+    EndIf;
+    If DoesFunctionExist("OnAfterChangeOperationCode",2) Then
+      ExecuteFunction("OnAfterChangeOperationCode",2);
+    EndIf;
+    Form.CallOnStatusChange();
+    Exit 1;
+  Else
+    If Способ=0 Then
+      Form.Close(0);
+    EndIf;
+    Exit 0;
+  EndIf;
+EndFunction
+
+Function глВидимостьНалоговВТабличнойЧасти(aEl) Export
+  If not isEmpty(Form.ControlByName("MainTab")) Then
+    MainTab:=Form.ControlByName("MainTab").Value;
+    If MainTab.GetColumnIndex("СтавкаНДС")>0 Then
+      MainTab.Column("СтавкаНДС").isReadonly:=1-глПользователь.бухБухгалтер;
+      MainTab.Column("СтавкаНДС").isVisible:=aEl.ЮрЛицо.УчитыватьНДС<>0;
+    EndIf;
+    
+    If MainTab.GetColumnIndex("СуммаНДС")>0 Then
+      MainTab.Column("СуммаНДС").isVisible:=aEl.ЮрЛицо.УчитыватьНДС<>0;
+    EndIf;
+  EndIf;  
+EndFunction
+
+
+
+//флЗапрет -- Проверять запрет отгрузки по типам ТМЦ
+Function глПриИзмененииДоговора(aEl) Export
+  Вид:=aEl.DBName();
+
+  If глЕстьРеквизитДокумента("Контрагент",Вид) Then
+    If aEl.Договор.Parent()<>aEl.Контрагент Then
+      aEl.Договор:=0;
+    EndIf;
+  EndIf;
+  
+  aEl.ЮрЛицо:=aEl.Договор.ЮрЛицо;
+  If _And(Form.Type=0,Form.Object=aEl) Then
+    глВидимостьНалоговВТабличнойЧасти(aEl);
+    глОтложенныйНДСОбновитьЗаголовок(aEl);
+  EndIf;  
+
+  If глЕстьРеквизитДокумента("БанковскийСчет",Вид) Then
+    If aEl.БанковскийСчет.Selected()<>0 Then
+      If aEl.БанковскийСчет.Parent()<>aEl.ЮрЛицо.Контрагент Then
+        aEl.БанковскийСчет:=0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("УчитыватьВНалоговомУчете",Вид) Then
+    aEl.УчитыватьВНалоговомУчете:=1;
+    глПересчитатьСуммыНДС(aEl);
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("ДатаОплаты",Вид) Then
+    aEl.ДатаОплаты:=глДатаОплаты(aEl,aEl.Договор);
+  EndIf;
+  
+  If _And(Form.Type=0,Form.Object=aEl) Then
+    глОбновитьИнформациюВДокументе(aEl,1);
+  EndIf;  
+  
+  Form.CallOnStatusChange;
+EndFunction
+
+Function глПриИзмененииКонтрагента(aEl) Export
+  Вид:=aEl.DBName();
+  if not isEmpty(Form.Control("КодКонтрагента")) Then
+    Form.КодКонтрагента.Value:=глНомерБезНулей(aEl.Контрагент,0);
+  EndIf;
+  If глЕстьРеквизитДокумента("ПринятоОт",Вид) Then
+    aEl.ПринятоОт:=aEl.Контрагент.ПолнНаименование;
+  EndIf;
+  If глЕстьРеквизитДокумента("Выдать",Вид) Then
+    aEl.Выдать:=aEl.Контрагент.ПолнНаименование;
+  EndIf;
+  
+  Счет:=0;
+  If глЕстьРеквизитДокумента("БанковскийСчет",Вид) Then
+    If aEl.БанковскийСчет.Selected()<>0 Then
+      If aEl.БанковскийСчет.Parent()<>aEl.ЮрЛицо.Контрагент Then
+        aEl.БанковскийСчет:=0;
+      EndIf;
+    EndIf;
+    If aEl.БанковскийСчет.Selected()<>0 Then
+      Счет:=aEl.БанковскийСчет;
+    EndIf;
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("Лицензия",Вид) Then
+    If (aEl.Лицензия.Selected()<>0)And(aEl.Лицензия.Parent()<>aEl.Контрагент) Then
+      aEl.Лицензия:=0;
+    EndIf;
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("Договор",Вид) Then
+    If (aEl.Договор.Selected()<>0)And(aEl.Договор.Parent()<>aEl.Контрагент) Then
+      aEl.Договор:=0;
+      глПриИзмененииДоговора(aEl);
+    EndIf;
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("АдресДоставки",Вид) Then
+    aEl.АдресДоставки:=глПредставлениеАдреса(aEl.Контрагент.ФактАдрес);
+  EndIf;
+  
+  If Счет<>0 Then
+    aEl.БанковскийСчет:=Счет;
+  EndIf;
+EndFunction
+
+
+//При интерактивном вводе или копировании нового документа
+Function глЗаполнитьШапку(aEl,флСкопировано=0) Export
+  Вид:=aEl.DBName();
+  If aEl.Selected()<0 Then
+    aEl.Автор:=глПользователь;
+    If _And(not флСкопировано,глЕстьРеквизитДокумента("УчитыватьВНалоговомУчете",Вид)) Then
+      aEl.УчитыватьВНалоговомУчете:=1;
+    EndIf;
+    If глЕстьРеквизитДокумента("Талон",Вид) Then
+      aEl.Талон:=0;
+    EndIf;
+    If глЕстьРеквизитДокумента("УникальныйИдентификатор",Вид) Then
+      aEl.УникальныйИдентификатор:="";
+    EndIf;  
+    If глЕстьРеквизитДокумента("УникальныйИдентификатор2",Вид) Then
+      aEl.УникальныйИдентификатор2:="";
+    EndIf;  
+    If глЕстьРеквизитДокумента("УникальныйИдентификатор3",Вид) Then
+      aEl.УникальныйИдентификатор3:="";
+    EndIf;  
+    //If _And(not флСкопировано,глЕстьРеквизитДокумента("ДокОснование",Вид)) Then
+    //  aEl.ДокОснование:="";
+    //EndIf;  
+    If _And(not флСкопировано,глЕстьРеквизитДокумента("СтатьяМаркетинга",Вид)) Then
+      aEl.СтатьяМаркетинга:=0;
+    EndIf;  
+    If _And(not флСкопировано,глЕстьРеквизитДокумента("МесяцДействия",Вид)) Then
+      aEl.МесяцДействия:=0;
+    EndIf;  
+    If _And(not флСкопировано,not IsEmpty(Struct.Doc(Вид).LineParts("МаркетингПоставщиков"))) Then
+      aLP:=aEl.LineParts("МаркетингПоставщиков");
+      aLP.ClearLines();
+    EndIf;
+    If _And(not флСкопировано,глЕстьРеквизитДокумента("КодОперации",Вид)) Then
+      If aEl.КодОперации.Selected()=0 Then
+        aEl.КодОперации:=Enum.GetByIndex("ко"+Вид,1);
+      EndIf;  
+    EndIf;
+    глУстановитьНовыйНомер(aEl,0,флСкопировано);
+  EndIf;
+  
+  If флСкопировано Then
+    Exit;
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("Договор",Вид) Then
+    глПриИзмененииДоговора(aEl);
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("ДатаДоставки",Вид) Then
+    If IsEmpty(aEl.ДатаДоставки) Then
+      aEl.ДатаДоставки:=aEl.DocDate+1;
+    EndIf;
+  EndIf;
+EndFunction
+
+//Тихо=0 -- предупреждение
+//     1 -- сообщение
+//     2 -- ничего
+Function глЗапретитьИзменениеДокумента(aEl,Тихо=0,Форсированно="") Export
+  If pos("DB.DOC.",TypeStr(aEl))=0 Then
+    Exit 1;
+  EndIf;
+  If ((Trim(aEl.ПрефиксУдаленнойБазы)<>"")Or(aEl.ФлагОбмена=9))And(not глРаботаетРобот) Then
+    If Тихо=0 Then
+      Box("Документы, выгруженные из удаленной базы, изменяются только на месте (после чего автоматически попадают в центральную)!",Q_STOP);
+    ElseIf Тихо=1 Then
+      Message("Документы, выгруженные из удаленной базы, изменяются только на месте (после чего автоматически попадают в центральную)!","!");
+    EndIf;
+    Exit 0;
+  EndIf;
+  Вид:=aEl.DBName();
+  
+  ИгнорироватьГлобальнуюДатуЗапрета:=0;
+  УровеньФорсирования:=0;
+  If TypeStr(Форсированно)="LIST" Then
+    УровеньФорсирования:=Number(Форсированно.GetByName("УровеньФорсирования"));
+    ИгнорироватьГлобальнуюДатуЗапрета:=Number(Форсированно.GetByName("ИгнорироватьГлобальнуюДатуЗапрета"));
+  EndIf;
+  
+  If УровеньФорсирования=0 Then
+    If (глЕстьРеквизитДокумента("УникальныйИдентификатор2",Вид))And(глЕстьРеквизитДокумента("УникальныйИдентификатор3",Вид)) Then
+      If (Trim(aEl.УникальныйИдентификатор2)<>"")Or(Trim(aEl.УникальныйИдентификатор3)<>"") Then
+        If not глПользователь.общиеАдминистратор Then
+          If Pos("КОМИССИЯ",UpperCase(Trim(aEl.КодОперации)))=0 Then
+            If Тихо=0 Then
+              Box("Документ запрещен к изменению, так как ему присвоен внешний уникальный номер!",Q_STOP);
+            ElseIf Тихо=1 Then
+              Message("Документ запрещен к изменению, так как ему присвоен внешний уникальный номер!","!");
+            EndIf;
+            Exit 0;
+          EndIf;
+        EndIf;
+      EndIf;
+    EndIf;
+  EndIf;  
+  
+  If (Форсированно<>"АвтоматическаяОтменаОбработки")And(not глРаботаетРобот)And(not ИгнорироватьГлобальнуюДатуЗапрета) Then
+    If Форсированно<>"ОбработкаЗакрытияЗадания" Then
+      If BegOfDay(aEl.DocDate)<=DBVar.ДатаГлобальногоЗапрета Then
+        If Тихо=0 Then
+          Box("Изменение документов за эту дату запрещается!",Q_STOP);
+        ElseIf Тихо=1 Then
+          Message("Изменение документов за эту дату запрещается!","!");
+        EndIf;
+        Exit 0;
+      ElseIf BegOfDay(aEl.DocDate)<=aEl.ЮрЛицо.ДатаЗапрета Then
+        If Тихо=0 Then
+          Box("Изменение документов по этому юр. лицу за эту дату запрещается!",Q_STOP);
+        ElseIf Тихо=1 Then
+          Message("Изменение документов по этому юр. лицу за эту дату запрещается!","!");
+        EndIf;
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;
+  Exit 1;
+EndFunction
+
+
+//Возвращает  
+//            0 -- обработка закончена, завершить с успехом
+//            1 -- продолжить обычную обработку
+//            2 и выше -- уровни форсирования обработки
+//            "<Описание ошибки>" -- завершить с неудачей
+Function глПриОбработкеДокумента(aEl,Param) Export
+  Result:=1;
+  If (aEl.ФлагОбмена<>0)And(aEl.ФлагОбмена<>9) Then
+    aEl.ФлагОбмена:=0;
+  ElseIf (aEl.ФлагОбмена=9)And(not глРаботаетРобот) Then
+    Exit "Документы, выгруженные из удаленной базы, не разрешается изменять в данной!";
+  EndIf;
+  
+  If (not isEmpty(Param))and(typestr(Param)<>"LIST") Then
+    Exit "Неверное указание обработки! Обратитесь к разработчику!";
+  EndIf;
+  
+  If TypeStr(Param)="LIST" Then
+    Result:=Number(Param.GetByName("УровеньФорсирования"))+1;
+    If Result<2 Then
+      Result:=1;
+    ElseIf Result>2 Then
+      Exit;
+    EndIf;
+  EndIf;
+  
+  If BegOfDay(aEl.DocDate)>Min(BegOfDay(CurDate())+7,EndOfWeek(CurDate())+4) Then
+    If not глПользователь.общиеАдминистратор Then
+      Exit "Вам запрещено обрабатывать документы будущей датой на такой удаленный срок, обратитесь к администратору!";
+    ElseIf AskQuestion("Обработка документа будущей датой на такой удаленный срок может быть ошибкой! "+
+      "Убедитесь, что вы хотите обработать документ на "+aEl.DocDate+"!"+_NEWLINE+"Обработать документ, вы уверены?",Q_WARNING+Q_YESNO)<>R_YES Then
+      Exit "Обработка отменена";
+    EndIf;
+  EndIf;  
+  
+  If not глЗапретитьИзменениеДокумента(aEl,1,Param) Then
+    Exit "Ошибка при обработке документа!";
+  EndIf;
+  
+  Exit;
+EndFunction
+
+
+Function глПриИзмененииДаты(aEl,флНеИзменять=0) Export;
+  аРезультат:=1;
+  
+  Вид:=aEl.DBName();
+  If Trim(aEl.DocNum)<>"" Then
+    If aEl.Selected()>0 Then
+      ДатаСтар:=aEl.Copy().DocDate;
+    Else
+      ДатаСтар:=Date();
+    EndIf;
+  
+    Пер:=Struct.Doc(Вид).Props("DocNum").Numerator.TimePeriod;
+  
+    Фл:=0;
+    If Пер=1 Then //Год
+      Фл:=(GetYear(aEl.DocDate)<>GetYear(ДатаСтар);
+    ElseIf Пер=2 Then //Квартал
+      Фл:=BegOfQuarter(aEl.DocDate)<>BegOfQuarter(ДатаСтар);
+    ElseIf Пер=3 Then //Месяц
+      Фл:=BegOfMonth(aEl.DocDate)<>BegOfMonth(ДатаСтар);
+    ElseIf Пер=4 Then //День
+      Фл:=BegOfDay(aEl.DocDate)<>BegOfDay(ДатаСтар);
+    EndIf;
+    
+    If _And(aEl.Selected()>0,BegOfDay(aEl.DocDate)<>BegOfDay(ДатаСтар)) Then
+      Фл2:=1;
+      If Вид="ВозвратОтПокупателя" Then
+        If aEl.ТипВозврата=Enum.ТипыВозвратов.ВозвратИзДоставки Then //флИспользоватьЭкспедицию
+          Фл2:=0;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    If Фл=1 Then
+      If aEl.Selected()>0 Then
+        Box("Нельзя изменить дату документа, так как он выйдет за пределы периодичности номера. Скопируйте документ!",Q_STOP);
+        If not флНеИзменять Then
+          aEl.DocDate:=ДатаСтар;
+        EndIf;  
+        аРезультат:=0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  If not флНеИзменять Then
+    If глЕстьРеквизитДокумента("ДатаОплаты",Вид) Then
+      аДата:=глДатаОплаты(aEl,aEl.Договор);
+      If aEl.ДатаОплаты<>аДата Then
+        aEl.ДатаОплаты:=аДата;
+      EndIf;
+    EndIf;
+  
+    If глЕстьРеквизитДокумента("ДатаДоставки",Вид) Then
+      аДата:=BegOfDay(aEl.DocDate)+1;
+      If aEl.ДатаДоставки<>аДата Then
+        aEl.ДатаДоставки:=аДата;
+      EndIf;
+    EndIf;
+  EndIf;  
+    
+  Exit аРезультат;
+EndFunction
+
+//Работает только при ИНТЕРАКТИВНОЙ записи! 
+Function глПриЗаписиДокумента(aEl) Export
+  Вид:=aEl.DBName();
+  If isEmpty(aEl.DocDate) Then
+    Box("Нельзя записывать документы с пустой датой!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  If BegOfDay(aEl.DocDate)<=ДатаЗапретаСТочкиЗренияПолномочий(aEl) Then
+    Box("Нельзя записывать документы до даты запрета редактирования документов!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("Склад",Вид) Then
+    If (aEl.Склад.флЗапретитьЛюбыеНовыеДокументы)And(not глРаботаетРобот) Then
+      Box("Нельзя создавать или изменять документы по складам, которые находятся в другой базе или запрещены к изменению!",Q_STOP);
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("Контрагент",Вид) Then
+    If (Trunc(aEl.Контрагент.Folder().флЗапреты/32)%2=1)And(not глРаботаетРобот) Then
+      Box("Нельзя создавать или изменять документы по контрагентам, которые находятся в другой базе или запрещены к изменению!",Q_STOP);
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If not глЗапретитьИзменениеДокумента(aEl) Then
+    Exit 0;
+  EndIf;
+  
+  //Если документ существовал до этого, номер менять нельзя
+  If aEl.Selected()>0 Then
+    а:=aEl.Copy();
+    If aEl.DocNum<>а.DocNum Then
+      aEl.DocNum:=а.DocNum;
+    EndIf;
+  EndIf;
+  If not глПриИзмененииДаты(aEl,1) Then
+    Exit 0;
+  EndIf;
+  
+  Фл:=Pos("/"+Вид+"/","/ПКО/РКО/ВыпискаБанкаПриход/ВыпискаБанкаРасход/ПодотчетнаяОперация/");
+  If глЕстьРеквизитДокумента("КодОперации",Вид) Then
+    If aEl.КодОперации=Enum.коРегистрацияОС.РеализацияОС Then
+      Фл:=1;
+    EndIf;
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("Договор",Вид) Then
+    If (aEl.Договор.Selected()<>0)And(Фл=0) Then
+      If aEl.ЮрЛицо<>aEl.Договор.ЮрЛицо Then
+        aEl.ЮрЛицо:=aEl.Договор.ЮрЛицо;
+      EndIf;  
+    EndIf;
+  EndIf;
+  
+  If _And(глЕстьРеквизитДокумента("Склад",Вид),глЕстьРеквизитДокумента("Магазин",Вид)) Then
+    If aEl.Склад.Selected()<>0 Then
+      If aEl.Магазин<>aEl.Склад.Магазин Then
+        aEl.Магазин:=aEl.Склад.Магазин;
+      EndIf;  
+    EndIf;
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("ТипПроводки",Вид) Then
+    If (aEl.ТипПроводки.ЮрЛицо.Selected()<>0)And(aEl.ТипПроводки.ЮрЛицо<>aEl.ЮрЛицо)And(not isEmpty(aEl.ТипПроводки)) Then
+      aEl.ТипПроводки:=0;
+    EndIf;
+  EndIf;
+  
+  глУстановитьНовыйНомер(aEl);
+  
+  If глЕстьРеквизитДокумента("СуммаВзаиморасчетов",Вид) Then
+    If not isEmpty(Struct.Doc(Вид).LineParts("Номенклатура")) Then
+      If not isEmpty(Struct.Doc(Вид).LineParts("Номенклатура").Props("Сумма")) Then
+        If Pos("/"+Вид+"/","/КорректировкаДолга/")=0 Then
+          aTab:=aEl.LineParts("Номенклатура");
+          См0:=Round(aTab.Sum("Сумма"),2);
+          If aEl.СуммаВзаиморасчетов<>См0 Then
+            aEl.СуммаВзаиморасчетов:=См0;
+          EndIf;  
+        EndIf;
+      EndIf;
+    ElseIf not isEmpty(Struct.Doc(Вид).LineParts("Содержание")) Then
+      If not isEmpty(Struct.Doc(Вид).LineParts("Содержание").Props("Сумма")) Then
+        aTab:=aEl.LineParts("Содержание");
+        См0:=Round(aTab.Sum("Сумма"),2);
+        If aEl.СуммаВзаиморасчетов<>См0 Then
+          aEl.СуммаВзаиморасчетов:=См0;
+        EndIf;  
+      EndIf;
+    EndIf;  
+  EndIf;  
+  
+  Exit 1;
+EndFunction
+
+Function глПроверкаРазрешенияРедактирования(aEl,ФлБезФормы=0) Export
+  ФлФорма:=?(ФлБезФормы=0,Form.cDocDate.isDisabled,0);
+  If not глПользователь.общиеРедактированиеДокументов Then
+    If not ФлБезФормы Then
+      Form.DisableControls(1);
+    EndIf;  
+    Exit 0;
+  EndIf;
+    
+  If aEl.Selected()>0 Then
+    If (Pos(aEl.DBName()+"@",глПользователь.ДокументыТолькоДляЧтения)>0)And(not глПользователь.бухГлавныйБухгалтер) Then
+      If not ФлБезФормы Then
+        Form.DisableControls(1);
+      EndIf;  
+      Exit 0;
+    EndIf;
+    
+    If (aEl.DocDate<=ДатаЗапретаСТочкиЗренияПолномочий(aEl))And(ФлФорма=0) Then
+      If not ФлБезФормы Then
+        Form.DisableControls(1);
+      EndIf;  
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If (ФлФорма=0)And(Trim(aEl.ПрефиксУдаленнойБазы)<>"") Then
+    If (not глРаботаетРобот)Or(not глПользователь.общиеАдминистратор) Then
+      If not ФлБезФормы Then
+        Form.DisableControls(1);
+      EndIf;  
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If (aEl.ФлагОбмена=9)And(not глРаботаетРобот) Then
+    If not ФлБезФормы Then
+      Form.DisableControls(1);
+    EndIf;  
+    Exit 0;
+  EndIf;
+  
+  If not ФлБезФормы Then
+    глЗапретитьИзменениеЦен(aEl);
+  EndIf;  
+  Exit 1;
+EndFunction
+
+Function глЗаполнениеДокументаПоПараметру(Пар,aEl) Export
+  If TypeStr(Пар)<>"LIST" Then
+    Exit;
+  EndIf;
+  If aEl.Selected()>0 Then
+    Exit;
+  EndIf;
+  ВидДок:=aEl.DBName();
+  СтарДата:=aEl.DocDate;
+  
+  For а:=1 to Пар.Size() Do
+    Зн:=Пар.Get(а);
+    Вид:=Пар.GetName(а);
+    If Вид="DocDate" Then
+      aEl.DocDate:=Зн;
+    ElseIf Вид="СтрочнаяЧасть" Then
+      If not isEmpty(Struct.Doc(ВидДок).LineParts("Номенклатура")) Then
+        aLP:=aEl.LineParts("Номенклатура");
+        aLP.ClearLines();
+        Зн.CopyTo(aLP);
+      EndIf;
+    ElseIf глЕстьРеквизитДокумента(Вид,ВидДок) Then
+      aEl.SetValue(Вид,Зн);
+    EndIf;
+  EndDo;
+  If _And(глЕстьРеквизитДокумента("Склад",ВидДок),глЕстьРеквизитДокумента("Магазин",ВидДок)) Then
+    If aEl.Склад.Selected()<>0 Then
+      If aEl.Магазин<>aEl.Склад.Магазин Then
+        aEl.Магазин:=aEl.Склад.Магазин;
+      EndIf;  
+    EndIf;
+  EndIf;
+EndFunction
+
+//Работает только при Интерактивном открытии
+Function глПриОткрытииДокумента(aEl,Param) Export
+
+  Function Доступность(Имя,Фл)
+    If not isEmpty(Form.ControlByName(Имя)) Then
+      Form.ControlByName(Имя).isDisabled:=1-Фл;
+    EndIf;
+  EndFunction
+
+  Вид:=aEl.DBName();
+  
+  If not isEmpty(Form.ControlByName("MainTab")) Then
+    MainTab:=Form.ControlByName("MainTab").Value;
+    
+    глВидимостьНалоговВТабличнойЧасти(aEl);
+    
+    If флНеДелитьНаОсновныеИБазовыеВДокументах Then
+      If MainTab.GetColumnIndex("КоличествоВОсновных")>0 Then
+        MainTab.Column("КоличествоВОсновных").isVisible:=0;
+      EndIf;
+      If MainTab.GetColumnIndex("КоличествоВБазовых")>0 Then
+        MainTab.Column("КоличествоВБазовых").isVisible:=0;
+      EndIf;
+    Else
+      If MainTab.GetColumnIndex("КоличествоВОсновных")>0 Then
+        Фл:=Number(RestoreValue("ПоказыватьКоличество_"+Вид));
+        If MainTab.GetColumnIndex("Количество")>0 Then
+          MainTab.Column("Количество").isVisible:=Фл;
+        EndIf;  
+      EndIf;
+    EndIf;
+  Endif;
+  
+  If (not isEmpty(Form.ControlByName("оЗакладки")))and(not флИспользоватьБлокМаркетинга) Then
+    If not isEmpty(Form.оЗакладки.Pages.Page("Маркетинг")) Then
+      Form.оЗакладки.Pages.Page("Маркетинг").isInvisible:=1;
+    EndIf;  
+  EndIf;
+  
+  If not isEmpty(Form.ControlByName("УчитыватьВНалоговомУчете")) Then
+    Form.УчитыватьВНалоговомУчете.isDisabled:=1-глПользователь.бухБухгалтер;
+    If Pos(","+Вид+",",",РегистрацияТМЦ,РегистрацияОС,")>0 Then
+      Form.УчитыватьВНалоговомУчете.Caption:="Включать в книгу продаж";
+      Form.УчитыватьВНалоговомУчете.isDisabled:=1-глПользователь.бухГлавныйБухгалтер;
+    ElseIf aEl.ЮрЛицо.УчитыватьНДС=0 Then
+      Form.УчитыватьВНалоговомУчете.Caption:="Включать в книгу доходов и расходов";
+    Else
+      Form.УчитыватьВНалоговомУчете.Caption:="Выписана счет-фактура";
+    EndIf;
+  Endif;
+  
+  If not isEmpty(Form.ControlByName("УникальныйИдентификатор")) Then
+    Form.УникальныйИдентификатор.isReadOnly:=1-глРаботаетРобот;
+    If not Form.УникальныйИдентификатор.isReadOnly Then
+      Form.УникальныйИдентификатор.Color:=_CLR_WINDOW;
+    EndIf;
+  Endif;
+  If not isEmpty(Form.ControlByName("УникальныйИдентификатор2")) Then
+    Form.УникальныйИдентификатор2.isReadOnly:=1-глРаботаетРобот;
+    If not Form.УникальныйИдентификатор2.isReadOnly Then
+      Form.УникальныйИдентификатор2.Color:=_CLR_WINDOW;
+    EndIf;
+  Endif;
+  If not isEmpty(Form.ControlByName("УникальныйИдентификатор3")) Then
+    Form.УникальныйИдентификатор3.isReadOnly:=1-глРаботаетРобот;
+    If not Form.УникальныйИдентификатор3.isReadOnly Then
+      Form.УникальныйИдентификатор3.Color:=_CLR_WINDOW;
+    EndIf;
+  Endif;
+  If not isEmpty(Form.ControlByName("флИспользуютсяКодыСинхронизации")) Then
+    Form.флИспользуютсяКодыСинхронизации.isDisabled:=1-глРаботаетРобот;
+  Endif;
+  
+  If not isEmpty(Form.ControlByName("оЗатраты")) Then
+    Form.оЗатраты.isDisabled:=1-Max(глПользователь.кассаКассир,глПользователь.бухБухгалтер);
+    If aEl.ЦентрЗатрат.Selected()+aEl.СтатьяЗатрат.Selected()=2 Then
+      Form.оЗатраты.Value:=1;
+    EndIf;
+  EndIf;
+  
+  If not isEmpty(Form.ControlByName("КодКонтрагента")) Then
+    Form.КодКонтрагента.Value:=глНомерБезНулей(aEl.Контрагент,0);
+  EndIf;
+  
+  глПроверкаРазрешенияРедактирования(aEl);
+  
+  If (глЕстьРеквизитДокумента("УникальныйИдентификатор2",Вид))And(глЕстьРеквизитДокумента("УникальныйИдентификатор3",Вид)) Then
+    If (Trim(aEl.УникальныйИдентификатор2)<>"")Or(Trim(aEl.УникальныйИдентификатор3)<>"") Then
+      If Pos("КОМИССИЯ",UpperCase(Trim(aEl.КодОперации)))=0 Then
+        If not глПользователь.общиеАдминистратор Then
+          Form.DisableControls(1);
+          Box("Документ запрещен к изменению, так как ему присвоен внешний уникальный номер!",Q_WARNING);
+        Else
+          Box("Документ запрещен к изменению, так как ему присвоен внешний уникальный номер! Вы должны точно знать, что делаете!",Q_WARNING);
+        EndIf;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  Фл:=1-Form.cDocDate.isDisabled;
+  Доступность("bPanelOK",Фл);
+  Доступность("bPanelSave",Фл);
+  Доступность("bPanelPublish",Фл);
+  Доступность("ДокОснование",Фл);
+  Доступность("cDocDate",Фл);
+  Доступность("ОтложитьНДСНаПериод",Фл*глПользователь.бухБухгалтер);
+  Доступность("тОтложитьНДС",Фл*глПользователь.бухБухгалтер);
+  
+  глЗаполнениеДокументаПоПараметру(Param,aEl);
+  
+  If глЕстьРеквизитДокумента("Договор",Вид) Then
+    глДатаОплаты(aEl,aEl.Договор);
+  EndIf;  
+  
+  Exit 1;
+EndFunction
+
+
+Function глПересчитатьСтолбикиЕдиниц(aEl) Export
+  Вид:=aEl.DBName();
+  If isEmpty(Struct.Doc(Вид).LineParts("Номенклатура")) Then
+    Exit;
+  EndIf;
+  If isEmpty(Form.ControlByName("MainTab")) Then
+    Exit;
+  EndIf;
+  
+  aLP:=aEl.LineParts("Номенклатура");
+  aLP.Select();
+  While aLP.Next() Do
+    К:=aLP.Номенклатура.оснКоэффициент;
+    К:=?(К=0,1,К);
+    
+    If К=1 Then
+      Кл:=aLP.Количество;
+    Else
+      Кл:=Trunc(Round((aLP.Количество)/К,6));
+    EndIf;
+    If Кл<>aLP.КоличествоВОсновных Then
+      aLP.КоличествоВОсновных:=Кл;
+    EndIf;
+    Разн:=Кл*К;
+    
+    Кл:=aLP.Количество-Разн;
+    If Кл<>aLP.КоличествоВБазовых Then
+      aLP.КоличествоВБазовых:=Кл;
+    EndIf;
+  EndDo;
+EndFunction
+
+Function глОбновитьДолгПодотчетникаВДокументе(aEl) Export
+  If not isEmpty(Form.ControlByName("оДолгПодотчетника")) Then  
+    Подотчетник:=aEl.ПодотчетноеЛицо;
+    If _And(aEl.ПодотчетноеЛицо.Selected()=0,глЕстьРеквизитДокумента("Контрагент",aEl.DBName())) Then
+      Подотчетник:=aEl.Контрагент;
+    EndIf;
+    См:=Storage.ПодотчетныеОперации.Gross1("Сумма",,0,"ПодотчетноеЛицо,ТипОперации",Подотчетник,Enum.ТипыПодотчетныхОпераций.ПодотчетнаяОперация);
+    Form.ControlByName("оДолгПодотчетника").FontColor:=?(См<=0,_CLR_WINDOWTEXT,_CLR_RED);
+    Form.ControlByName("оДолгПодотчетника").Caption:=глФРМ(См," ");
+  EndIf;
+EndFunction
+
+Function глОбновитьСтатусВыгрузкиВККМВДокументе(aEl) Export
+  If not isEmpty(Form.ControlByName("оСтатусВыгрузкиВККМ")) Then  
+    If aEl.Selected()>0 Then
+      bEl:=aEl.GetJournalObject("ЖурналКассовыхДокументов");
+      If bEl.флВыгруженВККМ=0 Then
+        Form.ControlByName("оСтатусВыгрузкиВККМ").FontColor:=_CLR_WINDOWTEXT;
+        Form.ControlByName("оСтатусВыгрузкиВККМ").Caption:="не выгружался";
+      ElseIf bEl.флВыгруженВККМ=1 Then
+        Form.ControlByName("оСтатусВыгрузкиВККМ").FontColor:=_CLR_GREEN;
+        Form.ControlByName("оСтатусВыгрузкиВККМ").Caption:="выгружен";
+      Else
+        Form.ControlByName("оСтатусВыгрузкиВККМ").FontColor:=_CLR_RED;
+        Form.ControlByName("оСтатусВыгрузкиВККМ").Caption:="выгружен как аванс";
+      EndIf;
+    Else
+      Form.ControlByName("оСтатусВыгрузкиВККМ").FontColor:=_CLR_WINDOWTEXT;
+      Form.ControlByName("оСтатусВыгрузкиВККМ").Caption:="не выгружался";
+    EndIf;  
+  EndIf;
+EndFunction
+
+Function глОбновитьДолгВДокументе(aEl,флОпцииДолга=0) Export
+  Function _ФорматироватьДолг(См,СтрДоб="")
+    If флОпцииДолга and 1=0 Then
+      Стр:=глФРМ(См," ");
+      Exit Стр+?(Стр="","",СтрДоб);
+    Else
+      Exit глФРМ(См," ");
+    EndIf;
+  EndFunction
+
+  //Долг
+  If not isEmpty(Form.ControlByName("оДолг")) Then
+    НульТара:=GetNothing("Ref.тмцНоменклатура");
+    If флОпцииДолга and 2=0 Then
+      См:=Storage.Взаиморасчеты.Gross1("Сумма",,0,"Договор",aEl.Договор);
+    Else
+      См:=Storage.Взаиморасчеты.Gross1("Сумма",,0,"Договор,Тара",aEl.Договор,НульТара);
+    EndIf;
+    флПок:=(флОпцииДолга and 12) div 4;
+    If (флПок=0)Or(флПок=3) Then
+      Form.ControlByName("оДолг").FontColor:=?(См<=0,_CLR_WINDOWTEXT,_CLR_RED);
+      Form.ControlByName("оДолг").Caption:=_ФорматироватьДолг(См);
+    ElseIf флПок=1 Then
+      If флОпцииДолга and 2=0 Then
+        См2:=Storage.Взаиморасчеты.Gross1("Сумма",,0,"Договор,ВидДолга",aEl.Договор,Enum.ПокупательПоставщик.Покупатель);
+      Else
+        См2:=Storage.Взаиморасчеты.Gross1("Сумма",,0,"Договор,Тара,ВидДолга",aEl.Договор,НульТара,Enum.ПокупательПоставщик.Покупатель);
+      EndIf;
+      Form.ControlByName("оДолг").FontColor:=?(См2<=0,_CLR_WINDOWTEXT,_CLR_RED);
+      Form.ControlByName("оДолг").Caption:=_ФорматироватьДолг(См2,?(См=См2,""," (Пок)"));
+    Else
+      If флОпцииДолга and 2=0 Then
+        См2:=Storage.Взаиморасчеты.Gross1("Сумма",,0,"Договор,ВидДолга",aEl.Договор,Enum.ПокупательПоставщик.Поставщик);
+      Else
+        См2:=Storage.Взаиморасчеты.Gross1("Сумма",,0,"Договор,Тара,ВидДолга",aEl.Договор,НульТара,Enum.ПокупательПоставщик.Поставщик);
+      EndIf;
+      Form.ControlByName("оДолг").FontColor:=?(См2<=0,_CLR_WINDOWTEXT,_CLR_RED);
+      Form.ControlByName("оДолг").Caption:=_ФорматироватьДолг(См2,?(См=См2,""," (Пост)"));
+    EndIf;    
+  EndIf;
+EndFunction
+
+Function глОбновитьИнфКоличестваВДокументе(aEl) Export;
+  //Масса документа
+  Вид:=aEl.DBName();
+  If not isEmpty(Form.ControlByName("оЦелыхШтучных")) Then
+    If not isEmpty(Struct.Doc(Вид).LineParts("Номенклатура")) Then
+      aLP:=aEl.LineParts("Номенклатура");
+      Целых:=aLP.SUM("КоличествоВОсновных");
+      Штучных:=aLP.SUM("КоличествоВБазовых");
+      Form.ControlByName("оЦелыхШтучных").Caption:=глФРМ(Целых,"")+" + "+глФРМ(Штучных,"");
+    EndIf;  
+  EndIf;
+  If not isEmpty(Form.ControlByName("оКоличествоИтого")) Then
+    If not isEmpty(Struct.Doc(Вид).LineParts("Номенклатура")) Then
+      aLP:=aEl.LineParts("Номенклатура");
+      Form.ControlByName("оКоличествоИтого").Caption:=глФРМ(aLP.SUM("Количество"),"");
+    EndIf;  
+  EndIf;
+EndFunction
+
+Function глОбновитьМассуВДокументе(aEl) Export;
+  //Масса документа
+  Вид:=aEl.DBName();
+  If not isEmpty(Form.ControlByName("оМасса")) Then
+    If not isEmpty(Struct.Doc(Вид).LineParts("Номенклатура")) Then
+      aLP:=aEl.LineParts("Номенклатура");
+      Масса:=0;Дал:=0;
+      aLP.Select();
+      While aLP.Next() Do
+        Масса:=Масса+aLP.Номенклатура.базМассаНетто*aLP.Количество;
+        Дал:=Дал+aLP.Номенклатура.ОбъемЛитров/10*aLP.Количество;
+      EndDo;
+      Form.ControlByName("оМасса").Caption:=глФРМ(Масса,"")+" кг."+?(Дал>0," / "+глФРМ(Дал)+" дал","");
+    EndIf;  
+  EndIf;  
+EndFunction
+
+Function глОбновитьОбъемСклада(aEl,ИмяРекв,аСклад) Export;
+  //Штук и дал на складе
+  If not isEmpty(Form.ControlByName(ИмяРекв)) Then
+    Tab1:=Stor.ОстаткиТМЦ.Gross("Номенклатура","Количество",,0,"Склад",аСклад);
+    MassLoadObjects(Tab1);
+  
+    Tab1.Select();
+    Масса:=0;Дал:=0;
+    While Tab1.Next() Do
+      Чл:=Tab1.Количество;
+      Масса:=Масса+Tab1.Номенклатура.базМассаНетто*Чл;
+      Дал:=Дал+Tab1.Номенклатура.ОбъемЛитров/10*Чл;
+    EndDo;
+    Form.ControlByName(ИмяРекв).Caption:=глФРМ(Масса,"")+" кг."+?(Дал>0," / "+глФРМ(Дал)+" дал","");
+  EndIf;  
+EndFunction
+
+
+
+//флОпцииДолга: бит 1 -- без тары, бит 2 -- без резерва
+//              биты 3,4: 0 или 3 -- покупатель и поставщик, 1 -- только покупатель, 2 -- только поставщик
+Function глОбновитьИнформациюВДокументе(aEl,флОпцииДолга=0) Export
+  Вид:=aEl.DBName();
+  
+  глОбновитьДолгВДокументе(aEl,флОпцииДолга);
+  глОбновитьДолгПодотчетникаВДокументе(aEl);
+  глОбновитьМассуВДокументе(aEl);
+  глОбновитьИнфКоличестваВДокументе(aEl);
+  
+  If not isEmpty(Form.ControlByName("оПДолг")) Then
+    Form.ControlByName("оПДолг").Caption:="?";
+    Form.ControlByName("оПДолг").FontColor:=_CLR_WINDOWTEXT;
+  EndIf;
+  
+  If (глЕстьРеквизитДокумента("Договор",Вид))and(not isEmpty(Form.ControlByName("оКредит"))) Then
+    Form.оКредит.Caption:=?(aEl.Договор.флОтгрузкаВКредит=0,?(aEl.Договор.СуммаКредита=0,"По факту оплаты, ","В одну накладную, "),"В кредит, ")+глФРМ(aEl.Договор.СуммаКредита,"");
+  EndIf;  
+EndFunction
+
+Function глВведенКодКонтрагента(пИмя="КодКонтрагента",пЗначение="Контрагент") Export;
+  if isEmpty(Form.Control(пИмя)) Then
+    Exit;
+  EndIf;
+  aEl:=Form.Object;
+  Form.Control(пИмя).UpdateValue;
+  Код:=Form.Control(пИмя).Value;
+  If Код="" Then
+    Exit;
+  EndIf;
+  а:=глНайтиПоКоду("кнтКонтрагенты",Код);
+  If а=0 Then
+    Box("Контрагента с таким кодом не существует!",Q_STOP);
+    Form.Control(пИмя).Value:="";
+    Form.Control(пИмя).SetFocus();
+    Exit;
+  EndIf;
+  If а.IsFolder() Then
+    Box("Введенному коду соответствует папка контрагентов!",Q_STOP);
+    Form.Control(пИмя).Value:="";
+    Form.Control(пИмя).SetFocus();
+    Exit;
+  EndIf;
+  If aEl.GetValue(пЗначение)<>а Then
+    aEl.SetValue(пЗначение,а);
+    If пЗначение="Контрагент" Then
+      глПриИзмененииКонтрагента(aEl);
+    EndIf;  
+  EndIf;  
+EndFunction
+
+Function глПроверкаКорректностиНоменклатурыВДокументе(aEl) Export
+  Вид:=aEl.DBName();
+  If Pos(","+Вид+",",",Реализация,ВозвратОтПокупателя,ПоступлениеТМЦ,ВозвратПоставщику,")=0 Then
+    Exit 1;
+  EndIf;
+  aTab:=aEl.LineParts("Номенклатура");
+  
+  СпРод:=List.Create();
+  Фл:=1;
+  aTab.Select();
+  While aTab.Next() Do
+    Род:=aTab.Номенклатура.Folder();
+    While Род.Selected()<>0 Do
+      If Род.флЗапреты%2=1 Then
+        Message("Запрещена отгрузка, возврат или поступление номенклатуры из папки "+Род+" ("+Род.Code+") для позиции "+aTab.Номенклатура+" ("+aTab.Номенклатура.Code+")!",?(глРаботаетРобот,"I","!"));
+        Фл:=Фл And глРаботаетРобот;
+      EndIf;
+      If isEmpty(СпРод.GetByName(Род.Code)) Then
+        Род2:=Род.Folder();
+        СпРод.SetByName(Род.Code,Род2);
+        Род:=Род2;
+      Else
+        Род:=СпРод.GetByName(Род.Code);
+      EndIf;
+    EndDo;
+    
+    If aTab.Номенклатура.IsFolder() Then
+      Message("Выбирать группу номенклатуры ("+aTab.Номенклатура+", "+aTab.Номенклатура.Code+") в строки документа не имеет смысла!",?(глРаботаетРобот,"I","!"));
+      Фл:=Фл And глРаботаетРобот;
+    EndIf;
+  EndDo;  
+
+  Exit Фл;
+EndFunction
+
+//Работает только с визуальной частью
+Function глПриИзмененииКодаНоменклатуры(aEl,ByRef Value,прЦена="Цена@Сумма") Export
+  var aTab;
+  aTab:=Form.MainTab.Value;
+  aTab.CurLine:=aTab.SelectedLine;
+  Код:=Trim(Value);
+  If Pos("ТАРА",Код)>0 Then
+    Exit 1;
+  EndIf;
+
+  а:=глНайтиПоКоду("тмцНоменклатура",Код);
+  If а<>0 Then
+    If not а.IsFolder() Then
+      aTab.Номенклатура:=а;
+      aTab.КодНоменклатуры:=а.Code;
+      Value:=а.Code;
+    Else
+      Box("Выбирать группу справочника нельзя!",Q_STOP);
+      aTab.Номенклатура:=0;
+      aTab.КодНоменклатуры:="";
+      Value:="";
+    EndIf;
+  Else
+    If Trim(Value)<>"" Then
+      Box("Номенклатуры с таким кодом не существует!",Q_STOP);
+    EndIf;
+    aTab.Номенклатура:=0;
+    aTab.КодНоменклатуры:="";
+    Value:="";
+  EndIf;
+  If прЦена<>"" Then
+    глПересчитатьСтроку(aEl,aTab,"Код@Количество2"+?(aTab.GetColumnIndex("Цена")>0,"@"+прЦена,"")+?(aTab.GetColumnIndex("СуммаНДС")>0,"@СуммаНДС",""));
+  EndIf;  
+  Exit 1;
+EndFunction
+
+
+//Работает только с визуальной частью
+Function глПриОкончанииРедактированияСтроки(aEl,Заявка=0,ДопПолеДубля="",флБезПроверкиНаДубли=0) Export
+  aTab:=Form.MainTab.Value;
+  iLine:=aTab.SelectedLine;
+  aTab.CurLine:=iLine;
+  
+  Вид:=aEl.DBName();
+  If aTab.Номенклатура.Selected()=0 Then
+    Box("Выберите номенклатурную позицию, пожалуйста!",Q_STOP);
+    Exit 0;
+  EndIf;
+  If Заявка=1 Then
+    If (aTab.Номенклатура.ВидНоменклатуры<>Enum.ВидыНоменклатуры.Товар)And
+       (aTab.Номенклатура.ВидНоменклатуры<>Enum.ВидыНоменклатуры.Тара)And
+       (aTab.Номенклатура.ВидНоменклатуры<>Enum.ВидыНоменклатуры.Услуга) Then
+      Box("Нельзя реализовывать данный вид номенклатуры, так как она не является товаром, тарой или произведенной продукцией!",Q_STOP);
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If aTab.GetColumnIndex("КодНоменклатуры")>0 Then
+    If (Pos("ТАРА",Trim(aTab.КодНоменклатуры))>0)or(Trim(aTab.КодНоменклатуры)="БОНУС") Then
+      Exit 1;
+    EndIf;
+  EndIf;
+  
+  If aTab.GetColumnIndex("СтавкаНДС")>0 Then
+    If aTab.СтавкаНДС.Selected()=0 Then
+      aTab.СтавкаНДС:=Enum.СтавкиНДС.БезНДС;
+    EndIf;
+  EndIf;
+  
+  If глЕстьРеквизитДокумента("КодОперации",Вид) Then
+    If aEl.КодОперации.ValueName()="ВнутреннееПеремещение" Then
+      Exit 1;
+    EndIf;
+  EndIf;
+  
+  If флБезПроверкиНаДубли Then
+    Exit 1;
+  EndIf;
+  
+  Н:=aTab.Номенклатура;
+  Партия:=0;
+  If ДопПолеДубля<>"" Then
+    Партия:=aTab.Get(iLine,ДопПолеДубля);
+  EndIf;
+  
+  aTab.Select();//0 -> CurLine
+  While aTab.LocateAndGoto("Номенклатура",Н)>0 Do
+    If aTab.CurLine=iLine Then
+      Continue;
+    EndIf;
+    If (Trim(aTab.КодНоменклатуры)="БОНУС")Or(Pos("ТАРА",Trim(aTab.КодНоменклатуры))>0) Then
+      Continue;
+    EndIf;
+    If ДопПолеДубля<>"" Then
+      Партия2:=aTab.Get(aTab.CurLine,ДопПолеДубля);
+      If Партия<>Партия2 Then
+        Continue;
+      EndIf;
+    EndIf;
+    
+    Box("Номенклатурная позиция (или ее партия) дублируется!",Q_STOP);
+    Exit 0;
+  EndDo;
+  
+  Exit 1;
+EndFunction
+
+
+
+// Шапка=1 -- и шапку и табличную часть, Шапка=-1 -- только шапку, Шапка=0 -- только табличную часть
+//БитОпции = бит 1 -- проверить корректность основания
+//           бит 2 -- возврат в БитОпции 1, если присутствует весовой товар, иначе 0.
+Function глКопированиеИзДокументаВДокумент(ИзДок,ВДок,Пересчет="",ЗадатьВопрос=0,Шапка=1,ByRef БитОпции=0,ОшибкаНулевойЦены=0) Export
+  If IsEmpty(ИзДок) Then
+    Exit 0;
+  EndIf;
+
+  Вид:=ИзДок.DBName();
+  If ВДок=0 Then
+    ВДокВид:=SelectDataType("Doc","Выберите тип документа для копирования");
+    If isEmpty(ВДокВид) Then
+      Exit 0;
+    EndIf;
+    tearStr(ВДокВид,".");
+  Else
+    ВДокВид:=ВДок.DBName();
+  EndIf;
+  
+  If БитОпции%2=1 Then
+    Фл:=0;
+    For а:=1 to Struct.Doc(Вид).ServesAsBaseTo.Count() Do
+      ОВид:=Struct.Doc(Вид).ServesAsBaseTo(а).Name;
+      if Uppercase(ОВид)=Uppercase(ВДокВид) Then
+        Фл:=1;
+        Break;
+      EndIf;
+    EndDo;
+    If not Фл Then
+      Box("На основании документа "+Вид+" нельзя заполнить документ "+ВДокВид+"!",Q_STOP);
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  ОткрытьФормуПриВыходе:=0;
+  If ВДок=0 Then
+    ВДок:=DB("Doc."+ВДокВид);
+    ВДок.New();
+    ОткрытьФормуПриВыходе:=1;
+  EndIf;
+  
+  If ЗадатьВопрос Then
+    If AskQuestion("Вы действительно хотите заполнить текущий документ из документа "+Str(ИзДок)+"?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If (Шапка=1)Or(Шапка=-1) Then
+    Исключ:=List.Create("DocDate","DocNum","КодОперации","ДокОснование","Талон","УникальныйИдентификатор","УникальныйИдентификатор2","УникальныйИдентификатор3","ФлагОбмена","ОтложитьНДСНаПериод");
+    If ВДок.DBName()<>Вид Then
+      Исключ.Add("ТипПроводки");
+    EndIf;
+    
+    For а:=1 to Struct.Doc(Вид).Props.Count() Do
+      ИмяР:=Struct.Doc(Вид).Props(а).Name;
+      If Исключ.Find(ИмяР)>0 Then
+        Continue;
+      EndIf;
+      If not isEmpty(Struct.Doc(ВДок.DBName()).Props(ИмяР)) Then
+        ВДок.SetValue(ИмяР,ИзДок.GetValue(ИмяР));
+      EndIf;  
+    EndDo;
+    ВДок.Автор:=глПользователь;
+    //Номер и другие исключения
+    If _And(глЕстьРеквизитДокумента("Склад",ВДок.DBName()),глЕстьРеквизитДокумента("Магазин",ВДок.DBName())) Then
+      If ВДок.Склад.Selected()<>0 Then
+        If ВДок.Магазин<>ВДок.Склад.Магазин Then
+          ВДок.Магазин:=ВДок.Склад.Магазин;
+        EndIf;  
+      EndIf;
+    EndIf;
+    
+    If глЕстьРеквизитДокумента("Договор",ВДок.DBName()) Then
+      If ВДок.Договор.Selected()<>0 Then
+        If глЕстьРеквизитДокумента("ДатаОплаты",ВДок.DBName()) Then
+          ВДок.ДатаОплаты:=глДатаОплаты(ВДок,ВДок.Договор);
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    If глЕстьРеквизитДокумента("УчитыватьВНалоговомУчете",ВДок.DBName()) Then
+      ВДок.УчитыватьВНалоговомУчете:=1;
+    EndIf;
+    
+    //Код операции
+    If глЕстьРеквизитДокумента("КодОперации",ВДок.DBName()) Then
+      If ВДок.КодОперации.Selected()=0 Then
+        КО:=List.Create();
+        КО.Add(Enum.коРегистрацияТМЦ.ОприходованиеТМЦ,"РегистрацияТМЦ");
+        КО.Add(Enum.коВозвратОтПокупателя.ВозвратТМЦ,"ВозвратОтПокупателя");
+        КО.Add(Enum.коВозвратПоставщику.ВозвратТМЦ,"ВозвратПоставщику");
+        КО.Add(Enum.коНачислениеЗатрат.НачислениеЗатрат,"НачислениеЗатрат");
+        КО.Add(Enum.коНачислениеСкидкиПоставщика.НачислениеСкидки,"НачислениеСкидкиПоставщика");
+        КО.Add(Enum.коПКО.ОплатаПокупателя,"ПКО");
+        КО.Add(Enum.коРКО.ОплатаПоставщику,"РКО");
+        КО.Add(Enum.коПоступлениеТМЦ.ПоступлениеТМЦ,"ПоступлениеТМЦ");
+        КО.Add(Enum.коПеремещениеТМЦ.ПеремещениеТМЦ,"ПеремещениеТМЦ");
+        КО.Add(Enum.коКорректировкаДолга.ПокупательТары,"КорректировкаДолга");
+        КО.Add(Enum.коДоверенность.НаТМЦ,"Доверенность");
+        КО.Add(Enum.коАктПоСкладу.Списание,"АктПоСкладу");
+        КО.Add(Enum.коРеализация.Реализация,"Реализация");
+        КО.Add(Enum.коРегистрацияОС.ПоступлениеОС,"РегистрацияОС");
+        КО.Add(Enum.коВыпискаБанкаПриход.ОплатаПокупателя,"ВыпискаБанкаПриход");
+        КО.Add(Enum.коВыпискаБанкаРасход.ОплатаПоставщику,"ВыпискаБанкаРасход");
+        КО.Add(Enum.коСторнирование.СторнированиеВзаиморасчетов,"Сторнирование");
+        КО.Add(Enum.коАванс.АвансВыданный,"Аванс");
+        КО.Add(Enum.коРегистр2ЕГАИС.ПеремещениеНаРегистр2,"Регистр2ЕГАИС");
+        НашКО:=КО.GetByName(Trim(ВДок.DBName()));
+        If not IsEmpty(НашКо) Then
+          ВДок.КодОперации:=НашКо;
+        EndIf;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  Фл:=1;
+  ФлВес:=Trunc(БитОпции/2)%2;БитОпции:=0;
+  If (Struct.Doc(ВДок.DBName()).LineParts.Count()>0)And(Struct.Doc(Вид).LineParts.Count()>0)And(Шапка<>-1) Then
+    For iLine:=1 To Struct.Doc(Вид).LineParts.Count() Do
+      лИмя:=uppercase(Struct.Doc(Вид).LineParts(iLine).Name);
+      If isEmpty(Struct.Doc(ВДок.DBName()).LineParts(лИмя)) Then
+        Continue;
+      EndIf;
+    
+      ТабВ:=ВДок.LineParts(лИмя);
+      ТабИз:=ИзДок.LineParts(лИмя);
+      
+      ТабВ.Lock();
+      try
+        спТемп:=List.Create();
+        ТабВ.ClearLines();
+        ТабИз.Select();
+        While ТабИз.Next() Do
+          ТабВ.NewLine();
+          For а:=1 to Struct.Doc(Вид).LineParts(лИмя).Props.Count() Do
+            ИмяР:=Struct.Doc(Вид).LineParts(лИмя).Props(а).Name;
+            If ТабВ.GetColumnIndex(ИмяР)>0 Then
+              ТабВ.Set(ТабВ.CurLine,ИмяР,ТабИз.Get(ТабИз.CurLine,ИмяР));
+            EndIf;
+          EndDo;
+          //Пересчет
+          If лИмя="НОМЕНКЛАТУРА" Then
+            Try
+              спТемп.SetByName("Количество",ТабВ.Количество);
+              глПересчитатьСтроку(ВДок,ТабВ,Пересчет,спТемп);
+            Except 
+              Фл:=0;
+            EndTry;
+          EndIf;
+  
+          If (ФлВес=1)And(БитОпции=0) Then
+            If ТабВ.Номенклатура.флВесовойТовар Then
+              БитОпции:=1;
+            EndIf;
+          EndIf;
+          If ОшибкаНулевойЦены Then
+            If ТабВ.Цена=0 Then
+              Box("В документе "+Str(ВДок)+" не указана цена у товара "+Str(ТабВ.Номенклатура)+" ("+Trim(ТабВ.Номенклатура.Code)+")! Цена товара не может равняться нулю!",Q_STOP);
+              Exit 0;
+            EndIf;
+          EndIf;
+        EndDo;
+        
+      Finally
+        ТабВ.Unlock();
+      EndTry;
+    EndDo;
+  EndIf;
+  
+  If ОткрытьФормуПриВыходе Then
+    OpenObject(ВДок,0,1);
+  EndIf;
+  Exit Фл;
+EndFunction
+
+Function ПолучитьСписокПодчиненных(Д,Д0,Сп=0,Отступ="") Export;
+  If Сп=0 Then
+    Сп:=List.Create();
+  EndIf;
+  Сп.Add(Д,Отступ+Trim(Д));
+  If Д=Д0 Then
+    Сп.Icon(Сп.Size(),1);
+  EndIf;
+  Сп2:=Д.LoadLinkedDocuments(1);
+  For а:=1 to Сп2.Size() Do
+    If Сп.Find(Сп2.Get(а))=0 Then
+      ПолучитьСписокПодчиненных(Сп2.Get(а),Д0,Сп,Отступ+"    ");
+    EndIf;
+  EndDo;
+  Exit Сп;
+EndFunction
+
+
+Function глДействия(aEl,СписокДействий) Export
+  а:=0;
+  If TypeStr(СписокДействий)="STRING" Then
+    а:=СписокДействий;
+  ElseIf СписокДействий.Select(а,,"Выберите необходимое действие")=0 Then
+    Exit;
+  EndIf;
+
+  If а="Структура подчиненности" Then
+    If aEl.Status()<0 Then
+      Box("Документ не записан!",Q_STOP);
+      Exit;
+    EndIf;
+    LoadModule(2,"Modules\FreeForms\ВнутренниеОбработки\ОбработкиДокументов\ДеревоДокументов",aEl);
+  ElseIf а="Интерактивное дерево..." Then
+    If aEl.Status()<0 Then
+      Box("Документ не записан!",Q_STOP);
+      Exit;
+    EndIf;
+    Д:=глНайтиКорень(aEl);
+    а:=ПолучитьСписокПодчиненных(Д,aEl);
+    Д:=0;
+    If а.Select(Д,1)<>0 Then
+      OpenObject(Д,0,1);
+    EndIf;
+  ElseIf а="Ввести на основании" Then
+    If aEl.Status()<0 Then
+      Box("Документ нужно сначала сохранить!",Q_STOP);
+      Exit;
+    EndIf;
+    
+    Try
+      If aEl.Selected()>1 Then
+        If AskQuestion("Документ был изменен, но не был записан, подчиненный документ, возможно, будет содержать "+
+            "неверную информацию. Продолжить?",Q_QUESTION+Q_YESNO)<>R_YES Then
+          Exit;
+        EndIf;
+      EndIf;
+    Except EndTry;
+    
+    а:=List.Create();
+    Вид:=aEl.DBName();
+    For б:=1 to Struct.Doc(Вид).CanBeBasedUpon.Count() Do
+      ОВид:=Struct.Doc(Вид).CanBeBasedUpon(б).Name;
+      а.Add(ОВид,Struct.Doc(оВид).Caption());
+    EndDo;
+    If а.Size()=0 Then
+      Box("Нельзя вводить на основании данного вида документа!",Q_STOP);
+      Exit;
+    EndIf;
+    
+    б:=0;
+    Поз:=а.Select(б,,"Выберите вид подчиненного документа:");
+    If Поз>0 Then
+      aDoc:=DB("Doc."+б);
+      aDoc.New(,,,aEl);
+      OpenObject(aDoc,0,1);
+    EndIf;
+  ElseIf а="Скопировать в..." Then
+    глКопированиеИзДокументаВДокумент(aEl,0,"Количество2@Количество@СуммаНДС@Код",0,1,0,0);
+  ElseIf а="Изменить флаг запрета выгрузки в центральную базу..." Then
+    If not глРаботаетРобот Then
+      Box("На документе "+?(aEl.ФлагОбмена=9,"установлен флаг запрета выгрузки! Это значит, что данный документ "+
+        "сможет изменить исключительно администратор и, даже после изменения, документ не будет выгружен в центральную базу!",
+        "не стоит флаг запрета выгрузки! Документ будет автоматическим выгружен в центральную базу при необходимости. ")+" Вы сможете "+
+        "изменить этот флаг, используя это же самое меню, если активируете дополнительные возможности администратора!",?(aEl.ФлагОбмена=9,Q_WARNING,Q_INFORMATION));
+    Else
+      If AskQuestion("На документе "+?(aEl.ФлагОбмена=9,"установлен","снят")+" флаг запрета выгрузки! Желаете "+
+        ?(aEl.ФлагОбмена=9,"СНЯТЬ","УСТАНОВИТЬ")+" этот флаг? Внимание! Вы должны понимать, к чему может привести эта операция!",Q_QUESTION+Q_YESNO)=R_YES Then
+          
+        aEl:=aEl.Copy();
+        Фл:=aEl.ФлагОбмена;
+        aEl.ФлагОбмена:=?(Фл=9,?(aEl.Status()>1,0,1),9);
+        
+        Фл:=0;
+        Try
+          aEl.Save(0);
+          Фл:=1;
+        Except
+          Message(PopError(),"!");
+        EndTry;
+        
+        If Фл=0 Then
+          Box("Неудачная попытка изменения документа!",Q_STOP);
+        Else
+          Box("Операция завершена успешно!",Q_INFORMATION);
+        EndIf;
+      EndIf;
+    EndIf;
+  ElseIf а="Удалить из универсального документа" Then
+    LoadModule(2,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\УдалениеИзУниверсальногоДокумента",aEl);
+  ElseIf (а="Выгрузить на карту")Or(а="Определить положение на карте")Or(а="Выгрузить все точки зоны на карту") Then
+    LoadModule(2,"Modules\FreeForms\УчетныеОтделы\Логистика\ВыгрузкаНаКарту",aEl,0,"Module","Form");
+  ElseIf а="Проводки документа по бухгалтерии" Then
+    LoadModule(2,"Modules\FreeForms\ВнутренниеОбработки\ОбработкиДокументов\ОтчетПоПроводкамДокумента",aEl);
+  ElseIf а="Открыть в журнале" Then
+    If aEl.Status()<0 Then
+      Box("Документ не записан!",Q_STOP);
+    Else
+      а:=aEl.ТекущийДокумент();
+      LoadModule(2,"ОбщийЖурнал",aEl);
+      Try
+        If aEl.Selected()=1 Then
+          Form.Close(0);
+        EndIf;
+      Except EndTry;
+    EndIf;
+  Else
+    LoadModule(2,а,aEl);
+  EndIf;
+EndFunction
+
+
+//Шапка=0 -- без шапки, Шапка=1 -- шапка и табл. чать, Шапка=-1 -- только шапка
+Function глЗаполнениеПоДокументуОснованию(aEl,Шапка=0,ЗадатьВопрос=1,Корректность=1) Export
+  If aEl.ДокОснование.Selected()=0 Then
+    Box("У документа не выбрано основание! Невозможно заполнить документ из основания!",Q_STOP);
+    Exit 0;
+  EndIf;
+  If _And(aEl.ДокОснование.DBName()="АктПоСкладу",Шапка>=0,aEl.ДокОснование.КодОперации=Enum.коАктПоСкладу.Инвентаризация,
+      not isEmpty(Struct.Doc(aEl.DBName()).LineParts("Номенклатура"))) Then  
+
+    Приход:=Pos(aEl.DBName()+",","ПоступлениеТМЦ,ВозвратОтПокупателя,")>0;
+    If aEl.DBName()="РегистрацияТМЦ" Then
+      Приход:=aEl.КодОперации=Enum.коРегистрацияТМЦ.ОприходованиеТМЦ;
+    ElseIf aEl.DBName()="РегистрацияОС" Then
+      Приход:=(aEl.КодОперации=Enum.коРегистрацияОС.ПоступлениеОСКомиссия)or(aEl.КодОперации=Enum.коРегистрацияОС.ПоступлениеОС);
+    ElseIf aEl.DBName()="ПеремещениеТМЦ" Then
+      If (aEl.ДокОснование.КодОперации=Enum.коАктПоСкладу.Инвентаризация)And(aEl.Status()<0) Then
+        Exit 1; //Особый случай, вопрос задается в документе
+      EndIf;
+      а:=AskQuestion("Заполнить документ излишками (иначе недостачей)?",Q_QUESTION+Q_YESNOCANCEL);
+      If а=R_CANCEL Then
+        Exit;
+      EndIf;
+      Приход:=а=R_YES;
+    EndIf;
+    
+    aTab:=aEl.LineParts("Номенклатура");
+    bTab:=aEl.ДокОснование.LineParts("Номенклатура");
+    ФлПартии:=(aTab.GetColumnIndex("Партия")>0)And(bTab.GetColumnIndex("Партия")>0);
+    Пер:="Код"+?(aTab.GetColumnIndex("КоличествоВОсновных")>0,"@Количество2","")+
+      ?(aTab.GetColumnIndex("Сумма")>0,"@Сумма","")+
+      ?(aTab.GetColumnIndex("СуммаНДС")>0,"@СуммаНДС","");
+    aTab.Lock();
+    Try
+      aTab.ClearLines();
+      спТемп:=List.Create();
+      bTab.Select();
+      While bTab.Next() Do
+        If Приход Then
+          If bTab.КоличествоФактическое>bTab.Количество Then
+            aTab.NewLine();
+            aTab.Количество:=bTab.КоличествоФактическое-bTab.Количество;
+          Else
+            Continue;
+          EndIf;
+        Else
+          If bTab.КоличествоФактическое<bTab.Количество Then
+            aTab.NewLine();
+            aTab.Количество:=bTab.Количество-bTab.КоличествоФактическое;
+          Else
+            Continue;
+          EndIf;
+        EndIf;
+        aTab.Номенклатура:=bTab.Номенклатура;
+        If ФлПартии Then
+          aTab.Партия:=bTab.Партия;
+        EndIf;
+        If aTab.GetColumnIndex("Цена")>0 Then
+          aTab.Цена:=bTab.Цена;
+        EndIf;  
+        спТемп.SetByName("Количество",aTab.Количество);
+        глПересчитатьСтроку(aEl,aTab,Пер,спТемп);
+      EndDo;
+    Finally
+      aTab.Unlock();
+    EndTry;  
+  Else
+    глКопированиеИзДокументаВДокумент(aEl.ДокОснование,aEl,"Количество2@СуммаНДС@Код",ЗадатьВопрос,Шапка,Корректность,0);
+  EndIf;
+  Form.CallOnStatusChange();
+  Exit 1;
+EndFunction
+
+
+//Добавление номенклатуры в документ.
+//Принимает данные от: тмцНоменклатура.ФормаПодбора, элемент справочника, мультифильтр
+Function глПриПодбореСпискаВДокумент(aEl,Эл,ФлПартии=0) Export
+  Var ФлИнвент Export;
+  Var флМульт Export;
+  Var Пер Export;
+  Var спТемп Export;
+  Var Аренда Export;
+  Var МинСтрока Export;
+  Var МаксСтрока Export;
+  
+  
+  Function ДобавитьСтроку(aTab,Н,Количество,Сумма,Партия)
+    aTab.CurLine:=0;
+    If ?(ФлПартии=0,aTab.FindAndGoto(Н,,"Номенклатура")>0,aTab.LocateAndGoto("Номенклатура,Партия",Н,Партия)>0) Then
+      If ФлИнвент=0 Then
+        aTab.Количество:=aTab.Количество+Количество;
+      Else
+        aTab.КоличествоФактическое:=aTab.КоличествоФактическое+Количество;
+        К:=aTab.Номенклатура.оснКоэффициент;
+        aTab.КоличествоФактическоеВОсновных:=Trunc(Round(aTab.КоличествоФактическое/К,6));
+        aTab.КоличествоФактическоеВБазовых:=aTab.КоличествоФактическое-aTab.КоличествоФактическоеВОсновных*К;
+      EndIf;
+      If флМульт=1 Then
+        aTab.Сумма:=aTab.Сумма+Сумма;
+      EndIf;
+      СпТемп.SetByName("Количество",Количество);
+      глПересчитатьСтроку(aEl,aTab,Пер,спТемп);
+    Else
+      aTab.AddLine("Номенклатура",Н);
+      If ФлПартии Then
+        aTab.Партия:=Партия;
+      EndIf;
+      If Аренда=1 Then
+        CurLine:=aTab.CurLine;
+        if not глПроверитьАрендованноеИмущество(aEl,aTab) Then
+          aTab.Remove(CurLine);
+          Exit;
+        EndIf;
+        aTab.CurLine:=CurLine;
+      EndIf;
+      If ФлИнвент=0 Then
+        aTab.Количество:=Количество;
+      Else
+        aTab.КоличествоФактическое:=Количество;
+        К:=aTab.Номенклатура.оснКоэффициент;
+        aTab.КоличествоФактическоеВОсновных:=Trunc(Round(aTab.КоличествоФактическое/К,6));
+        aTab.КоличествоФактическоеВБазовых:=aTab.КоличествоФактическое-aTab.КоличествоФактическоеВОсновных*К;
+      EndIf;
+      
+      If (флМульт=1)And(aTab.GetColumnIndex("Сумма")>0) Then
+        aTab.Сумма:=aTab.Сумма+Сумма;
+      EndIf;
+      СпТемп.SetByName("Количество",aTab.Количество);
+      глПересчитатьСтроку(aEl,aTab,Пер,спТемп);
+    EndIf;
+    
+    МинСтрока:=?(МинСтрока=0,aTab.CurLine,Min(aTab.CurLine,МинСтрока));
+    МаксСтрока:=Max(МаксСтрока,aTab.CurLine);
+  EndFunction      
+
+  МинСтрока:=0;
+  МаксСтрока:=0;
+  ФлИнвент:=0;
+  Аренда:=0;
+  
+  If pos("DB.DOC.",typestr(aEl))>0 Then
+    If aEl.DBName()="АктПоСкладу" Then
+      ФлИнвент:=?(aEl.КодОперации=Enum.коАктПоСкладу.Инвентаризация,1,0);
+    EndIf;
+    
+    If Pos(","+aEl.DBName()+",",",Реализация,ПоступлениеТМЦ,ВозвратОтПокупателя,ВозвратПоставщику,")>0 Then
+      Аренда:=1;
+    EndIf;
+  EndIf;
+  
+  Вид:=aEl.DBName();
+  флСодержимое:=глЕстьРеквизитДокумента("флСодержимоеИзменено",Вид);
+  If флСодержимое Then
+    aEl.флСодержимоеИзменено:=1;
+  EndIf;  
+  If not isEmpty(Struct.Doc(Вид).LineParts("Номенклатура")) Then
+    aTab:=aEl.LineParts("Номенклатура");
+  ElseIf not isEmpty(Struct.Doc(Вид).LineParts("Содержание")) Then
+    aTab:=aEl.LineParts("Содержание");
+  Else
+    Exit;
+  EndIf;
+  флМульт:=0;
+  If TypeStr(Эл)="TAB" Then
+    флМульт:=Эл.GetColumnIndex("Мультифильтр")>0;
+  EndIf;
+  Пер:="Код"+?(aTab.GetColumnIndex("КоличествоВОсновных")>0,"@Количество2","")+
+    ?((aTab.GetColumnIndex("Цена")>0)And(флМульт=0),"@Цена@Сумма","")+
+    ?((aTab.GetColumnIndex("Цена")>0)And(флМульт=1),"@Цена2","")+
+    ?(aTab.GetColumnIndex("СуммаНДС")>0,"@СуммаНДС","");
+  If TypeStr(Эл)="TAB" Then
+    aTab.Lock();
+    try
+      спТемп:=List.Create();
+      Эл.Select();
+      While Эл.Next() Do
+        аПартия:=?(ФлПартии,Эл.Партия,0);
+        If Эл.GetColumnIndex("Сумма")>0 Then
+          ДобавитьСтроку(aTab,Эл.Номенклатура,Эл.Количество,Эл.Сумма,аПартия);
+        Else
+          ДобавитьСтроку(aTab,Эл.Номенклатура,Эл.Количество,0,аПартия);
+        EndIf;  
+      EndDo;
+    Finally
+      aTab.Unlock();
+    EndTry;  
+  ElseIf Pos("DB.REF.",TypeStr(Эл))>0 Then
+    спТемп:=List.Create();
+    ДобавитьСтроку(aTab,Эл,1,0,0);
+  EndIf;
+  
+  If (not isEmpty(Form.ControlByName("MainTab")))and(МинСтрока>0) Then
+    Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",МинСтрока,МаксСтрока);
+  EndIf;
+EndFunction
+
+Function ПриПодбореНоменклатурыВДокумент(Эл,Фл)
+  глПриПодбореСпискаВДокумент(Form.Object,Эл);
+EndFunction
+
+//Интерактивное нажание на кнопку подбор. Отличается от процедуры глПриПодбореСпискаВДокумент, которая производит изменение документа
+Function глПодборВДокумент(aEl,ТипЦен=0,СпДоб=0,ТипПодбора=-1) Export
+
+  If ТипПодбора<0 Then
+    а:=List.Create();
+    ФлРез:=0;
+    If СпДоб<>0 Then
+      СпДоб.CopyTo(а);
+      ФлРез:=СпДоб.Size();
+      а.Add("-");
+    EndIf;
+    а.Add(2,"Простой подбор из справочника");
+    а.Add(0,"Подбор из справочника с остатками");
+    а.Add(3,"Подбор со сканера или терминала штрихкодов");
+    а.Add(1,"Универсальный сложный подбор из фильтра");
+    If глЕстьРеквизитДокумента("Склад",aEl.DBName()) Then
+      а.Add(-1,"-");
+      а.Add(5,"Заполнить остатками склада (положительные)");
+      а.Add(6,"Заполнить остатками склада (отрицательные)");
+      а.Add(7,"Заполнить остатками склада (положительные, в разрезе юр. лица)");
+      а.Add(8,"Заполнить остатками склада (отрицательные, в разрезе юр. лица)");
+      If глПользователь.общиеАдминистратор Then
+        а.Add(-1,"-");
+        а.Add(9,"Удалить из документа партии товара (количество по позициям затронуто не будет)");
+      EndIf;
+    EndIf;
+      
+    Зн:=0;
+    Поз:=а.Select(Зн,2);
+    If Поз=0 Then
+      Exit 0;
+    EndIf;
+    If Поз<=ФлРез Then
+      Exit Зн;
+    EndIf;
+  Else
+    Зн:=ТипПодбора;
+  EndIf;  
+  
+  Вид:=aEl.DBName();
+  флСодержимое:=глЕстьРеквизитДокумента("флСодержимоеИзменено",Вид);
+  If not isEmpty(Struct.Doc(Вид).LineParts("Номенклатура")) Then
+    aTab:=aEl.LineParts("Номенклатура");
+  ElseIf not isEmpty(Struct.Doc(Вид).LineParts("Содержание")) Then
+    aTab:=aEl.LineParts("Содержание");
+  Else
+    Exit;
+  EndIf;
+  If Зн=0 Then
+    а:=List.Create();
+    If глЕстьРеквизитДокумента("Склад",aEl.DBName()) Then
+      а.Add(aEl.Склад,"Склад");
+      If _And(aTab.GetColumnIndex("Партия")>0,aEl.Склад.БезПартионногоУчета=0) Then
+        а.Add(1,"Партии");
+      EndIf;
+    ElseIf _And(глЕстьРеквизитДокумента("Магазин",aEl.DBName()),aEl.Магазин.Selected()<>0) Then
+      а.Add(aEl.Магазин.Склад,"Склад");
+      If _And(aTab.GetColumnIndex("Партия")>0,aEl.Магазин.Склад.БезПартионногоУчета=0) Then
+        а.Add(1,"Партии");
+      EndIf;    
+    EndIf;
+    If ТипЦен<>0 Then
+      а.Add(ТипЦен,"ТипЦен");
+      а.Add(aEl.DocDate,"Дата");
+    ElseIf aTab.GetColumnIndex("Цена")>0 Then
+      If глЕстьРеквизитДокумента("ТипЦен",aEl.DBName()) Then
+        а.Add(aEl.ТипЦен,"ТипЦен");
+        а.Add(aEl.DocDate,"Дата");
+      ElseIf глЕстьРеквизитДокумента("Магазин",aEl.DBName()) Then
+        If Pos(aEl.DBName(),"ПоступлениеТМЦ,ВозвратПоставщику")>0 Then
+          а.Add(aEl.Магазин.ТипЦенПоступления,"ТипЦен");
+        Else
+          а.Add(aEl.Магазин.ТипЦенРеализации,"ТипЦен");
+        EndIf;
+        а.Add(aEl.DocDate,"Дата");
+      EndIf;
+    EndIf;
+    а.Add(aEl,"Док");
+    а.Add("Подбор номенклатуры в документ "+aEl,"Заголовок");
+    LoadModule(0,"Ref.тмцНоменклатура",а,0,"Module","ФормаПодбора");
+    Таб:=а.GetByName("Результат");
+    If _And(not isEmpty(Таб),Таб.Size()>0) Then
+      глПриПодбореСпискаВДокумент(aEl,Таб,Number(а.GetByName("Партии")));
+    EndIf;  
+  ElseIf Зн=2 Then
+    MassSelectObjects("ПриПодбореНоменклатурыВДокумент","Ref.тмцНоменклатура",0,0,"Module","SelectForm",,,"Подберите необходимую номенклатуру в документ",0);
+  ElseIf Зн=1 Then
+    а:=List.Create();
+    а.Add("тмцНоменклатура","Справочник");
+    а.Add(Tab.Create(),"Фильтр");
+    а.Add(Form.ThisForm(),"Форма");
+    а.Add(aEl,"Док");
+    а.Add(1,"флТаб");
+    LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\УниверсальныйОбработчикПодбора",а,0,"Module","Form");
+    Таб:=а.GetByName("Результат");
+    If _And(not isEmpty(Таб),Таб.Size()>0) Then
+      глПриПодбореСпискаВДокумент(aEl,Таб);
+    EndIf;  
+  ElseIf Зн=3 Then
+    а:=List.Create();
+    а.SetByName("Док",aEl);
+    LoadModule(0,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\ПодборСТорговогоОборудования",а,0,"Module","Form");
+    Таб:=а.GetByName("Результат");
+    If _And(not isEmpty(Таб),Таб.Size()>0) Then
+      глПриПодбореСпискаВДокумент(aEl,Таб,1);
+    EndIf;
+  ElseIf Зн=9 Then
+    If _Or(aTab.GetColumnIndex("Партия")=0,aTab.GetColumnIndex("Номенклатура")=0) Then
+      Box("Документ не подходит для такой операции!",Q_STOP);
+      Exit;
+    EndIf;
+    If AskQuestion("Вы удаляете информацию по партиям из документа, информация будет утеряна! Вы уверены!?",Q_WARNING+Q_YESNO)<>R_YES Then
+      Exit;
+    EndIf;
+    aTab.Lock();
+    Try
+      i:=0;
+      While i<aTab.Size() Do
+        i:=i+1;
+        aTab.CurLine:=i;
+        aTab.Партия:=0;
+        аНом:=aTab.Номенклатура;
+        аСтр0:=0;
+        If aTab.Find(аНом,аСтр0,"Номенклатура")=0 Then
+          Continue;
+        EndIf;
+        If аСтр0<i Then
+          aTab.Set(аСтр0,"Количество",aTab.Get(аСтр0,"Количество")+aTab.Количество);
+          aTab.Set(аСтр0,"Сумма",aTab.Get(аСтр0,"Сумма")+aTab.Сумма);
+          If aTab.GetColumnIndex("СуммаНДС")>0 Then
+            aTab.Set(аСтр0,"СуммаНДС",aTab.Get(аСтр0,"СуммаНДС")+aTab.СуммаНДС);
+          EndIf;  
+          aTab.Remove(i);
+          aTab.CurLine:=аСтр0;
+          глПересчитатьСтроку(aEl,aTab,"Код@Количество2"+
+            ?(aTab.GetColumnIndex("Цена")>0,"@Цена","")+
+            ?(aTab.GetColumnIndex("СуммаНДС")>0,"@СуммаНДС",""));
+          i:=i-1;
+        EndIf;
+      EndDo;
+    Finally
+      aTab.Unlock();
+    EndTry;
+    Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,aTab.Size());
+  ElseIf (Зн=5)Or(Зн=6)Or(Зн=7)Or(Зн=8) Then
+    If IsEmpty(aEl.Склад) Then
+      Box("Не выбран склад!",Q_STOP);
+      Exit;
+    EndIf;  
+    
+    If aEl.Status()>1 Then
+      If AskQuestion("Документ обработан, возможно некорректное заполнение. Продолжить?",Q_QUESTION+Q_YESNO)<>R_YES Then
+        Exit;
+      EndIf;
+    EndIf;
+    
+    If aTab.Size()>0 Then
+      If AskQuestion("Очистить строчную часть перед заполнением?",Q_QUESTION+Q_YESNO)=R_YES Then
+        aTab.ClearLines();
+        If флСодержимое Then
+          aEl.флСодержимоеИзменено:=1;
+        EndIf;  
+      EndIf;
+    EndIf;
+    
+    флВидимостьПартий:=(aEl.Склад.БезПартионногоУчета=0)And(aTab.GetColumnIndex("Партия")>0);
+    оСк:=aEl.Склад;
+    оЮЛ:=aEl.ЮрЛицо;
+    КТА:=BegOfDay(Max(aEl.DocDate,Date()));
+    НТА:=BegOfMonth(Date());
+    ТЗ:="Period From НТА to КТА;
+    |зН:=Storage.ОстаткиТМЦ.Номенклатура;
+    |зПартия:=Storage.ОстаткиТМЦ.Партия;
+    |зЮЛ:=Storage.ОстаткиТМЦ.ЮрЛицо;"+
+    ?(Зн>6,"Condition(зЮЛ=оЮЛ);","")+
+    "зСк:=Storage.ОстаткиТМЦ.Склад;
+    |Condition(зСк=оСк);
+    |зКО:=EndTotals(Количество);
+    |Group зН;"+
+    ?(not флВидимостьПартий,"","Group зПартия;");
+    
+    Зн:=?(Зн>6,Зн-2,Зн);
+    З:=Query.Create();
+    З.Execute(ТЗ);
+        
+    флОсновные:=aTab.GetColumnIndex("КоличествоВОсновных")>0;
+    
+    а:=0;
+    aTab.Lock();
+    Try
+      If not флВидимостьПартий Then
+        While З.Next(1) Do
+          ФлЧл:=З.зКО;
+          If (ФлЧл<>0)And(((Зн=5)And(ФлЧл>0))Or((Зн=6)And(ФлЧл<0))) Then
+            а:=а+1;Form.StatusText(а);
+            aTab.AddLine("Номенклатура,Количество",З.зН,Max(ФлЧл,-ФлЧл));
+            If флОсновные Then
+              aTab.КоличествоВОсновных:=Trunc(Round(aTab.Количество/aTab.Номенклатура.оснКоэффициент,6));
+              aTab.КоличествоВБазовых:=aTab.Количество-aTab.КоличествоВОсновных*aTab.Номенклатура.оснКоэффициент;
+            EndIf;
+            глПересчитатьСтроку(aEl,aTab,"Код@Количество2"+
+              ?(aTab.GetColumnIndex("Цена")>0,"@Цена@Сумма","")+
+              ?(aTab.GetColumnIndex("СуммаНДС")>0,"@СуммаНДС",""));
+            If флСодержимое Then
+              aEl.флСодержимоеИзменено:=1;
+            EndIf;  
+          EndIf;
+        EndDo;
+      Else
+        While З.Next(1) Do
+          While З.Next(2) Do
+            ФлЧл:=З.зКО;
+            If ((Зн=5)And(ФлЧл>0))Or((Зн=6)And(ФлЧл<0)) Then
+              а:=а+1;Form.StatusText(а);
+              aTab.AddLine("Номенклатура,Количество",З.зН,Max(ФлЧл,-ФлЧл));
+              If флОсновные Then
+                aTab.КоличествоВОсновных:=Trunc(Round(aTab.Количество/aTab.Номенклатура.оснКоэффициент,6));
+                aTab.КоличествоВБазовых:=aTab.Количество-aTab.КоличествоВОсновных*aTab.Номенклатура.оснКоэффициент;
+              EndIf;
+              aTab.Партия:=З.зПартия;
+              глПересчитатьСтроку(aEl,aTab,"Код@Количество2"+
+                ?(aTab.GetColumnIndex("Цена")>0,"@Цена@Сумма","")+
+                ?(aTab.GetColumnIndex("СуммаНДС")>0,"@СуммаНДС",""));
+              If флСодержимое Then
+                aEl.флСодержимоеИзменено:=1;
+              EndIf;  
+            EndIf;
+          EndDo;
+        EndDo;
+      EndIf;
+    Finally
+      aTab.Unlock();
+    EndTry;
+  EndIf;
+  Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,aTab.Size());
+  
+  Exit 0;
+EndFunction
+
+Function глСпециальныеФункцииТабличнойЧасти(aEl,флБезЗаполнения=0) Export
+
+  Фл:=0;
+  Вид="";
+  MainTab0:=Form.ControlByName("MainTab");
+  If _And(not isEmpty(MainTab0),MainTab0.Value.GetColumnIndex("Количество")>0,MainTab0.Value.GetColumnIndex("КоличествоВОсновных")>0) Then
+    If (not флНеДелитьНаОсновныеИБазовыеВДокументах)And(pos("DB.DOC.",TypeStr(aEl))>0) Then
+      Вид:=aEl.DBName();
+      Фл:=Number(RestoreValue("ПоказыватьКоличество_"+Вид))+1;
+    EndIf;  
+  EndIf;  
+
+  If флБезЗаполнения=0 Then
+    Стр:="Удалить отсутствующие позиции@Удалить отсутствующие позиции, результат уменьшить до целых"+?(Фл=0,"",?(Фл=1,"@-@Показывать столбик всего","@-@Спрятать столбик всего"))+"@-@Удалить строки, принадлежащие папке номенклатуры";
+  Else
+    Стр:=?(Фл=0,"",?(Фл=1,"Показывать столбик всего","Спрятать столбик всего"));
+  EndIf;  
+  Выб:="";
+  If глВыполнитьВыборВМеню(Стр,Выб,2)=0 Then
+    Exit;
+  EndIf;
+  If (Выб="Показывать столбик всего")Or(Выб="Спрятать столбик всего") Then
+    StoreValue("ПоказыватьКоличество_"+Вид,2-Фл);
+    MainTab:=Form.ControlByName("MainTab").Value;
+    MainTab.Column("Количество").isVisible:=2-Фл;
+  ElseIf Выб="Удалить строки, принадлежащие папке номенклатуры" Then
+    Вид:=aEl.DBName();
+  
+    аН:=SelectObject("Ref.тмцНоменклатура",0,0,"Module","SelectForm",,,"Выберите группу номенклатуры, позиции которой нужно удалить из документа:",1);
+    If isEmpty(аН) Then
+      Exit;
+    EndIf;
+    aTab:=aEl.LineParts("Номенклатура");
+    aTab.Lock();
+    Try
+      Ном:=0;
+      While Ном<aTab.Size() Do
+        Ном:=Ном+1;
+        aTab.CurLine:=Ном;
+        If аН.Contains(aTab.Номенклатура) Then
+          aTab.Remove(aTab.CurLine);
+          Ном:=Ном-1;
+        EndIf;
+      EndDo;
+    Finally
+      aTab.Unlock();
+    EndTry;  
+    Form.CallOnStatusChange();
+  ElseIf (Выб="Удалить отсутствующие позиции")or(Выб="Удалить отсутствующие позиции, результат уменьшить до целых") Then
+    флУменьшатьДоЦелых:=(Выб="Удалить отсутствующие позиции, результат уменьшить до целых");
+    Вид:=aEl.DBName();
+  
+    //TODO: не предусматривает наличие партий
+    
+    If AskQuestion("Удалить отсутствующие на складе позиции и уменьшить недостающие"+?(not флУменьшатьДоЦелых,"?",", округлив результат до целых?"),Q_QUESTION+Q_YESNO)<>R_YES Then
+      Exit;
+    EndIf;
+    
+    флСодержимое:=_And(pos("DB.DOC.",TypeStr(aEl))>0,глЕстьРеквизитДокумента("флСодержимоеИзменено",aEl.DBName()));
+    УчетМиксования:=(Вид="Реализация");
+    aTab:=aEl.LineParts("Номенклатура");
+    aList:=List.Create();
+    aTab.CopyTo(aList,1,aTab.Size(),"Номенклатура");
+    Tab1:=Stor.ОстаткиТМЦ.Gross("Номенклатура","Количество",,0,"Склад,Номенклатура",aEl.Склад,aList);
+    
+    aTab.Select();Фл2:=0;
+    While aTab.Next() Do
+      Н:=aTab.Номенклатура;
+      Чл:=?(aEl.Status()>1,aTab.Количество,0);
+      Чл:=Чл+Number(Tab1.FindAndGet("Количество",Н,0,"Номенклатура"));
+      Чл:=Max(Чл,0);
+      
+      If Чл>=aTab.Количество Then
+        Continue;
+      EndIf;
+      К:=?(Н.оснКоэффициент=0,1,Н.оснКоэффициент);
+      КБаз:=Чл-Trunc(Round(Чл/К,6))*К;
+      If КБаз>0 Then
+        If флУменьшатьДоЦелых Then
+          Чл:=Чл-КБаз;
+        EndIf;
+      EndIf;
+      aTab.Количество:=Чл;
+      If флСодержимое Then
+        aEl.флСодержимоеИзменено:=1;
+      EndIf;  
+      Фл2:=1;
+      глПересчитатьСтроку(aEl,aTab,"Количество2"+?(aTab.GetColumnIndex("Сумма")>0,"@Сумма@СуммаНДС",""));
+    EndDo;
+    If Фл2=1 Then
+      While aTab.FindAndGoto(0,,"Количество")>0 Do
+        aTab.Remove(aTab.CurLine);
+        If флСодержимое Then
+          aEl.флСодержимоеИзменено:=1;
+        EndIf;  
+      EndDo;
+    EndIf;
+    Form.CallOnStatusChange();
+  EndIf;  
+EndFunction
+
+
+//Создает движения по накопителю ОстаткиТМЦ (с учетом партий и прочего)
+//Возвращает таблицу использованных партий
+//
+//Приход: 0 -- расход, 1 -- приход, 2 -- перемещение
+//ТСтроки: строки документа, если 0, используется aEl
+//Возвращает таблицу использованных партий ТМЦ в таблице с колонками: Номенклатура, нНомерСтроки, Партия, Количество
+Function глДвОстаткиТМЦ(ОстаткиТМЦ,aEl,Приход,КонтрольОтрОс=0,ФлАвтоПодбор=0,ФорсСкладИст=0,ФорсСкладПолуч=0,ТПартии=0,ТСтроки=0) Export
+
+  Function ДвиженияТПартии(Номенклатура,КолВо,ТПартии,ОстаткиТМЦ,Приход,Склад,СклПол,aEl0,тВозврат,нНомерСтроки)
+    While Round(КолВо,6)>0 Do
+      If ТПартии.Size()>0 Then
+        ТПартии.CurLine:=1;
+        If Round(ТПартии.Количество,6)<=0 Then
+          ТПартии.Remove(1);
+          Continue;
+        EndIf;
+        Партия:=ТПартии.Партия;
+        Количество:=Min(КолВо,ТПартии.Количество);
+        КолВо:=КолВо-Min(КолВо,ТПартии.Количество);
+        ТПартии.Remove(1);
+      Else
+        Партия:=0;
+        Количество:=КолВо;
+        КолВо:=0;
+      EndIf;
+      
+      If Приход=1 Then
+        ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,Номенклатура,Склад,Количество,Партия,0);
+      Else
+        ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,Номенклатура,Склад,Количество,Партия,1);
+        If Приход=2 Then
+          ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,Номенклатура,СклПол,Количество,Партия,0);
+        EndIf;
+      EndIf;
+      
+      тВозврат.AddLine("Номенклатура,Партия,нНомерСтроки,Количество",Номенклатура,Партия,нНомерСтроки,Количество);
+    EndDo;
+  EndFunction
+
+  Вид:=aEl.DBName();
+  If ТСтроки=0 Then
+    aTab:=aEl.LineParts("Номенклатура");
+    ФлПартияМнЧ:=aTab.GetColumnIndex("Партия")>0;
+  Else
+    aTab:=0;
+    ФлПартияМнЧ:=ТСтроки.GetColumnIndex("Партия")>0;
+  EndIf;  
+  aEl0:=aEl;
+  Вид:=aEl0.DBName();
+  флСохранятьПустыеПартии:=0;
+  If глЕстьРеквизитДокумента("флСохранятьПустыеПартии",Вид) Then
+    флСохранятьПустыеПартии:=aEl0.флСохранятьПустыеПартии;
+  EndIf;
+  ДокДата:=BegOfDay(aEl.DocDate);
+  
+  СклИст:=?(ФорсСкладИст=0,aEl0.Склад,ФорсСкладИст);
+  СклПол:=0;
+  If глЕстьРеквизитДокумента("СкладПолучатель",Вид) Then
+    СклПол:=?(ФорсСкладПолуч=0,aEl0.СкладПолучатель,ФорсСкладПолуч);
+    If СклПол.IsFolder() Then
+      Exit "В документе нельзя выбирать группы складов, это не имеет смысла!";
+    EndIf;
+  EndIf;
+  If СклИст.IsFolder() Then
+    Exit "В документе нельзя выбирать группы складов, это не имеет смысла!";
+  EndIf;
+  
+  Фл:=0;
+  тВозврат:=Tab.Create("Номенклатура,Партия,");
+  тВозврат.AddColumn("нНомерСтроки",,"Number");
+  тВозврат.AddColumn("Количество",,"Number");
+  
+  Партии:=1;
+  ФлНульПартии:=0;
+  ФлУдалитьПриход:=1;
+  If Вид="ПеремещениеТМЦ" Then
+    If (aEl0.Склад.БезПартионногоУчета>0)And(aEl0.СкладПолучатель.БезПартионногоУчета>0) Then
+      Партии:=0;
+    EndIf;
+    If (aEl0.Склад.БезПартионногоУчета>0)And(aEl0.СкладПолучатель.БезПартионногоУчета=0) Then
+      ФлУдалитьПриход:=0;
+      ФлНульПартии:=1;
+    ElseIf (aEl0.Склад.БезПартионногоУчета=0)And(aEl0.СкладПолучатель.БезПартионногоУчета>0) Then
+      ФлНульПартии:=2;
+    EndIf;
+  ElseIf Вид="ПоступлениеТМЦ" Then
+    If aEl0.Склад.БезПартионногоУчета>0 Then
+      Партии:=0;
+    EndIf;
+  Else
+    If глЕстьРеквизитДокумента("Склад",Вид) Then
+      If aEl0.Склад.БезПартионногоУчета>0 Then
+        Партии:=0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+//Документы регистрации//Документы регистрации//Документы регистрации//Документы регистрации
+  If (aEl0.Selected()>0)And(Партии=1)And(ТПартии=0) Then
+    а:=0;
+    If глЕстьРеквизитДокумента("Склад",Вид) Then
+      If aEl0.ДокОснование.DBName()="АктПоСкладу" Then
+        а:=aEl0.ДокОснование;
+        aTab:=aEl0.ДокОснование.LineParts("Номенклатура");
+        ТПартии:=Tab.Create();
+        aTab.CopyTo(ТПартии);
+        If ТПартии.Size()>0 Then
+          If aEl0.ДокОснование.КодОперации=Enum.коАктПоСкладу.Инвентаризация Then
+            ТПартии.Select();
+            While ТПартии.Next() Do
+              ТПартии.Количество:=ТПартии.Количество-ТПартии.КоличествоФактическое;
+            EndDo;
+            ТПартии.Group("Номенклатура,Партия","Количество");
+          EndIf;
+          ТПартии.Sort("Номенклатура,Партия");
+        EndIf;
+        Фл:=1;
+      EndIf;
+    EndIf;  
+    
+    If а=0 Then
+      If (aEl0.DBName()="ВозвратОтПокупателя")Or(aEl0.DBName()="ВозвратПоставщику") Then
+        If (aEl0.ДокОснование.Selected()<>0)And(aEl0.ДокОснование.Status()>1)And
+             ((aEl0.ДокОснование.DBName()="Реализация")Or(aEl0.ДокОснование.DBName()="ПоступлениеТМЦ")) Then
+
+          ТПартии:=aEl0.ДокОснование.LoadStorage("ОстаткиТМЦ");
+          ТПартии.AddColumn("Сумма");
+          ТПартии.Select();
+          While ТПартии.Next() Do
+            ТПартии.Количество:=Max(ТПартии.Количество,-ТПартии.Количество);
+          EndDo;
+          ТПартии.Group("Номенклатура,Партия","Количество");
+          ТПартии.Sort("Номенклатура,Партия");
+          
+          Фл:=1;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+  ElseIf ТПартии<>0 Then
+    Фл:=1;
+  EndIf;
+//Документы регистрации//Документы регистрации//Документы регистрации//Документы регистрации
+  
+  If ТПартии=0 Then
+    ТПартии:=Tab.Create("Номенклатура,Количество,Партия,Сумма");
+  EndIf;
+
+  Товар:=Enum.ВидыНоменклатуры.Товар;
+  Услуга:=Enum.ВидыНоменклатуры.Услуга;
+  ФлЧуж1:=0;
+  If not isEmpty(СклИст) Then
+    ФлЧуж1:=СклИст.флЧужойСклад;
+  EndIf;
+  ФлЧуж2:=0;
+  If not isEmpty(СклПол) Then
+    ФлЧуж2:=СклПол.флЧужойСклад;
+  EndIf;
+  
+  If ТСтроки=0 Then
+    ТСтроки:=aEl0.LineParts("Номенклатура");
+  EndIf;
+  
+  TОстатки:=0;
+  TОстаткиПоПартиям:=0;
+  MassLoadObjects(ТСтроки,"Номенклатура");
+  
+  спНоменклатура:=List.Create();
+  ТСтроки.CopyTo(спНоменклатура,1,ТСтроки.Size(),"Номенклатура");
+  If КонтрольОтрОс Then
+    TОстатки:=Stor.ОстаткиТМЦ.Gross("Номенклатура","Количество",,0,"Склад,Номенклатура",СклИст,спНоменклатура);
+  EndIf;
+  
+  
+  ТПартии2:=0;
+  нНомерСтроки:=0;
+  ТСтроки.Select();
+  While ТСтроки.Next() Do
+    нНомерСтроки:=нНомерСтроки+1;
+    If Round(ТСтроки.Количество,6)=0 Then
+      Continue;
+    EndIf;
+    аНоменклатура:=ТСтроки.Номенклатура;
+    
+    ФлПроп:=0;
+    If аНоменклатура.ВидНоменклатуры=Услуга Then
+      Continue;
+    ElseIf аНоменклатура.ВидНоменклатуры<>Товар Then
+      ФлПроп:=1;
+    ElseIf аНоменклатура.флПартионныйУчет=0 Then
+      ФлПроп:=1;
+    EndIf;
+    
+    If КонтрольОтрОс Then
+      ОстатокНаСкладе:=Number(TОстатки.FindAndGet("Количество",аНоменклатура,0,"Номенклатура"));
+      
+      If ОстатокНаСкладе+?(Приход=1,1,-1)*ТСтроки.Количество<0 Then
+        СтрДоб:=?(аНоменклатура<>ТСтроки.Номенклатура," подч. номенклатура документа "+ТСтроки.Номенклатура+" ("+Str(ТСтроки.Номенклатура.Code)+")","");
+        If Приход=1 Then
+          Стр:="В результате обработки, на складе возникнут отрицательные остатки по номенклатуре "+аНоменклатура+" ("+Str(аНоменклатура.Code)+")"+СтрДоб+"."+_NEWLINE+
+            "    Остатки без учета текущего документа: "+Str(ОстатокНаСкладе)+" ("+аНоменклатура.базЕдиница+")."+_NEWLINE+
+            "    Данный документ: "+Str(ТСтроки.Количество)+" ("+аНоменклатура.базЕдиница+").";
+        Else
+          Стр:="На складе нет нужного количества номенклатуры "+аНоменклатура+" ("+Str(аНоменклатура.Code)+")"+СтрДоб+"."+_NEWLINE+
+            "    Всего осталось (с учетом резерва, основного товара): "+Str(ОстатокНаСкладе)+" ("+аНоменклатура.базЕдиница+")."+_NEWLINE+
+            "    Требуемое количество: "+Str(ТСтроки.Количество)+" ("+аНоменклатура.базЕдиница+").";
+        EndIf;
+        If not глПользователь.общиеКорректировкаСкладскихОстатков Then
+          Exit Стр;
+        Else
+          Message(Стр,"I");
+          If aEl.Selected()>0 Then
+            Logs.Write("Созданы отрицательные остатки: "+Trim(аНоменклатура)+" ("+аНоменклатура.Code+")",aEl,"НАРУШЕНИЯ");
+          Else
+            Logs.Write("Созданы отрицательные остатки (новый документ): "+Trim(аНоменклатура)+" ("+аНоменклатура.Code+")",,"НАРУШЕНИЯ");
+          EndIf;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    Партия:=0;
+//В документе выбрана партия//В документе выбрана партия//В документе выбрана партия//В документе выбрана партия
+    If (_And(ФлПартияМнЧ,ТСтроки.Партия.Selected()<>0))Or(флСохранятьПустыеПартии) Then
+      Партия:=ТСтроки.Партия;
+      
+      If КонтрольОтрОс Then
+        If TОстаткиПоПартиям=0 Then
+          спПартии:=List.Create();
+          ТСтроки.CopyTo(спПартии,1,ТСтроки.Size(),"Партия");
+          TОстаткиПоПартиям:=Stor.ОстаткиТМЦ.Gross("Партия","Количество",,0,"Склад,Партия",СклИст,спПартии);
+        EndIf;
+        Ост0:=0;
+        If TОстаткиПоПартиям.FindAndGoto(Партия,,"Партия") Then
+          Ост0:=TОстаткиПоПартиям.Количество;
+        EndIf;
+        
+        If Ост0<ТСтроки.Количество Then
+          СтрДоб:=?(аНоменклатура<>ТСтроки.Номенклатура," подч. номенклатура документа "+ТСтроки.Номенклатура+" ("+Str(ТСтроки.Номенклатура.Code)+")","");
+          Стр:="Недостаточно остатка товара "+аНоменклатура+" ("+Str(аНоменклатура.Code)+")"+СтрДоб+","+_NEWLINE+
+            "    с партией "+Партия+" на складе "+СклИст+"!";
+          If not глПользователь.общиеКорректировкаСкладскихОстатков Then
+            Exit Стр;
+          Else
+            Message(Стр,"I");
+            If aEl.Selected()>0 Then
+              Logs.Write("Созданы отрицательные остатки по партии: "+Trim(аНоменклатура)+" ("+аНоменклатура.Code+"), партия "+Партия+" ("+Партия.Code+")",aEl,"НАРУШЕНИЯ");
+            Else
+              Logs.Write("Созданы отрицательные остатки по партии (новый документ): "+Trim(аНоменклатура)+" ("+аНоменклатура.Code+"), партия "+Партия+" ("+Партия.Code+")",,"НАРУШЕНИЯ");
+            EndIf;
+          EndIf;
+        EndIf;
+      EndIf;
+      
+      If Приход=1 Then
+        ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,аНоменклатура,СклИст,ТСтроки.Количество,Партия,0);
+      Else
+        If not ФлЧуж1 Then
+          ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,аНоменклатура,СклИст,ТСтроки.Количество,Партия,1);
+        EndIf;
+        If (Приход=2)and(not ФлЧуж2) Then
+          ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,аНоменклатура,СклПол,ТСтроки.Количество,Партия,0);
+        EndIf;
+      EndIf;
+      тВозврат.AddLine("Номенклатура,Партия,нНомерСтроки,Количество",аНоменклатура,Партия,нНомерСтроки,ТСтроки.Количество);
+//Была регистрация//Была регистрация//Была регистрация//Была регистрация//Была регистрация
+    ElseIf Фл=1 Then
+      КолВо:=ТСтроки.Количество;
+      While Round(КолВо,6)>0 Do
+        Количество:=0;
+        If ТПартии.FindAndGoto(аНоменклатура,,"Номенклатура")>0 Then
+          Партия:=ТПартии.Партия;
+          Кл0:=Min(КолВо,ТПартии.Количество);
+          Количество:=Кл0;
+          КолВо:=КолВо-Кл0;
+          ТПартии.Количество:=ТПартии.Количество-Кл0;
+          If Round(ТПартии.Количество,6)=0 Then
+            ТПартии.Номенклатура=0;
+          EndIf;
+        ElseIf (ФлАвтоПодбор)And(Партии) Then
+          //Документ изменили, остаток заполним автоподбором
+          If ТПартии2=0 Then
+            ТПартии2:=Stor.ОстаткиТМЦ.Gross("Номенклатура,Партия","Количество",,0,"Склад,Номенклатура",СклИст,спНоменклатура);
+            MassLoadObjects(ТПартии2);
+            ТПартии2.Group("Номенклатура,Партия","Количество");
+          EndIf;
+            
+          ТПартии3:=Tab.Create();
+          ТПартии2.CopyTo(ТПартии3,1,ТПартии2.Size(),"Партия,Количество","Номенклатура",аНоменклатура);
+          
+          If ТПартии3.Size()>0 Then
+            ТПартии3.Group("Партия","Количество");
+            ТПартии3.AddColumn("КСР","Date");
+            ТПартии3.Select();
+            While ТПартии3.Next() Do
+              ТПартии3.КСР:=ТПартии3.Партия.КСР;
+            EndDo;
+            ТПартии3.Sort("КСР+");
+            If (isEmpty(ТПартии3.Get(1,"КСР")))And(not ФлПроп) Then
+              ТПартии3.Remove(1);
+            EndIf;
+          EndIf;
+          If Round(ТПартии3.Sum("Количество"),6)<Round(КолВо,6) Then
+            If КонтрольОтрОс Then
+              СтрДоб:=?(аНоменклатура<>ТСтроки.Номенклатура," подч. номенклатура документа "+ТСтроки.Номенклатура+" ("+Str(ТСтроки.Номенклатура.Code)+")","");
+              Стр:="Недостаточно зарегистрированного складом товара для "+аНоменклатура+", ("+Str(аНоменклатура.Code)+")"+СтрДоб+" на складе "+СклИст+"!"+_NEWLINE+
+                  "    Складские работники должны зарегистрировать поступление товара для того, чтобы программа знала сроки его реализации!";
+              If глРаботаетРобот Then
+                Message(Стр,"I");
+              Else
+                Exit Стр;
+              EndIf;
+            EndIf;
+          EndIf;
+          ДвиженияТПартии(аНоменклатура,КолВо,ТПартии3,ОстаткиТМЦ,Приход,СклИст,СклПол,aEl0,тВозврат,нНомерСтроки);
+          КолВо:=0;
+          Break;
+        Else
+          Партия:=0;
+          Количество:=КолВо;
+          КолВо:=0;
+        EndIf;
+        
+        If Приход=1 Then
+          ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,аНоменклатура,СклИст,Количество,Партия,0);
+        ElseIf Приход=0 Then
+          ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,аНоменклатура,СклИст,Количество,Партия,1);
+        Else
+          Партия2:=Партия;
+          If ФлНульПартии Then
+            Партия2:=0;
+          EndIf;
+          If not ФлЧуж1 Then
+            ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,аНоменклатура,СклИст,Количество,Партия2,1);
+          EndIf;
+          
+          If ФлНульПартии=2 Then
+            Партия:=0;
+          EndIf;
+          If not ФлЧуж2 Then
+            ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,аНоменклатура,СклПол,Количество,Партия,0);
+          EndIf;
+        EndIf;
+        тВозврат.AddLine("Номенклатура,Партия,нНомерСтроки,Количество",аНоменклатура,Партия,нНомерСтроки,Количество);
+      EndDo;
+//Без автоподбора//Без автоподбора//Без автоподбора//Без автоподбора//Без автоподбора
+    ElseIf (not ФлАвтоПодбор)Or(not Партии) Then
+      If Приход=1 Then
+        ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,аНоменклатура,СклИст,ТСтроки.Количество,0,0);
+      Else
+        If not ФлЧуж1 Then
+          ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,аНоменклатура,СклИст,ТСтроки.Количество,0,1);
+        EndIf;
+        If Приход=2 Then
+          If not ФлЧуж2 Then
+            ОстаткиТМЦ.AddLine("ЮрЛицо,Номенклатура,Склад,Количество,Партия,_Expense",aEl0.ЮрЛицо,аНоменклатура,СклПол,ТСтроки.Количество,0,0);
+          EndIf;
+        EndIf;
+      EndIf;
+      тВозврат.AddLine("Номенклатура,Партия,нНомерСтроки,Количество",аНоменклатура,0,нНомерСтроки,ТСтроки.Количество);
+//Автоподбор//Автоподбор//Автоподбор//Автоподбор//Автоподбор//Автоподбор//Автоподбор
+    Else
+      If ТПартии2=0 Then
+        ТПартии2:=Stor.ОстаткиТМЦ.Gross("Номенклатура,Партия","Количество",,0,"Склад,Номенклатура",СклИст,спНоменклатура);
+        MassLoadObjects(ТПартии2);
+        ТПартии2.Group("Номенклатура,Партия","Количество");
+      EndIf;
+    
+      ТПартии3:=Tab.Create();
+      ТПартии2.CopyTo(ТПартии3,1,ТПартии2.Size(),"Партия,Количество","Номенклатура",аНоменклатура);
+      
+      If ТПартии3.Size()>0 Then
+        ТПартии3.Group("Партия","Количество");
+        ТПартии3.AddColumn("КСР","Date");
+        ТПартии3.Select();
+        While ТПартии3.Next() Do
+          ТПартии3.КСР:=ТПартии3.Партия.КСР;
+        EndDo;
+        ТПартии3.Sort("КСР+");
+        If (isEmpty(ТПартии3.Get(1,"КСР")))And(not ФлПроп) Then
+          ТПартии3.Remove(1);
+        EndIf;
+      EndIf;
+      If Round(ТПартии3.Sum("Количество"),6)<Round(ТСтроки.Количество,6) Then
+        If КонтрольОтрОс Then
+          СтрДоб:=?(аНоменклатура<>ТСтроки.Номенклатура," подч. номенклатура документа "+ТСтроки.Номенклатура+" ("+Str(ТСтроки.Номенклатура.Code)+")","");
+          Стр:="Недостаточно зарегистрированного складом товара для "+аНоменклатура+", ("+Str(аНоменклатура.Code)+")"+СтрДоб+" на складе "+СклИст+"!"+_NEWLINE+
+            "    Складские работники должны зарегистрировать поступление товара для того, чтобы программа знала сроки его реализации!";
+          If глРаботаетРобот Then
+            Message(Стр,"I");
+          Else
+            Exit Стр;
+          EndIf;
+        EndIf;
+      EndIf;
+      КолВо:=ТСтроки.Количество;
+      ДвиженияТПартии(аНоменклатура,ТСтроки.Количество,ТПартии3,ОстаткиТМЦ,Приход,СклИст,СклПол,aEl0,тВозврат,нНомерСтроки);
+    EndIf;
+  EndDo;
+  
+  Exit тВозврат;
+EndFunction
+
+//Для не свернутой: Индекс: зН.Code+"@"+зПартия.Code
+Function глПолучитьТаблицуГТД(Док,Свернутая=1) Export
+  ТГТД:=Tab.Create("зН,Индекс,пГТД");
+  If (Док.Склад.БезПартионногоУчета=0)And(Док.Selected()>0) Then
+    aTab:=Док.LoadStorage("ОстаткиТМЦ");
+    MassLoadObjects(aTab,"Номенклатура,Партия");
+    aTab.Select();
+    While aTab.Next() Do
+      If not IsEmpty(aTab.Партия) Then
+        пГТД:=Trim(aTab.Партия.НомерГТД);
+        If пГТД<>"" Then
+          Индекс:=""+aTab.Номенклатура.Code+?(Свернутая=1,"","@"+aTab.Партия.Code);
+          If ТГТД.FindAndGoto(Индекс,,"Индекс")=0 Then
+            ТГТД.AddLine("зН,Индекс,пГТД",aTab.Номенклатура,Индекс,"");
+          EndIf;
+          ТГТД.пГТД:=?(ТГТД.пГТД="",пГТД,ТГТД.пГТД+", "+пГТД);
+        EndIf;
+      EndIf;
+    EndDo;
+  EndIf;
+  Exit ТГТД;
+EndFunction
+
+
+//Выполняется при записи в документах поступления
+Function глПроверитьДокументПриходаНаОтрицательныеОстатки(aEl,Склад=0) Export
+  If (aEl.Status()<2)Or(глПользователь.общиеАдминистратор) Then
+    Exit 1;
+  EndIf;
+  а:=aEl.Copy();
+  aTab:=а.LineParts("Номенклатура");
+  If aTab.Size()=0 Then
+    Exit 1;
+  EndIf;
+  
+  б1:=Tab.Create();
+  aEl.LineParts("Номенклатура").CopyTo(б1,,,"Номенклатура,Количество");
+  б1.Group("Номенклатура","Количество");
+  
+  б2:=Tab.Create();
+  aTab.CopyTo(б2,,,"Номенклатура,Количество");
+  б2.Group("Номенклатура","Количество");
+  
+  Склад:=?(Склад=0,aEl.Склад,Склад);
+  aList:=List.Create();
+  aTab.CopyTo(aList,1,aTab.Size(),"Номенклатура");
+  Tab1:=Stor.ОстаткиТМЦ.Gross("Номенклатура","Количество",,0,"Склад,Номенклатура",Склад,aList);
+  
+  Фл:=1;
+  б2.Select();
+  While б2.Next() Do
+    Стр:=0;
+    Остаток:=-б2.Количество+б1.FindAndGet("Количество",б2.Номенклатура,,"Номенклатура");
+    If Остаток>=0 Then
+      Continue;
+    EndIf;
+    Остаток:=Остаток+Tab1.FindAndGet("Количество",б2.Номенклатура,,"Номенклатура");
+    If Остаток<0 Then
+      Стр:="В результате обработки остаток позиции "+б2.Номенклатура+" ("+б2.Номенклатура.Code+") на складе "+Склад+" будет "+Остаток+" ед.!";
+      If not глПользователь.общиеКорректировкаСкладскихОстатков Then
+        Message(Стр,"!");
+        Фл:=0;
+      Else
+        Message(Стр,"I");
+      EndIf;
+    EndIf;
+  EndDo;
+  
+  Exit Фл;
+EndFunction
+
+
+Function глПересчетОсновныхЦенПриПриходе(Док,Склад,ТекДата) Export;
+  ФлУспешно:=1;
+  ТЦ0:=Склад.рзТипЦенПоступления;
+  aTab:=Док.LineParts("Номенклатура");
+  пН:=0;
+  aTab.Select();
+  While aTab.Next() Do
+    пН:=пН+1;
+    Form.StatusText("Расчет цен "+пН+" из "+aTab.Size()+"...");
+    
+    Н:=aTab.Номенклатура;
+    If Н.ВидНоменклатуры=Enum.ВидыНоменклатуры.Услуга Then
+      Continue;
+    EndIf;
+    пЦБз:=aTab.ЦенаБезСкидки;
+    If пЦБз=0 Then
+      Continue;
+    EndIf;
+    
+    If ТЦ0.Selected()=0 Then
+      пЦ0:=Н.GetValue("Цена",ТекДата);
+    Else
+      элЦПост:=0;
+      пЦ0:=глНайтиЦену(Н,ТЦ0,ТекДата,элЦПост);
+    EndIf;
+    
+    If пЦБз<10 Then
+      If Round(пЦ0,2)=Round(пЦБз,2) Then
+        Continue;
+      EndIf;
+    ElseIf Abs(Round(пЦ0,2)-Round(пЦБз,2))<3 Then //2 копейки позволяется
+      Continue;
+    EndIf;
+    
+    If ТЦ0.Selected()<>0 Then
+      Try
+        If элЦПост=0 Then
+          элЦПост:=Ref.цЦены;
+          элЦПост.New();
+          элЦПост.Parent(Н);
+          элЦПост.ТипЦен:=ТЦ0;
+          If not глЗаписать(элЦПост) Then
+            Exit 0;
+          EndIf;
+        EndIf;
+        элЦПост.SetValue("Цена",пЦБз,ТекДата);
+      Except
+        Message("Невозможно изменить цену "+Н+" ("+Н.Code+")","!");
+        ФлУспешно:=0;
+      EndTry;
+    EndIf;
+  EndDo;
+  
+  Exit ФлУспешно;
+EndFunction
+

@@ -1,0 +1,377 @@
+//Глобальные (root) модули загружаются при старте системы. Загрузка начинается с модуля "module" и продолжается в алфавитном порядке.
+//Переменные и функции, объявленные с постфиксом export, будут доступны в любых других модулях в любых потоках системы.
+//Модуль может содержать специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function глУниверсальнаяВыгрузкаПолучитьПолныйКод(Эл) Export
+  //<ПолныйКод>:<Код>@{+ если папка}<ВидРодитель|КодРодитель>@{+ если папка}<ВидРодитель|КодРодительРодителя>...  
+  If DBTypeStr(Эл)<>"REF" Then
+    Exit "";
+  EndIf;
+  If Struct.Ref(Эл.DBName()).Parents.Count()>0 Then
+    Exit Trim(Эл.Code)+"@"+?(Эл.Parent().isFolder(),"+")+Эл.Parent().DBName()+"|"+глУниверсальнаяВыгрузкаПолучитьПолныйКод(Эл.Parent());
+  EndIf;
+  Exit Trim(Эл.Code);
+EndFunction
+
+Function глУниверсальнаяВыгрузкаВыгрузитьРеквизит(Зн) Export
+  //<Значение>:          <ТипАтрибута>.<ЗначениеТипа>
+  //<ТипАтрибута>:       {"STRING" (строка кодированная),"NUMBER","DATE","ENUM" (далее следует индекс),"REF" (далее следует <ПолныйКод>),"DOC" (далее следует <ВидДок>@<НомерДок>@<ДатаДок>)}
+                                              
+  СтрТип:=TypeStr(Зн);
+  СтрБД:=DBTypeStr(Зн);
+  If _Or(IsEmpty(СтрТип),СтрТип="NOTHING",(СтрТип="DB")And(isEmpty(СтрБД))) Then
+    Exit "";
+  ElseIf (СтрТип="STRING") Then
+    Exit СтрТип+"."+EncodeString(Unicode(Зн));
+  ElseIF (СтрТип="NUMBER")Or(СтрТип="DATE") Then
+    Exit СтрТип+"."+Зн;
+  ElseIf СтрБД="ENUM" Then
+    If isEmpty(Зн) Then
+      Exit "";
+    Else
+      Exit СтрБД+"."+Зн.DBName()+"."+Зн.Index();
+    EndIf;  
+  ElseIf СтрБД="REF" Then
+    If isEmpty(Зн) Then
+      Exit "";
+    Else
+      Exit СтрБД+"."+Зн.DBName()+"."+глУниверсальнаяВыгрузкаПолучитьПолныйКод(Зн);
+    EndIf;
+  ElseIf СтрБД="DOC" Then
+    If isEmpty(Зн) Then
+      Exit "";
+    Else
+      Exit СтрБД+"."+Зн.DBName()+"."+Зн.DocNum+"@"+Зн.DocDate;
+    EndIf;
+  EndIf;
+  
+  Message("При выгрузке найден неизвестный неподдерживаемый тип "+СтрТип+" ("+СтрБД+")!","!");
+  Exit "";
+EndFunction
+
+
+Function глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(aEl,ТабВыгружено,ТВыгрузка) Export
+  If IsEmpty(aEl) Then
+    Exit;
+  EndIf;
+  флИстория:=1;
+  оДатаДна:=Date(0);
+  аКнт:=Form.ControlByName("оИстория");
+  If not isEmpty(аКнт) Then
+    флИстория:=аКнт.Value;
+    If флИстория Then
+      оДатаДна:=Form.оДатаДна.Value;
+      If оДатаДна<='01.01.1981' Then
+        оДатаДна:=Date(0);
+      EndIf;
+    Else
+      оДатаДна:=Form.оДатаПериод.Value;
+    EndIf;
+  EndIf;
+  
+  Вид:=aEl.DBName();
+  If ТабВыгружено.FindAndGoto(Вид,,"Ид",1)=0 Then
+    ТабВыгружено.AddLineSorted("Ид","Ид,Таб",Вид,Tab.Create("Индекс"));
+  EndIf;
+  Таб:=ТабВыгружено.Таб;
+  ЭлКод:=глУниверсальнаяВыгрузкаПолучитьПолныйКод(aEl);
+  If Таб.FindAndGoto(ЭлКод,,"Индекс",1)>0 Then
+    Exit;
+  EndIf;
+  Таб.AddLineSorted("Индекс","Индекс",ЭлКод);
+
+  Родитель:=0;
+  If Struct.Ref(Вид).Parents.Count()>0 Then
+    Родитель:=aEl.Parent();
+    If isEmpty(Родитель) Then
+      Raise "У элемента справочника "+Вид+" с кодом "+ЭлКод+" отсутствует родитель!";
+    EndIf;
+  EndIf;  
+  Папка:=aEl.Folder();
+  Вид:=aEl.DBName();
+  
+  //Выгрузка родителя и папки
+  If not isEmpty(Родитель) Then
+    глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(Родитель,ТабВыгружено,ТВыгрузка);
+  EndIf;
+  If not isEmpty(Папка) Then
+    глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(Папка,ТабВыгружено,ТВыгрузка);
+  EndIf;
+  
+  //Проход по всем реквизитам, чтобы выгрузить справочники
+  For i:=1 To Struct.Ref(Вид).Props.Count() Do
+    //Исп:=Struct.Ref(Вид).Props(i).Applies;
+    //if ((Исп=1)And(aEl.IsFolder()))or((Исп=2)And(not aEl.IsFolder())) Then
+    //  Continue;
+    //EndIf;
+    
+    Ид:=Struct.Ref(Вид).Props(i).Name;
+    If Struct.Ref(Вид).Props(i).Periodical Then
+      //Периодический реквизит
+      aTab:=aEl.LoadPeriodicalValues(Ид);
+      If (not флИстория)And(aTab.Size()>1) Then
+        aTab.Remove(1,aTab.Size()-1);
+        aTab.Set(1,"_Date",оДатаДна);
+      EndIf;
+      aTab.Select();
+      While aTab.Next() Do
+        if DBTypeStr(aTab._Value)="REF" Then
+          If _And(флИстория,aTab._Date<оДатаДна,aTab.CurLine<aTab.Size()) Then
+            Continue;
+          EndIf;
+          глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(aTab._Value,ТабВыгружено,ТВыгрузка);
+        EndIf;
+      EndDo;
+      aTab:=0;
+    Else
+      //Обычный, не периодический реквизит
+      If DBTypeStr(aEl.GetValue(Ид))="REF" Then
+        глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(aEl.GetValue(Ид),ТабВыгружено,ТВыгрузка);
+      EndIf;
+    EndIf;
+  EndDo;
+  //Используем также все строчные части
+  For j:=1 To Struct.Ref(Вид).LineParts.Count() Do
+    Ид2:=Struct.Ref(Вид).LineParts(j).Name;
+    bTab:=aEl.LineParts(Ид2);
+    bTab.Select();
+    While bTab.Next() Do
+      For i:=1 To Struct.Ref(Вид).LineParts(j).Props.Count() Do
+        Ид:=Struct.Ref(Вид).LineParts(j).Props(i).Name;
+        If Struct.Ref(Вид).LineParts(j).Props(i).Periodical Then
+          //Периодический реквизит
+          aTab:=aEl.LoadPeriodicalValues(Ид2+"."+bTab.CurLine+"."+Ид);
+          If (not флИстория)And(aTab.Size()>1) Then
+            aTab.Remove(1,aTab.Size()-1);
+            aTab.Set(1,"_Date",оДатаДна);
+          EndIf;
+          aTab.Select();
+          While aTab.Next() Do
+            if DBTypeStr(aTab._Value)="REF" Then
+              If _And(флИстория,aTab._Date<оДатаДна,aTab.CurLine<aTab.Size()) Then
+                Continue;
+              EndIf;
+              глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(aTab._Value,ТабВыгружено,ТВыгрузка);
+            EndIf;
+          EndDo;
+          aTab:=0;
+        Else
+          //Обычный, не периодический реквизит
+          bEl:=bTab.Get(bTab.CurLine,Ид);
+          If DBTypeStr(bEl)="REF" Then
+            глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(bEl,ТабВыгружено,ТВыгрузка);
+          EndIf;
+        EndIf;
+      EndDo;
+    EndDo;
+    bTab:=0;
+  EndDo;  
+
+  
+  //RF:<Вид>#1<Удален>#1<Папка>#1<ВидРодитель>|<КодРодитель>#1<КодПапки>#1<Code>#1<Кодированный(Name)>#1<Реквизит1>#1<Реквизит2>...
+  Стр:="RF:"+Вид+Chr(1)+aEl.Status()+Chr(1)+aEl.IsFolder()+Chr(1)+?(not isEmpty(Родитель),Родитель.DBName()+"|"+глУниверсальнаяВыгрузкаПолучитьПолныйКод(Родитель))+Chr(1)+?(not isEmpty(Папка),глУниверсальнаяВыгрузкаПолучитьПолныйКод(Папка))+
+    Chr(1)+ЭлКод+Chr(1)+?(not isEmpty(Struct.Ref(Вид).Props("Name")),EncodeString(Unicode(aEl.Name)))+Chr(1);
+  
+  For i:=1 To Struct.Ref(Вид).Props.Count() Do
+    //Исп:=Struct.Ref(Вид).Props(i).Applies;
+    //if ((Исп=1)And(aEl.IsFolder()))or((Исп=2)And(not aEl.IsFolder())) Then
+    //  Continue;
+    //EndIf;
+    //<Реквизит?>:{<Ид>@<Периодический>@<ЗначениеРек>,#2<ИмяСтрочнойЧасти>}
+    
+    Ид:=Struct.Ref(Вид).Props(i).Name;
+    If (Ид="Code")or(Ид="Name") Then
+      Continue;
+    EndIf;
+    ФлПериод:=Struct.Ref(Вид).Props(i).Periodical;
+    Стр1:=Ид+"@"+ФлПериод+"@";
+    If ФлПериод Then
+      //Периодический реквизит
+      aTab:=aEl.LoadPeriodicalValues(Ид);
+      If (not флИстория)And(aTab.Size()>1) Then
+        aTab.Remove(1,aTab.Size()-1);
+        aTab.Set(1,"_Date",оДатаДна);
+      EndIf;
+      Фл=0;
+      aTab.Select();
+      While aTab.Next() Do
+        If _And(флИстория,aTab._Date<оДатаДна,aTab.CurLine<aTab.Size()) Then
+          Continue;
+        EndIf;
+        AppendStringToBufferedString(Стр1,""+?(Фл,Chr(3))+aTab._Date+"@"+глУниверсальнаяВыгрузкаВыгрузитьРеквизит(aTab._Value));
+        Фл:=1;
+      EndDo;
+      aTab:=0;
+    Else
+      //Обычный, не периодический реквизит
+      Стр1:=Стр1+глУниверсальнаяВыгрузкаВыгрузитьРеквизит(aEl.GetValue(Ид));
+    EndIf;
+    AppendStringToBufferedString(Стр,Стр1+Chr(1));
+  EndDo;
+  //Выгружаем триггер изменения, если присутствует
+  If aEl.Struct.Trigger Then
+    AppendStringToBufferedString(Стр,":TRIGGER@0@NUMBER."+aEl.GetTrigger()+Chr(1));
+  EndIf;
+  
+  For j:=1 To Struct.Ref(Вид).LineParts.Count() Do
+    Ид2:=Struct.Ref(Вид).LineParts(j).Name;
+    bTab:=aEl.LineParts(Ид2);
+    bTab.Select();
+    While bTab.Next() Do
+      AppendStringToBufferedString(Стр,Chr(2)+Ид2+Chr(1));
+      For i:=1 To Struct.Ref(Вид).LineParts(j).Props.Count() Do
+        Ид:=Struct.Ref(Вид).LineParts(j).Props(i).Name;
+        ФлПериод:=Struct.Ref(Вид).LineParts(j).Props(i).Periodical;
+        Стр1:=Ид+"@"+ФлПериод+"@";
+        If ФлПериод Then
+          //Периодический реквизит
+          aTab:=aEl.LoadPeriodicalValues(Ид2+"."+bTab.CurLine+"."+Ид);
+          If (not флИстория)And(aTab.Size()>1) Then
+            aTab.Remove(1,aTab.Size()-1);
+            aTab.Set(1,"_Date",оДатаДна);
+          EndIf;
+          Фл=0;
+          aTab.Select();
+          While aTab.Next() Do
+            If _And(флИстория,aTab._Date<оДатаДна,aTab.CurLine<aTab.Size()) Then
+              Continue;
+            EndIf;
+            AppendStringToBufferedString(Стр1,""+?(Фл,Chr(3))+aTab._Date+"@"+глУниверсальнаяВыгрузкаВыгрузитьРеквизит(aTab._Value));
+            Фл:=1;
+          EndDo;
+          aTab:=0;
+        Else
+          //Обычный, не периодический реквизит
+          Стр1:=Стр1+глУниверсальнаяВыгрузкаВыгрузитьРеквизит(bTab.Get(bTab.CurLine,Ид));
+        EndIf;
+        AppendStringToBufferedString(Стр,Стр1+Chr(1));
+      EndDo;
+    EndDo;
+    bTab:=0;
+  EndDo;  
+  ТВыгрузка.AddString(Стр);
+  If DoesFunctionExist("локПослеВыгрузкиЭлемента",2) Then
+    ExecuteFunction("локПослеВыгрузкиЭлемента",2);
+  EndIf;
+EndFunction
+
+Function глОчисткаТмцПартииТМЦ() Export
+
+  СтрРез:="";
+  If глВыполнитьВыборВМеню("Удалить старые партии",СтрРез,2)=0 Then
+    Exit 0;
+  EndIf;
+  If СтрРез="Удалить старые партии" Then
+    Box("У партий без остатков на начало указанного периода и без движений в периоде до текущей даты будут удалены картинки, и сами элементы "+
+      "будут удалены физически, если на них нет ссылок в текущей базе данных! Обработка должна проводиться периодически для уменьшения объемы картинок на диске "+
+      " и после обрезания базы для удаления старых элементов.",Q_INFORMATION);
+    флСимуляция:=1;
+    ФлТип:=AskQuestion("Симуляция (да), реальная очистка (нет)?",Q_QUESTION+Q_YESNOCANCEL);
+    If ФлТип=R_CANCEL Then
+      Exit 0;
+    ElseIf ФлТип=R_NO Then
+      флСимуляция:=0;
+    EndIf;
+    оДата:=DBVar.НачалоПериодаБазы;
+    If IsEmpty(оДата) Then
+      оДата:=BegOfYear(BegOfYear(CurDate())-1)-1;
+    EndIf;
+    оДата:=AskDate(оДата,"Очищать раньше даты:",1);
+    If оДата=0 Then
+      Exit 0;
+    EndIf;
+    
+    КонДата:=BegOfDay(Date());
+    ТЗ:="Period from оДата to КонДата;
+    |зН:=Storage.ОстаткиТМЦ.Номенклатура;
+    |зПартия:=Storage.ОстаткиТМЦ.Партия;
+    |Condition not isEmpty(зПартия);
+    |зКлО:=BegTotals(Количество);
+    |зКлОПр:=Income(Количество);
+    |зКлОРс:=Expense(Количество);
+    |Group зПартия;";
+    З:=Query.Create();
+    З.Execute(ТЗ);
+    СпИсключ:=List.Create();
+    While З.Next(1) Do
+      If (З.зКлО<>0)Or(З.зКлОПр<>0)Or(З.зКлОРс<>0) Then
+        If СпИсключ.Find(З.зПартия)=0 Then
+          СпИсключ.Add(З.зПартия);
+        EndIf;
+      EndIf;
+    EndDo;
+    
+    
+    aEl:=Ref.тмцПартииТМЦ;
+    спПартии=aEl.Load(0,"!->@ELEMENT",СпИсключ);
+    СпУдалить:=List.Create();
+    For i:=1 To спПартии.Size() Do
+      зКСР:=спПартии.Get(i).КСР;
+      If (IsEmpty(зКСР))Or(зКСР<оДата) Then
+        СпУдалить.Add(спПартии.Get(i));
+      EndIf;
+    EndDo;
+    
+    If СпУдалить.Size()>0 Then
+      Таб:=CollectObjectsLinks(СпУдалить);
+      Таб.Select();
+      While Таб.Next() Do
+        аЭл:=Таб.Object;
+        iNum:=СпУдалить.Find(аЭл);
+        If iNum>0 Then
+          СпУдалить.Remove(iNum);
+        EndIf;
+      EndDo;
+      
+      
+      For i:=1 to СпУдалить.Size() Do
+        аЭл:=СпУдалить.Get(i);
+        Message("Удаляется партия "+аЭл+" ТМЦ "+аЭл.Parent()+" ("+аЭл.Parent().Code+")!","I");
+        If not флСимуляция Then
+          аЭл.DeletePhysically();
+        EndIf;
+      EndDo;
+    EndIf;  
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+
+//ФлРежим: 0 -- снимать галки в СпЭлементы, если ссылки найдены
+//         1 -- возвращать 1, если ссылки найдены, СпЭлементы не использует галки
+Function глВнешняяСсылкаПриУдаленииЭлементов(Эл,СпЭлементы,ТабСсылки,ФлРежим=0,СпБыло=0) Export
+  If СпБыло=0 Then
+    СпБыло:=List.Create();
+  EndIf;
+  //Цель: Убедиться, что элемент отсутствует в ссылках или элементы, которые ссылаются на данный элемент: 1. сами присутсутвуют в таблице удаления, 2. сами отсутствуют в ссылках (рекурсивно)
+  i2:=СпЭлементы.Find(Эл);
+  If i2=0 Then
+    Exit 1;
+  EndIf;
+  If _And(ФлРежим=0,СпЭлементы.Check(i2)=0) Then
+    Exit 1;
+  EndIf;
+  If СпБыло.Find(Эл,,1)>0 Then
+    Exit 0;
+  EndIf;
+  аБылоПоз:=СпБыло.Add(Эл,,,1);
+  Try
+    ТабСсылки.CurLine:=0;
+    While ТабСсылки.LocateAndGoto("OBJECT",Эл)>0 Do
+      aNum:=ТабСсылки.CurLine;
+      If глВнешняяСсылкаПриУдаленииЭлементов(ТабСсылки.LINK,СпЭлементы,ТабСсылки,ФлРежим,СпБыло) Then
+        If ФлРежим=0 Then
+          СпЭлементы.Check(i2,0);
+        EndIf;  
+        Exit 1;
+      EndIf;
+      ТабСсылки.CurLine:=aNum;
+    EndDo;
+    Exit 0;
+  Finally  
+    СпБыло.Remove(аБылоПоз);
+  EndTry;  
+EndFunction
+

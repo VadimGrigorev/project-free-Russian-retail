@@ -1,0 +1,123 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function Видимость()
+  aEl:=Form.Object;
+  MainTab:=Form.MainTab.Value;
+  
+  If Form.оЗатраты.Value=1 Then
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=0;
+  Else
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=1;
+  EndIf;
+  
+  ФлПроводка:=aEl.ТипПроводки.Selected()<>0;
+  MainTab.Column("Счет").isVisible:=not ФлПроводка;
+  MainTab.Column("Субконто1").isVisible:=not ФлПроводка;
+  MainTab.Column("Субконто2").isVisible:=not ФлПроводка;
+  MainTab.Column("Субконто3").isVisible:=not ФлПроводка;
+  
+  Стр:="Документ не закрыт";
+  If aEl.Обработан>0 Then
+    Стр:="Документ ЗАКРЫТ";
+  EndIf;  
+  If Стр<>Form.пЗакрытие.Caption Then
+    Form.пЗакрытие.Caption:=Стр;
+  EndIf;
+EndFunction
+
+Function OnCreateFromObject()
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+    Form.Close(0);
+    Exit;
+  EndIf;
+  aEl.УчитыватьВНалоговомУчете:=1;
+EndFunction
+
+Function OnAfterCustomBuhChanged()
+  Видимость();
+EndFunction
+
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  
+  If aEl.Договор.Selected()=0 Then
+    Box("Необходимо выбрать контрагента и договор, прежде чем записывать или обрабатывать документ!",Q_STOP);
+    Exit 0;
+  EndIf;
+  If _And(not isEmpty(aEl.ОтложитьНДСНаПериод),BegOfMonth(aEl.ОтложитьНДСНаПериод)<=BegOfMonth(aEl.DocDate)) Then
+    Box("В документе неверно указана дата отложенного НДС!",Q_STOP);
+    Exit 0;
+  EndIf;
+
+  If _And(Form.оЗатраты.Value=0,DBVar.РазрешитьЗатратыПоНачислению=1) Then
+    If aEl.Контрагент.ТипАктива<>3 Then //aEl.Контрагент.ТипАктива<2
+      Box("Поступления услуг от поставщиков А, поставщиков В или покупателей необходимо включить в затраты!",Q_STOP);
+      Exit 0;
+    EndIf;  
+  EndIf;
+
+  If Form.оЗатраты.Value=1 Then
+    If (aEl.ЦентрЗатрат.Selected()=0)Or(aEl.СтатьяЗатрат.Selected()=0) Then
+      Box("Не выбраны центр затрат или статья затрат!",Q_STOP);
+      Exit 0;
+    EndIf;
+    
+    If DBVar.РазрешитьЗатратыПоНачислению=1 Then
+      а:=Doc.НачислениеЗатрат;
+      НачДата:=BegOfMonth(aEl.DocDate);
+      КонДата:=BegOfDay(EndOfMonth(aEl.DocDate)+1);
+      aList:=а.Load(0,">@Status,>=DocDate,<DocDate,Контрагент,Договор,ЦентрЗатрат,СтатьяЗатрат",1,НачДата,КонДата,aEl.Контрагент,aEl.Договор,aEl.ЦентрЗатрат,aEl.СтатьяЗатрат);
+      Фл:=0;
+      For i:=1 To aList.Size() Do
+        Док:=aList.Get(i);
+        If Док.СуммаВзаиморасчетов=Док.СуммаВзаиморасчетов Then
+          Message("Найден дублирующий документ "+Док+"!","!");
+        Else
+          Message("Найден подозрительный документ "+Док+"! Похоже, он дублирует текущий!","!");
+        EndIf;
+        Фл:=Фл+1;
+      EndDo;
+      If _And(Фл>0,not глПользователь.бухГлавныйБухгалтер) Then
+        Message("Чтобы обработать этот документ, обратитесь к главному бухгалтеру!","!");
+        Exit 0;
+      EndIf;
+    EndIf;    
+  Else
+    aEl.ЦентрЗатрат:=0;
+    aEl.СтатьяЗатрат:=0;
+  EndIf;
+
+  If aEl.ТипПроводки.Selected()<>0 Then
+    If Trim(aEl.СубконтоТипаПроводки)="" Then
+      If not глРедактироватьСубконтоТипаПроводки(aEl,1) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  Else
+    Сч601:=глНайтиСчет("60.1");
+    aTab:=aEl.LineParts("Содержание");
+    aTab.Select();
+    While aTab.Next() Do
+      If not глПроверитьПроблемностьУказанныхСчетов(aEl,aTab.Счет,Сч601,aTab.Количество,0,"10.3") Then
+        Exit 0;
+      EndIf;
+      If not глПроверитьКорректностьЗаполненияСубконто(aTab,1) Then
+        Form.MainTab.Value.SelectedLine:=aTab.CurLine;
+        Exit 0;
+      EndIf;
+    EndDo;    
+  EndIf;
+  
+  If isEmpty(aEl.ДатаОплаты) Then
+    aEl.ДатаОплаты:=aEl.DocDate+1;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+

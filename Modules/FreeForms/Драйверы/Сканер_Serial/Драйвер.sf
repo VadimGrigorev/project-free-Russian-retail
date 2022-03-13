@@ -1,0 +1,257 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+//Функции:
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, GetNextMessage
+
+Function TranslateError(aKernel32,КодОшибки)
+  FORMAT_MESSAGE_FROM_SYSTEM:=$1000;
+  FORMAT_MESSAGE_IGNORE_INSERTS:=$200;
+  FORMAT_MESSAGE_ARGUMENT_ARRAY:=$2000;
+  аБуф:=Buffer.Create(2048);//1024 символов
+  i:=aKernel32.FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_IGNORE_INSERTS or FORMAT_MESSAGE_ARGUMENT_ARRAY,0,КодОшибки,0,аБуф,1024,0);
+  Exit аБуф.GetStringW(0);
+EndFunction
+
+Function DriverInit(спНастройки)
+
+  Function _РасшифроватьСтроку(Стр)
+    Стр2:="";
+    i:=1;
+    While i<=Length(Стр) Do
+      if _And(Стр[i]="#",i<Length(Стр)) Then
+        If Стр[i+1]="#" Then
+          Стр2:=Стр2+"#";
+          i:=i+1;
+        Else
+          //#<Number>#
+          j:=i+1;
+          While j<=Length(Стр) Do
+            If Стр[j]="#" Then
+              Break;
+            EndIf;
+            j:=j+1;
+          EndDo;
+          Стр2:=Стр2+Chr(Mid(Стр,i+1,j-i-1));
+          i:=j;
+        EndIf;
+      Else
+        Стр2:=Стр2+Стр[i];
+      EndIf;
+      i:=i+1;
+    EndDo;
+    Exit Стр2;
+  EndFunction
+  
+  Try
+    спНастройки["СканерКлавиатура"]:=0;
+    СтрДоп:=спНастройки["ДопУстановки"];
+    Ини:=Ini.Create();
+    Ини.AddFromString(СтрДоп);
+    спНастройки["СканерПрефикс"]:=_РасшифроватьСтроку(Ини.GetData("Префикс",""));
+    спНастройки["СканерСуффикс"]:=_РасшифроватьСтроку(Ини.GetData("Суффикс",""));
+    спНастройки["СканерВремя"]:=Number(Ини.GetData("Таймаут","50"));
+    Стр:=Ини.GetData("ТаблицаПерекодирования","");
+    Таб:=Tab.Create("Комбинация,Результат");
+    While Стр<>"" Do
+      //<b64>:<b64>,...
+      Стр2:=TearStr(Стр,",");
+      Стр3:=TearStr(Стр2,":");
+      If Стр3<>"" Then
+        Таб.AddLine("Комбинация,Результат",_РасшифроватьСтроку(DecodeString(Стр3,"Base64",1)),_РасшифроватьСтроку(DecodeString(Стр2,"Base64",1)));
+      EndIf;
+    EndDo;
+    спНастройки["ТаблицаПерекодирования"]:=Таб;
+    спНастройки["КодоваяСтраница"]:=Number(Ини.GetData("КодоваяСтраница","65001"));
+    
+    //Загрузка требуемых библиотек
+    aKernel32:=Lib.Load("kernel32.dll");
+    aKernel32.RegisterFunction("CreateFileW","stdcall","^SZW,UI32,UI32,P,UI32,UI32,UN","UN");
+    aKernel32.RegisterFunction("ReadFile","stdcall","UN,P,UI32,@UI32,P","UI32");
+    aKernel32.RegisterFunction("WriteFile","stdcall","UN,P,UI32,@UI32,P","UI32");
+    aKernel32.RegisterFunction("CloseHandle","stdcall","UN","UI32");
+    aKernel32.RegisterFunction("GetCommState","stdcall","UN,P","UI32");
+    aKernel32.RegisterFunction("SetCommState","stdcall","UN,P","UI32");
+    aKernel32.RegisterFunction("SetCommTimeouts","stdcall","UN,P","UI32");
+    aKernel32.RegisterFunction("GetLastError","stdcall",,"UI32");
+    aKernel32.RegisterFunction("FormatMessageW","stdcall","UI32,P,UI32,UI32,P,UI32,P","UI32");
+    
+    rDCB:=MemoryRecord.Create("DCBlength:UI32,BaudRate:UI32,Flags:UI32,wReserved:UI16,XonLim:UI16,XoffLim:UI16,ByteSize:UI8,Parity:UI8,"+
+      "StopBits:UI8,XonChar:UI8,XoffChar:UI8,ErrorChar:UI8,EofChar:UI8,EvtChar:UI8,wReserved1:UI16");
+      
+    rCOMMTIMEOUTS:=MemoryRecord.Create("ReadIntervalTimeout:UI32,ReadTotalTimeoutMultiplier:UI32,ReadTotalTimeoutConstant:UI32,WriteTotalTimeoutMultiplier:UI32,"+
+      "WriteTotalTimeoutConstant:UI32");
+      
+    спНастройки["aKernel32"]:=aKernel32;
+    спНастройки["rDCB"]:=rDCB;
+    спНастройки["rCOMMTIMEOUTS"]:=rCOMMTIMEOUTS;
+    спНастройки["Соединено"]:=0;
+  Except
+    Exit PopError()+_NEWLINE+"(1) Невозможно инициализировать требуемые библиотеки!";
+  EndTry;
+  
+EndFunction
+
+Function DriverDeinit(спНастройки)
+EndFunction
+
+Function DriverConnect(спНастройки)
+  Try
+    спНастройки["Соединено"]:=0;
+    спНастройки["aHandle"]:=0;
+    спНастройки["НакопленноеСообщение"]:="";
+    спНастройки["ПоследнийПрием"]:=0;
+    СтрДоп:=спНастройки["ДопУстановки"];
+    Ини:=Ini.Create();
+    Ини.AddFromString(СтрДоп);
+    
+    СтрНомер:=Max(Number(Ини.GetData("НомерПорта","3")),1);
+    Стр:=Ини.GetData("ПараметрыПорта","57600,n,8,1");
+    ИмяПорта:="\\.\COM"+СтрНомер;
+    aKernel32:=спНастройки["aKernel32"];
+  
+    спЧетность:=List.Create("n","o","e","m","s");//0..5
+    спБит:=List.Create("1","1.5","2");//0..2
+    rDCB:=спНастройки["rDCB"];
+    rCOMMTIMEOUTS:=спНастройки["rCOMMTIMEOUTS"];
+    GENERIC_READ:=$80000000;
+    GENERIC_WRITE:=$40000000;
+    OPEN_EXISTING:=3;
+    INVALID_HANDLE_VALUE=$FFFFFFFF;
+    MAXDWORD:=$FFFFFFFF;
+    //Попытка открыть порт
+    aHandle:=aKernel32.CreateFileW(ИмяПорта,GENERIC_READ or GENERIC_WRITE,0,0,OPEN_EXISTING,0,0);
+    If aHandle=INVALID_HANDLE_VALUE Then
+      Exit "Ошибка открытия COM-порта: "+TranslateError(aKernel32,aKernel32.GetLastError);
+    EndIf;
+    Try
+      //Установка параметров связи
+      rDCB.Allocate();
+      rDCB.DCBlength:=rDCB.Size();
+      If Not aKernel32.GetCommState(aHandle,rDCB) Then
+        Exit "Ошибка настройки COM-порта (1): "+TranslateError(aKernel32,aKernel32.GetLastError);
+      EndIf;
+      rDCB.BaudRate:=Number(TearStr(Стр,","));
+      аЧет:=спЧетность.Find(LowerCase(TearStr(Стр,",")));
+      аЧет:=Max(аЧет-1,0);
+      rDCB.Parity:=аЧет;
+      rDCB.ByteSize:=Number(TearStr(Стр,","));
+      аБит:=спБит.Find(LowerCase(TearStr(Стр,",")));
+      аБит:=Max(аБит-1,0);
+      rDCB.StopBits:=аБит;    //StopBits = 1
+      If Not aKernel32.SetCommState(aHandle,rDCB) Then
+        Exit "Ошибка настройки COM-порта (2): "+TranslateError(aKernel32,aKernel32.GetLastError);
+      EndIf;
+      
+      //Установка времени ожидания 
+      rCOMMTIMEOUTS.Allocate();
+      rCOMMTIMEOUTS.ReadIntervalTimeout:=MAXDWORD;
+      rCOMMTIMEOUTS.ReadTotalTimeoutMultiplier:=MAXDWORD;
+      rCOMMTIMEOUTS.ReadTotalTimeoutConstant:=0;
+      rCOMMTIMEOUTS.WriteTotalTimeoutMultiplier:=0;
+      rCOMMTIMEOUTS.WriteTotalTimeoutConstant:=0;//Не нужна, ничего записывать не будем
+      If not aKernel32.SetCommTimeouts(aHandle,rCOMMTIMEOUTS) Then
+        Exit "Ошибка настройки COM-порта (3): "+TranslateError(aKernel32,aKernel32.GetLastError);
+      EndIf;
+      спНастройки["aHandle"]:=aHandle;
+      спНастройки["Соединено"]:=1;
+    Finally
+      if спНастройки["Соединено"]<>1 Then
+        aKernel32.CloseHandle(aHandle);
+        спНастройки["aHandle"]:=0;
+      EndIf;
+    EndTry;
+  Except
+    Exit PopError()+_NEWLINE+"(2) Невозможно открыть и настроить COM-порт!";
+  EndTry;
+EndFunction
+
+Function DriverDisconnect(спНастройки)
+  Try
+    aKernel32:=спНастройки["aKernel32"];
+    aHandle:=спНастройки["aHandle"];
+    aKernel32.CloseHandle(aHandle);
+    спНастройки["aHandle"]:=0;
+    спНастройки["Соединено"]:=0;
+    спНастройки["НакопленноеСообщение"]:="";
+    спНастройки["ПоследнийПрием"]:=0;
+  Except
+    Exit PopError()+_NEWLINE+"(3) Невозможно закрыть COM-порт!";
+  EndTry;
+EndFunction
+
+
+Function GetNextMessage(спНастройки)
+  aKernel32:=спНастройки["aKernel32"];
+  aHandle:=спНастройки["aHandle"];
+  СканерПрефикс:=спНастройки["СканерПрефикс"];
+  СканерСуффикс:=спНастройки["СканерСуффикс"];
+  Таймаут:=спНастройки["СканерВремя"];
+  ФлРазрешеныОшибки:=Number(спНастройки["ФлРазрешеныОшибки"]);
+  Result:="";
+
+  //Чтение
+  Стр:=спНастройки["НакопленноеСообщение"];
+  аДата:=спНастройки["ПоследнийПрием"];
+  If IsEmpty(аДата) Then
+    аДата:=Date();
+  EndIf;
+  Buf:=Buffer.Create(1);
+  While 1 Do
+    b:=0;
+    If not aKernel32.ReadFile(aHandle,Buf,1,b,0) Then
+      If ФлРазрешеныОшибки Then
+        Raise "aKernel32.ReadFile: Ошибка чтения: "+TranslateError(aKernel32,aKernel32.GetLastError);
+      EndIf;
+      Exit;
+    EndIf;
+    If b=0 Then
+      //Ничего нет в буфере:
+      If Стр="" Then
+        Exit;
+      EndIf;
+      If _And(СканерСуффикс="",GetPeriodMs(аДата)>Таймаут) Then
+        //Если СканерСуффикс="" и таймаут, отдать накопленное сообщение
+        спНастройки["НакопленноеСообщение"]:="";
+        спНастройки["ПоследнийПрием"]:=0;
+        If спНастройки["КодоваяСтраница"]<>0 Then
+          Стр:=TranslateFrom(Стр,спНастройки["КодоваяСтраница"]);
+        EndIf;
+        Exit Стр;
+      EndIf;
+      If _And(СканерСуффикс<>"",GetPeriodMs(аДата)>10000) Then //10 с. максимум      
+        //Если СканерСуффикс<>"" и 10 с. прошло, удалить накопленное сообщение
+        спНастройки["НакопленноеСообщение"]:="";
+        спНастройки["ПоследнийПрием"]:=0;
+        Exit;
+      EndIf;
+      спНастройки["НакопленноеСообщение"]:=Стр;
+      Exit;
+    EndIf;
+    аДата:=Date();
+    спНастройки["ПоследнийПрием"]:=аДата;
+    Стр2:=Buf.GetString(0,1);
+    AppendStringToBufferedString(Стр,Стр2);
+    If (СканерПрефикс<>"")And(Length(Стр)<=Length(СканерПрефикс)) Then
+      If Pos(Стр,СканерПрефикс)<>1 Then
+        //Какое-то другое сообщение, или кусок предыдущего
+        Стр:="";
+        спНастройки["НакопленноеСообщение"]:="";
+        спНастройки["ПоследнийПрием"]:=0;
+      EndIf;
+    EndIf;
+    If СканерСуффикс<>"" Then
+      If Pos(СканерСуффикс,Стр)=Length(Стр)-Length(СканерСуффикс)+1 Then
+        Стр:=Left(Стр,Length(Стр)-Length(СканерСуффикс));
+        спНастройки["НакопленноеСообщение"]:="";
+        спНастройки["ПоследнийПрием"]:=0;
+        If спНастройки["КодоваяСтраница"]<>0 Then
+          Стр:=TranslateFrom(Стр,спНастройки["КодоваяСтраница"]);
+        EndIf;
+        Exit Стр;
+      EndIf;
+    EndIf;
+  EndDo;
+EndFunction;

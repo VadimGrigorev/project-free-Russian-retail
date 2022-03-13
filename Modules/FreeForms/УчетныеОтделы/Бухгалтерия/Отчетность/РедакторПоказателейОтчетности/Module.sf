@@ -1,0 +1,96 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Var ТБаланс Export;
+Var ТабТек Export;
+Var флДваУровня Export;
+Var флДопВычисления Export;
+Var ТабТек Export;
+Var флИзменения Export;
+
+Function РедакторМножителяУстановитьДоступность()
+  оМнож:=Form.оМнож.Value;
+  Form.оОперация.isDisabled:=1-оМнож;
+  Form.оЧисло.isDisabled:=1-оМнож;
+EndFunction
+
+Function лкНайтиСчет(Счет)
+  а:=Ref.бухПланСчетов;
+  If not а.Find("Code",Счет) Then
+    Exit 0;
+  EndIf;
+  Exit а;
+EndFunction
+
+Function ПолучитьСубконто(стрСуб,ВидСубконто)
+  If Trim(стрСуб)="" Then
+    Exit GetNothing();
+  EndIf;
+  If Trim(ВидСубконто.ТипЗначенияЛокальный)="" Then
+    а:=Ref.бухЗначенияСубконто;
+    If а.Find("@Parent,Code",ВидСубконто,стрСуб) Then
+      Exit а;
+    EndIf;
+    Exit GetNothing();
+  EndIf;
+  Стр:=Trim(ВидСубконто.ТипЗначенияЛокальный);
+  СтрТип:=Uppercase(TearStr(Стр,"."));
+  If (СтрТип="ПЕРЕЧИСЛЕНИЕ")or(СтрТип="ENUM") Then
+    Try
+      Exit Enum.GetByIndex(Стр,Number(стрСуб));
+    Except EndTry;
+    Exit GetNothing();
+  ElseIf (СтрТип="ДОКУМЕНТ")or(СтрТип="DOC") Then
+    а:=DB("Doc."+Стр);
+    дДата:=TearStr(стрСуб,"#");
+    дНомер:=TearStr(стрСуб,"#");
+    If а.Find("DocNum,<DocDate,>=DocDate",дНомер,EndOfYear(дДата)+1,BegOfYear(дДата)) Then
+      Exit а;
+    EndIf;
+    Exit GetNothing();
+  EndIf;
+  
+  Стр:=Replace(Uppercase(Trim(ВидСубконто.ТипЗначенияЛокальный)),"СПРАВОЧНИК.","REF.");
+  а:=DB(Стр);
+  If а.Find("Code",стрСуб) Then
+    Exit а;
+  EndIf;
+  Exit GetNothing();
+EndFunction
+
+
+Function ОбновитьРасшифровку()
+  оТаб:=Form.оТаб.Value;
+  оПоказатели:=Form.оПоказатели.Value;
+  
+  If оТаб.SelectedLine=ТабТек Then
+    Exit;
+  EndIf;
+  ТабТек:=оТаб.SelectedLine;
+  оПоказатели.ClearLines();
+  If оТаб.SelectedLine=0 Then
+    Exit;
+  EndIf;
+  оТаб.CurLine:=оТаб.SelectedLine;
+  
+  If оТаб.флРедактор<>1 Then
+    Form.оПоказатели.isDisabled:=1;
+    Exit;
+  EndIf;
+  Form.оПоказатели.isDisabled:=0;
+  
+  Таб:=оТаб.Таб;
+  Таб.CurLine:=оТаб.Строка;
+  Таб:=Таб.Подгруппа;
+  If IsEmpty(Таб) Then
+    Exit;
+  EndIf;
+  аСтр:=0;
+  Таб.Select();
+  While Таб.Next() Do
+    аСтр:=аСтр+1;
+    оПоказатели.AddLine("Наименование,Код,Формула,Таб,Строка",Таб.Наименование,Таб.Код,Таб.Формула,Таб,аСтр);
+  EndDo;
+EndFunction

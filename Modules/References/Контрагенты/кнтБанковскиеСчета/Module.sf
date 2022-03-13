@@ -1,0 +1,91 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function РасчетТекущейСуммы()
+  aEl:=Form.Object;
+  If aEl.Selected()<0 Then
+    Form.тСумма.Caption:="";
+    Exit;
+  EndIf;
+  О:=Storage.Банк.Gross1("Сумма",,0,"БанковскийСчет",aEl);
+  Form.тСумма.Caption:=глФРМ(О,"");
+  Form.тСумма.FontColor:=?(О<0,_CLR_RED,_CLR_WINDOWTEXT);
+EndFunction
+
+Function ПроверкаНомераСчета()
+  aEl:=Form.Object;
+  Стр:=aEl.НомерСчета;
+  If not ContainsOnlyCharacters(Стр,"0123456789") Then
+    Box("Номер счета должен содержать только цифры!",Q_STOP);
+    Exit 0;    
+  EndIf;
+  If Length(Стр)<20 Then
+    Box("Номер счета имеет неверную длину или указан неверно!",Q_STOP);
+    Exit 0;    
+  EndIf;
+  
+  If aEl.Банк.Selected()<>0 Then
+    //Проверка контрольной суммы
+    Стр1:=Right(aEl.Банк.БИК,3)+Стр;
+    Стр2:="0"+Mid(aEl.Банк.БИК,5,2)+Стр;
+    aList:=List.Create(7,1,3,7,1,3,7,1,3,7,1,3,7,1,3,7,1,3,7,1,3,7,1);
+    If (aList.Size()<>Length(Стр1))or(Length(Стр1)<>Length(Стр2)) Then
+      Box("Не указан БИК банка или неверная длина расчетного счета!",Q_STOP);
+      Exit 0;    
+    EndIf;
+    aNum:=0;
+    bNum:=0;
+    For i:=1 To aList.Size() Do
+      aNum:=aNum+Number(Стр1[i])*aList[i];
+      bNum:=bNum+Number(Стр2[i])*aList[i];
+    EndDo;
+    If (aNum%10<>0)And(bNum%10<>0) Then
+      Box("Расчетный счет неверен (ошибка контрольной суммы)! Внимательно проверьте все цифры счета и БИК банка на корректность!",Q_STOP);
+      Exit 0;    
+    EndIf;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+Function ПриИзмененииНомераСчета()
+  aEl:=Form.Object;
+  If Length(Trim(aEl.НомерСчета))<5 Then
+    Exit;
+  EndIf;
+  If aEl.Selected()<0 Then
+    Exit;
+  EndIf;
+  
+  а:=Ref.кнтБанковскиеСчета;
+  If а.Find("@Parent,<>@Element,НомерСчета",aEl.Parent(),aEl,aEl.НомерСчета) Then
+    Box("В справочнике уже есть элемент с таким же номером счета! Будьте внимательнее!",Q_STOP);
+    aEl.НомерСчета:="";
+    Exit;
+  EndIf;
+EndFunction
+
+Function OnBeforeElementSave()
+  aEl:=Form.Object;
+  
+  If IsBlankString(aEl.Name) Then
+    Box("Не указано наименование счета!",Q_STOP);
+    Form.Name.SetFocus();
+    Exit 0;
+  EndIf;
+
+  If aEl.Банк.Selected()=0 Then
+    Box("Не выбран банк!",Q_STOP);
+    Form.Банк.SetFocus();
+    Exit 0;
+  EndIf;
+  
+  If not ПроверкаНомераСчета() Then
+    Form.НомерСчета.SetFocus();
+    Exit 0;
+  EndIf;
+  
+  Exit 1;
+EndFunction

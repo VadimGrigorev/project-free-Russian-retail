@@ -1,0 +1,304 @@
+//Глобальные (root) модули загружаются при старте системы. Загрузка начинается с модуля "module" и продолжается в алфавитном порядке.
+//Переменные и функции, объявленные с постфиксом export, будут доступны в любых других модулях в любых потоках системы.
+//Модуль может содержать специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Var флИспользоватьБлокМаркетинга Export;          //Копия переменной для оптимизации
+
+Function глКорректностьСуммыМаркетинга(aEl,ОбщаяСумма) Export;
+  If not флИспользоватьБлокМаркетинга Then
+    Exit 1;
+  EndIf;
+  If aEl.DBName()="КорректировкаДолга" Then
+    If ОбщаяСумма<=0 Then
+      Exit 1;
+    EndIf;
+  EndIf;
+  
+  aTab:=aEl.LineParts("МаркетингПоставщиков");
+  См:=aTab.Sum("Сумма");
+  
+  If aEl.СтатьяМаркетинга.Selected()<>0 Then
+    if aEl.Магазин.Selected()=0 Then
+      Box("Необходимо выбрать магазин, на который падает маркетинговая сумма!",Q_STOP);
+      Exit 0;
+    EndIf;
+    if aTab.Size()>0 Then
+      Box("Необходимо либо выбрать статью маркетинга, либо заполнить таблицу маркетинга, но не то и другое сразу!",Q_STOP);
+      Exit 0;
+    EndIf;
+  ElseIf aEl.СтатьяМаркетинга.Selected()=0 Then
+    aTab.Select();
+    While aTab.Next() Do
+      If aTab.Магазин.Selected()=0 Then
+        if aEl.Магазин.Selected()=0 Then
+          Box("Необходимо выбрать основной магазин, на который падает маркетинговая сумма, либо заполнить поля магазина во всех строках таблицы маркетинга!",Q_STOP);
+          Exit 0;
+        EndIf;
+        Break;
+      EndIf;
+    EndDo;
+    If Round(См,2)<>Round(ОбщаяСумма,2) Then
+      If aTab.Size()=0 Then
+        Box("Необходимо выбрать статью маркетинга/услуг на которую будет распределена вся сумма скидки документа ("+глФРМ(ОбщаяСумма,"")+"), либо распределить ее между статьями в таблице!",Q_STOP);
+      Else
+        Box("Общая сумма скидки, которую необходимо распределить между статьями, равна "+глФРМ(ОбщаяСумма,"")+", однако, вы распределяете сумму "+глФРМ(См,"")+"! Пожалуйста, исправьте документ перед записью!",Q_STOP);
+      EndIf;
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If (isEmpty(aEl.МесяцДействия))And(aEl.СтатьяМаркетинга.Selected()<>0) Then
+    Box("Выберите месяц действия маркетингового договора/соглашения!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+
+Function глЗаполнитьСпискиЗатрат(aEl,флВыбранЦЗ=0) Export;
+  аЦЗ:=aEl.ЦентрЗатрат;
+  аСЗ:=aEl.СтатьяЗатрат;
+  
+  Фл:=флВыбранЦЗ;
+  If Form.ЦентрЗатратСписок.Value.Size()=0 Then
+    а:=Ref.зтЦентрыЗатрат;
+    Сп:=а.Load(0,"@Status",0);
+    Сп.Sort();
+    If _And(аЦЗ.Selected()<>0,Сп.Find(аЦЗ)=0) Then
+      Сп.Insert(1,аЦЗ);
+    EndIf;
+    If аЦЗ.Selected()=0 Then
+      Сп.Insert(1,GetNothing()," <Выберите центр и статью затрат>");
+    EndIf;  
+    Form.ЦентрЗатратСписок.Value.Clear();
+    Сп.CopyTo(Form.ЦентрЗатратСписок.Value);
+    Фл:=1;
+  EndIf;
+  
+  аЦЗСп:=Form.ЦентрЗатратСписок.Value;
+  If аЦЗ.Selected()<>0 Then
+    Ном:=аЦЗСп.Find(аЦЗ);
+    If аЦЗСп.SelectedLine<>Ном Then
+      аЦЗСп.SelectedLine:=Ном;
+      Фл:=1;
+    EndIf;
+  ElseIf аЦЗСп.SelectedLine<>1 Then
+    аЦЗСп.SelectedLine:=1;
+    Фл:=1;
+  EndIf;
+  
+  If Фл=1 Then
+    If аЦЗ.Selected()<>0 Then
+      а:=Ref.зтСтатьиЗатрат;
+      а.UseOrder("Name+");
+      Сп:=а.Load(0,"@Status,@Parent",0,аЦЗ);
+      Сп.Sort();
+      If _And(аСЗ.Selected()<>0,Сп.Find(аСЗ)=0,аСЗ.Parent()=аЦЗ) Then
+        Сп.Insert(1,аСЗ);
+      EndIf;
+      Form.СтатьяЗатратСписок.Value.Clear();
+      Сп.CopyTo(Form.СтатьяЗатратСписок.Value);
+      If аСЗ.Parent()<>аЦЗ Then
+        aEl.СтатьяЗатрат:=0;
+        аСЗ:=aEl.СтатьяЗатрат;
+      EndIf;
+    ElseIf Form.СтатьяЗатратСписок.Value.Size()>0 Then
+      Form.СтатьяЗатратСписок.Value.Clear();
+    EndIf;
+  EndIf;
+  
+  аСЗСп:=Form.СтатьяЗатратСписок.Value;
+  If аСЗ.Selected()<>0 Then
+    Ном:=аСЗСп.Find(аСЗ);
+    If аСЗСп.SelectedLine<>Ном Then
+      аСЗСп.SelectedLine:=Ном;
+    EndIf;
+  ElseIf аСЗСп.SelectedLine>0 Then
+    аСЗСп.SelectedLine:=0;
+  EndIf;
+  
+  If аЦЗ.Selected()<>0 Then
+    If Number(аЦЗ.Code)<>Form.оЦЗ.Value Then
+      Form.оЦЗ.Value:=Number(аЦЗ.Code);
+    EndIf;
+  ElseIf Form.оЦЗ.Value<>0 Then
+    Form.оЦЗ.Value:=0;
+  EndIf;  
+  
+  If аСЗ.Selected()<>0 Then
+    If Number(аСЗ.Code)<>Form.оСЗ.Value Then
+      Form.оСЗ.Value:=Number(аСЗ.Code);
+    EndIf;
+  ElseIf Form.оСЗ.Value<>0 Then
+    Form.оСЗ.Value:=0;
+  EndIf;
+    
+  
+  Form.тОтветственный.Caption:=?(aEl.ЦентрЗатрат.Selected()<>0,""+aEl.ЦентрЗатрат.Ответственный,"");
+EndFunction
+
+Function глПриВыбореЦентраЗатрат(aEl,аЦЗ) Export
+  If аЦЗ=aEl.ЦентрЗатрат Then
+    Exit 0;
+  EndIf;
+  
+  If (глПользователь.бухГлавныйБухгалтер+глПользователь.зтАналитикЗатрат=0)And(Pos(aEl.DBName()+",","ПКО,ВыпискаБанкаПриход,")>0)And(аЦЗ.ВнутреннееПеремещение=0) Then
+    Box("Вам не разрешено уменьшать не внутренние затраты в приходных документах. Выберите, пожалуйста, внутренний центр затрат!",Q_STOP);
+    Exit 0;
+  EndIf;
+  aEl.ЦентрЗатрат:=аЦЗ;
+  Exit 1;
+EndFunction
+
+//Таблица сортирована по зН
+//зН: З.зН.Code+"@"+зТЦ.Code
+//ТЦ: Список изменения цены
+Function глПолучитьПромежуточнуюТаблицуИзмененияЦенНоменклатуры(НачДата,КонДата,оСк,оН) Export
+  ТНом:=Tab.Create("зН,ТЦ");
+  ТНом.AddColumn("Кл",,"Number");
+  
+  пТовар:=Enum.ВидыНоменклатуры.Товар;
+  СпНеРозн:=List.Create();
+  флПустойЗапрос:=0;
+  //Запрос по рознице
+  If флЦентральнаяБаза=0 Then
+    НДата:=BegOfMonth(НачДата);
+    КДата:=EndOfMonth(КонДата);
+    ТЗ:="Period From НДата to КДата;
+    |зСк:=Storage.ОстаткиТМЦ.Склад;
+    |зСА:=Storage.ОстаткиТМЦ.Склад.ИспользоватьВАктиве;
+    |Condition(зСА=1);
+    |зСкТЦ:=Storage.ОстаткиТМЦ.Склад.рзТипЦенПоступления;
+    |зН:=Storage.ОстаткиТМЦ.Номенклатура;
+    |Вн:=Storage.ОстаткиТМЦ.Номенклатура.ВидНоменклатуры;Condition(Вн=пТовар);"+
+    ?(оСк.Get(1).Size()>0,"Condition(зСк IN оСк.Get(1));"+_NEWLINE,"")+
+    ?(оСк.Get(2).Size()>0,"Condition(зСк NOT IN оСк.Get(2)));"+_NEWLINE,"")+
+    ?(оН.Get(1).Size()>0,"Condition(зН IN оН.Get(1));"+_NEWLINE,"")+
+    ?(оН.Get(2).Size()>0,"Condition(зН NOT IN оН.Get(2)));"+_NEWLINE,"")+
+    "зНО:=BegTotals(Количество);
+    |зКП:=Income(Количество);
+    |зКР:=Expense(Количество);
+    |Group зСкТЦ,зН;";
+    
+    З:=Query.Create();
+    З.Execute(ТЗ,2);
+    While З.Next(1) Do
+      зТЦ:=З.зСкТЦ;
+      пНом:=0;
+      While З.Next(2) Do
+        пНом:=пНом+1;
+        If isEmpty(зТЦ) Then
+          зН:=З.зН;
+          If СпНеРозн.Find(зН)=0 Then
+            СпНеРозн.Add(зН);
+          EndIf;
+        EndIf;
+      EndDo;
+      If isEmpty(зТЦ) Then
+        Continue;
+      EndIf;
+      
+      пНом2:=0;
+      While З.Next(2) Do
+        пНом2:=пНом2+1;
+        If пНом2%10=0 Then
+          Form.StatusText("Изменение цен, розница: "+зТЦ+" "+пНом2+" из "+пНом);
+        EndIf;
+        
+        Ц:=0;зЭл:=0;
+        Ц:=глНайтиЦену(З.зН,зТЦ,CurDate(),зЭл);
+        If зЭл=0 Then
+          Continue;
+        EndIf;
+        
+        Фл:=0;
+        aTab:=зЭл.LoadPeriodicalValues("Цена",НачДата,КонДата);
+        Сп:=List.Create();
+        ЦенаТ:=зЭл.GetValue("Цена",НачДата-1);
+        aTab.Select();
+        While aTab.Next() Do
+          Фл:=Фл+1;
+          Сп.SetByName(""+aTab._Date,aTab._Value-ЦенаТ);
+          ЦенаТ:=aTab._Value;
+        EndDo;
+        
+        If Фл=0 Then
+          Continue;
+        EndIf;
+        
+        ТНом.AddLineSorted("зН","зН,ТЦ,Кл",З.зН.Code+"@"+зТЦ.Code,Сп,Фл);
+      EndDo;
+    EndDo;
+    If СпНеРозн.Size()=0 Then
+      флПустойЗапрос:=1;
+    EndIf;
+  EndIf;
+  
+  
+  If not флПустойЗапрос Then
+    ТЗ:="зН:=Ref.тмцНоменклатура;
+    |зВн:=Ref.тмцНоменклатура.ВидНоменклатуры;Condition(зВн=пТовар);
+    |Condition(зН IN оН.Get(1));
+    |Condition(зН IN СпНеРозн);
+    |Condition(зН NOT IN оН.Get(2));
+    |Group зН;";
+    З:=Query.Create();
+    З.Execute(ТЗ,2);
+    
+    пНом:=З.ResultTable.Size();
+    пНом2:=0;
+    While З.Next(1) Do
+      пНом2:=пНом2+1;
+      If пНом2%10=0 Then
+        Form.StatusText("Изменение цен: "+пНом2+" из "+пНом);
+      EndIf;
+          
+      If флЦентральнаяБаза=0 Then
+        Фл:=0;
+        Сп:=List.Create();
+        aTab:=З.зН.LoadPeriodicalValues("Цена",НачДата,КонДата);
+        ЦенаТ:=З.зН.GetValue("Цена",НачДата-1);
+        
+        aTab.Select();
+        While aTab.Next() Do
+          Фл:=Фл+1;
+          Сп.SetByName(""+aTab._Date,aTab._Value-ЦенаТ);
+          ЦенаТ:=aTab._Value;
+        EndDo;
+        
+        If Фл=0 Then
+          Continue;
+        EndIf;
+        
+        ТНом.AddLineSorted("зН","зН,ТЦ,Кл",З.зН,Сп,Фл);
+      Else
+        aList:=Ref.рбОсновныеЦены.Load(0,"@Parent",З.зН);
+        For i2:=1 to aList.Size() Do
+          аЭл:=aList.Get(i2);
+          Фл:=0;
+          Сп:=List.Create();
+          aTab:=аЭл.LoadPeriodicalValues("Цена",НачДата,КонДата);
+          ЦенаТ:=аЭл.GetValue("Цена",НачДата-1);
+          aTab.Select();
+          While aTab.Next() Do
+            Фл:=Фл+1;
+            Сп.SetByName(""+aTab._Date,aTab._Value-ЦенаТ);
+            ЦенаТ:=aTab._Value;
+          EndDo;
+          If Фл=0 Then
+            Continue;
+          EndIf;
+          ТНом.AddLineSorted("зН","зН,ТЦ,Кл",З.зН.Code+"@"+Trim(аЭл.рбПрефиксУдаленнойБазы),Сп,Фл);
+        EndDo;
+      EndIf;
+    EndDo;
+  EndIf;
+  
+  Exit ТНом;
+EndFunction    
+
+
+флИспользоватьБлокМаркетинга:=Number(DBVar.ИспользоватьБлокМаркетинга);
+

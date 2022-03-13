@@ -1,0 +1,252 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var НачДата Export;
+Var КонДата Export;
+Var флПропуститьЦиклРедактирования Export;
+Var флБезусловноеОбновление Export;
+Var флПрочийЖурнал Export;
+Var СписокЭлементов Export;
+
+Function Видимость(ОбновитьФильтр=0)
+  MainTab:=Form.MainTab.Value;
+  флБезусловноеОбновление:=ОбновитьФильтр;
+  
+  If not флПрочийЖурнал Then
+    оКО:=Enum.коДоверенность.НаДеньги;
+  Else
+    If Form.оВид.Value.SelectedLine=1 Then
+      оКО:=Enum.коДоверенность.Произвольная;
+    Else
+      оКО:=Enum.коДоверенность.НаТМЦ;
+    EndIf;
+  EndIf;
+  
+  If Form.оСданныеДоверенности.Value=0 Then
+    MainTab.Column("ЕстьПКО").isVisible:=1;
+    If not флПрочийЖурнал Then
+      MainTab.Column("Сотрудник").isVisible:=0;
+      MainTab.Column("пПКО").isVisible:=0;
+      MainTab.Column("Icon").isVisible:=0;
+      См:=MainTab.Sum("Сумма");
+      Form.пСуммаДокументов.Caption:=глФРМ(См,"");
+      Form.пСуммаДокументов.FontColor:=_CLR_RED;
+    EndIf;  
+    Form.пПериод.Caption:="(весь период базы данных)";
+    Form.пПериод.FontColor:=_CLR_WINDOWTEXT;
+  Else
+    MainTab.Column("ЕстьПКО").isVisible:=1;
+    If not флПрочийЖурнал Then
+      MainTab.Column("Сотрудник").isVisible:=1;
+      MainTab.Column("пПКО").isVisible:=1;
+      MainTab.Column("Icon").isVisible:=0;
+      Form.пСуммаДокументов.Caption:="(обновите, чтобы подсчитать)";
+      Form.пСуммаДокументов.FontColor:=_CLR_WINDOWTEXT;
+    EndIf;
+    Form.пПериод.Caption:="с "+FormatDate(НачДата,"DD MMM YYYY")+" по "+FormatDate(КонДата,"DD MMM YYYY");
+    Form.пПериод.FontColor:=_CLR_RED;
+  EndIf;
+  
+  If ОбновитьФильтр Then
+    If Form.оСданныеДоверенности.Value=0 Then
+      Exec("Form.MainTab.SetFilters(""<>@Status,КодОперации"",1,оКО)");
+    ElseIf Form.оСотрудник.Value.Selected()=0 Then
+      Exec("Form.MainTab.SetFilters("">=DocDate,<DocDate,<>@Status,КодОперации"",'"+BegOfDay(НачДата)+"','"+BegOfDay(КонДата+1)+"',1,оКО)");
+    Else  
+      Exec("Form.MainTab.SetFilters("">=DocDate,<DocDate,<>@Status,КодОперации,ДоверенноеЛицо"",'"+BegOfDay(НачДата)+"','"+BegOfDay(КонДата+1)+"',1,оКО,Form.оСотрудник.Value)");
+    EndIf;
+  EndIf;
+EndFunction
+
+Function ПолучитьПолнуюТаблицуЖурнала(НДата=0,КДата=0)
+  If Form.оСданныеДоверенности.Value=0 Then
+    //В "журнал" загружаются все доверенности, см. OnBeforeLoadElements, поэтому, можно работать с таблицей напрямую
+    Exit Form.MainTab.Value;
+  EndIf;
+  НДата:=?(НДата=0,НачДата,НДата);
+  КДата:=?(КДата=0,КонДата,КДата);
+  
+  aEl:=Doc.Доверенность;
+  aEl.UseOrder(Form.MainTab.SortString);
+  оКО:=Enum.коДоверенность.НаДеньги;
+  If Form.оСотрудник.Value.Selected()=0 Then
+    aList:=aEl.Load(0,">=DocDate,<DocDate,<>@Status,КодОперации",BegOfDay(НДата),BegOfDay(КДата+1),1,оКО);
+  Else  
+    aList:=aEl.Load(0,">=DocDate,<DocDate,<>@Status,КодОперации,ДоверенноеЛицо",BegOfDay(НДата),BegOfDay(КДата+1),1,оКО,Form.оСотрудник.Value);
+  EndIf;  
+  aEl:=Doc.ПКО;
+  bList:=aEl.Load(0,"<>@Status,->ДокОснование",1,aList);
+  aTab:=Tab.Create("ПКО,@ELEMENT");
+  aList.CopyTo(aTab,1,aList.Size(),"@ELEMENT");
+  For i:=1 To bList.Size() Do
+    aEl:=bList.Get(i);
+    If aTab.FindAndGoto(aEl.ДокОснование,,"@ELEMENT")>0 Then
+      aTab.ПКО:=aEl;
+    EndIf;
+  EndDo;
+  Exit aTab;
+EndFunction
+
+
+Function ОбновитьДоверенность(ВидГашения=0)
+  MainTab:=Form.MainTab.Value;
+  MainTab.CurLine:=MainTab.SelectedLine;
+  aEl:=Form.MainTab.SelectedElement;
+  If isEmpty(aEl) Then
+    Exit 0;
+  EndIf;
+  Фл:=глЗаблокировать(aEl);
+  If Фл<>"" Then
+    Фл:="Невозможно изменить документ "+aEl+". "+Фл;
+    Exit;
+  EndIf;
+  Try
+    aEl.Reload();
+    If ВидГашения<>0 Then
+      aEl.ВидГашения:=ВидГашения;
+    EndIf;
+    aEl.Контрагент:=MainTab.Клиент;
+    aEl.Договор:=MainTab.Договор;
+    If not флПрочийЖурнал Then
+      If not isEmpty(MainTab.ПКО) Then
+        aEl.СуммаВзаиморасчетов:=MainTab.ПКО.СуммаВзаиморасчетов;
+      EndIf;  
+    EndIf;  
+    If not глОбработать(aEl,1) Then
+      aEl.Reload();
+    EndIf;
+  Finally
+    aEl.Unlock();
+  EndTry;  
+  //MainTab.Set(MainTab.CurLine,"@ELEMENT",aEl.Copy());
+  Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",MainTab.SelectedLine,MainTab.SelectedLine);
+EndFunction
+
+
+Function СоздатьТекущийПКО(Контрагент=0,Сумма=0)
+  aEl:=Form.MainTab.SelectedElement;
+  If isEmpty(aEl) Then
+    Exit 0;
+  EndIf;
+  MainTab:=Form.MainTab.Value;
+  MainTab.CurLine:=MainTab.SelectedLine;
+  If Контрагент<>0 Then
+    а:=List.Create();
+    аДог:=Ref.кнтДоговоры;
+    аЮЛ:=aEl.ЮрЛицо;
+    aList:=аДог.LoadEx(0,3,,"~(@Parent=Контрагент)And(@Status=0)And(ЮрЛицо=аЮЛ)");
+    If aList.Size()=0 Then
+      Box("У клиента не существует договора с нужным юр. лицом!
+      |Возможно, вам стоит сменить юр. лицо в доверенности?",Q_STOP);
+      Exit 0;
+    ElseIf aList.Size()>1 Then    
+      Сп:=List.Create();
+      Сп.SetByName("Список",aList);
+      Сп.SetByName("оКнт",Контрагент);
+      If aEl.ЮрЛицо.Selected()<>0 Then
+        Сп.SetByName("ЮрЛицо",aEl.ЮрЛицо);
+      EndIf;  
+      LoadModule(10,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\ВыборДоговора",Сп,0,"Module","Form");
+      Зн:=Сп.GetByName("Ответ");
+      If IsEmpty(Зн) Then
+        Exit 0;
+      EndIf;
+      аДог:=Зн;
+    Else
+      аДог:=aList.Get(1);
+    EndIf;
+  EndIf;
+  
+  БылНовым:=0;
+  Д:=Doc.ПКО;
+  If isEmpty(MainTab.ПКО) Then
+    Д.New();
+    Д.DocDate:=Date();
+    Д.ЮрЛицо:=aEl.ЮрЛицо;
+    глУстановитьНовыйНомер(Д);
+    Д.ДокОснование:=aEl;
+    Д.Автор:=глПользователь;
+    БылНовым:=1;
+  Else
+    If not глПроверкаРазрешенияРедактирования(Д,1) Then
+      Box("Редактирование этого документа запрещено! Возможно, он находится в закрытом периоде!",Q_STOP);
+      Exit 0;
+    EndIf;
+    
+    Д:=MainTab.ПКО.Copy();
+    If (Д.Status()<2)And(BegOfDay(Д.DocDate)<>BegOfDay(Date())) Then
+      If GetYear(Д.DocDate)<>GetYear(Date()) Then
+        //Создаем новый документ, чтобы не получить два документа в центральной базе
+        Д.New();
+        Д.DocDate:=Date();
+        Д.ЮрЛицо:=aEl.ЮрЛицо;
+        глУстановитьНовыйНомер(Д);
+        Д.ДокОснование:=aEl;
+        Д.Автор:=глПользователь;
+        БылНовым:=1;
+      Else
+        Д.DocDate:=Date();
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  Д.ЮрЛицо:=aEl.ЮрЛицо;
+  Д.ПодотчетноеЛицо:=Form.оСотрудник.Value;
+  Д.УчитыватьВНалоговомУчете:=1;
+  If Д.Контрагент.Selected()=0 Then
+    If not IsEmpty(MainTab.Клиент) Then
+      Д.Контрагент:=MainTab.Клиент;
+      Д.ПринятоОт:=Trim(MainTab.Клиент.ПолнНаименование);
+      Д.Договор:=MainTab.Договор;
+      Д.ЮрЛицо:=Д.ЮрЛицо;
+    EndIf;
+  EndIf;
+  
+  If Контрагент<>0 Then
+    Д.Контрагент:=Контрагент;
+    Д.ПринятоОт:=Trim(Д.Контрагент.ПолнНаименование);
+    Д.Договор:=аДог;
+  EndIf;
+  
+  См:=Сумма;
+  If См=0 Then
+    См=Д.СуммаВзаиморасчетов;
+    If См=0 Then
+      См=aEl.СуммаВзаиморасчетов;
+    EndIf
+  EndIf;
+  
+  Д.СуммаВзаиморасчетов:=См;
+  Д.Касса:=Form.оКасса.Value;
+  Д.КодОперации:=Enum.коПКО.ОплатаПокупателя;
+  Д.Основание:="Через "+Form.оСотрудник.Value.Name;
+  Д.Save();
+  
+  MainTab.ПКО:=Д;
+  If Контрагент<>0 Then
+    MainTab.КодКлиента:=Д.Контрагент.Code;
+    MainTab.Клиент:=Д.Контрагент;
+    MainTab.Договор:=Д.Договор;
+    If aEl.Контрагент<>Д.Контрагент Then
+      aEl.Контрагент:=Д.Контрагент;
+      aEl.Договор:=Д.Договор;
+      aEl.ЮрЛицо:=Д.Договор.ЮрЛицо;
+      aEl.Save();
+    EndIf;
+  EndIf;
+  MainTab.Сумма:=См;
+  
+  If (Д.Договор.Selected()<>0)And(См<>0) Then
+    If глОбработать(Д,1) Then
+      ОбновитьДоверенность(Enum.ВидыГашений.ДеньгиПоступили);
+    EndIf;
+  Else
+    If (См<>aEl.СуммаВзаиморасчетов)And(См<>0) Then
+      ОбновитьДоверенность();
+    EndIf;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+

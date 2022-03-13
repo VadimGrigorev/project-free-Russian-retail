@@ -1,0 +1,232 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var СтрокаБылаЗаписана Export;
+Var пСумма Export;
+Var пКоличество Export;
+Var спЮЛ Export;
+Var пКодОперации Export;
+Var пВидДокумента Export;
+
+
+Function ОбновитьКоды()
+  оВид:=Form.оВид.Value;
+  оКод:=Form.оКод.Value;
+  
+  пВид:=Trim(оВид.Get(оВид.SelectedLine()));
+  оКод.Clear();
+  оКод.Add("");
+  оКод.SelectedLine:=1;
+  If _And(пВид<>"",not isEmpty(Meta.Doc(пВид).Props("КодОперации"))) Then
+    оКО:=Meta.Enum("ко"+пВид);
+    For б:=1 to оКО.Values.Count() Do
+      оКод.Add(Enum.GetByIndex("ко"+пВид,б));
+    EndDo;
+  EndIf;
+EndFunction
+
+Function ОбновитьТаблицу()
+  оВид:=Form.оВид.Value;
+  оКод:=Form.оКод.Value;
+  
+  Фл:=0;
+  If оВид.SelectedLine()<=1 Then
+    Form.MainTab.SetFilter("ВидДокумента");
+    Фл:=1;
+  Else
+    пВид:=Trim(оВид.Get(оВид.SelectedLine()));
+    Form.MainTab.SetFilter("ВидДокумента",пВид);
+    Фл:=1;
+  EndIf;  
+  If оКод.SelectedLine()<=1 Then
+    Form.MainTab.SetFilter("КодОперации");
+    Фл:=1;
+  Else
+    оКО:=оКод.Get(оКод.SelectedLine());
+    Form.MainTab.SetFilter("КодОперации",оКО);
+    Фл:=1;
+  EndIf;  
+  If not Фл Then
+   Form.MainTab.Reload();
+  EndIf;
+EndFunction
+
+Function НазначитьТип()
+  Function НазначитьТипРекв(оСуб,ВС)
+    If Trim(ВС.ТипЗначенияЛокальный)="" Then
+      оСуб.SetType("Ref.бухЗначенияСубконто");
+      If _And(not isEmpty(оСуб.Value),оСуб.Value.Parent()<>ВС) Then
+        оСуб.Value:=0;
+      EndIf;
+    Else
+      оСуб.SetType(Replace(Uppercase(ВС.ТипЗначенияЛокальный),"СПРАВОЧНИК","REF"));
+    EndIf;
+  EndFunction
+
+  аСчет:=Form.СчетДебет.Value;
+  If аСчет.Selected()>0 Then
+    НазначитьТипРекв(Form.оСубД1,аСчет.ВидСубконто1);
+    НазначитьТипРекв(Form.оСубД2,аСчет.ВидСубконто2);
+    НазначитьТипРекв(Form.оСубД3,аСчет.ВидСубконто3);
+  EndIf;
+  
+  аСчет:=Form.СчетКредит.Value;
+  If аСчет.Selected()>0 Then
+    НазначитьТипРекв(Form.оСубК1,аСчет.ВидСубконто1);
+    НазначитьТипРекв(Form.оСубК2,аСчет.ВидСубконто2);
+    НазначитьТипРекв(Form.оСубК3,аСчет.ВидСубконто3);
+  EndIf;
+  
+EndFunction
+
+
+//Вызывается из редактора строки
+Function ОбновитьТипы()
+  аСчет:=Form.СчетДебет.Value;
+  If аСчет.Selected()=0 Then
+    Form.оСубД1.Value:=GetNothing();
+    Form.оСубД2.Value:=GetNothing();
+    Form.оСубД3.Value:=GetNothing();
+    Form.тСчетД.Caption:="";
+  Else
+    Form.тСчетД.Caption:=аСчет.Name;
+  EndIf;
+  
+  If аСчет.ВидСубконто1.Selected()=0 Then
+    Form.тСубД1.Caption:="";
+    Form.тСД1.isDisabled:=1;
+    Form.оСубД1.isDisabled:=1;
+    Form.оСубД1.Value:=GetNothing();
+    Form.коОп1.IsInvisible:=1;
+  Else
+    Form.тСубД1.Caption:=аСчет.ВидСубконто1.Name;
+    Form.тСД1.isDisabled:=0;
+    Form.оСубД1.isDisabled:=0;
+    Form.коОп1.IsInvisible:=0;
+  EndIf;
+  
+  If аСчет.ВидСубконто2.Selected()=0 Then
+    Form.тСубД2.Caption:="";
+    Form.тСД2.isDisabled:=1;
+    Form.оСубД2.isDisabled:=1;
+    Form.оСубД2.Value:=GetNothing();
+    Form.коОп2.IsInvisible:=1;
+  Else
+    Form.тСубД2.Caption:=аСчет.ВидСубконто2.Name;
+    Form.тСД2.isDisabled:=0;
+    Form.оСубД2.isDisabled:=0;
+    Form.коОп2.IsInvisible:=0;
+  EndIf;
+  
+  If аСчет.ВидСубконто3.Selected()=0 Then
+    Form.тСубД3.Caption:="";
+    Form.тСД3.isDisabled:=1;
+    Form.оСубД3.isDisabled:=1;
+    Form.оСубД3.Value:=GetNothing();
+    Form.коОп3.IsInvisible:=1;
+  Else
+    Form.тСубД3.Caption:=аСчет.ВидСубконто3.Name;
+    Form.тСД3.isDisabled:=0;
+    Form.оСубД3.isDisabled:=0;
+    Form.коОп3.IsInvisible:=0;
+  EndIf;
+  
+  аСчет:=Form.СчетКредит.Value;
+  If аСчет.Selected()=0 Then
+    Form.оСубК1.Value:=GetNothing();
+    Form.оСубК2.Value:=GetNothing();
+    Form.оСубК3.Value:=GetNothing();
+    Form.тСчетК.Caption:="";
+  Else
+    Form.тСчетК.Caption:=аСчет.Name;
+  EndIf;
+  
+  If аСчет.ВидСубконто1.Selected()=0 Then
+    Form.тСубК1.Caption:="";
+    Form.тСК1.isDisabled:=1;
+    Form.оСубК1.isDisabled:=1;
+    Form.оСубК1.Value:=GetNothing();
+    Form.коОп4.IsInvisible:=1;
+  Else
+    Form.тСубК1.Caption:=аСчет.ВидСубконто1.Name;
+    Form.тСК1.isDisabled:=0;
+    Form.оСубК1.isDisabled:=0;
+    Form.коОп4.IsInvisible:=0;
+  EndIf;
+  
+  If аСчет.ВидСубконто2.Selected()=0 Then
+    Form.тСубК2.Caption:="";
+    Form.тСК2.isDisabled:=1;
+    Form.оСубК2.isDisabled:=1;
+    Form.оСубК2.Value:=GetNothing();
+    Form.коОп5.IsInvisible:=1;
+  Else
+    Form.тСубК2.Caption:=аСчет.ВидСубконто2.Name;
+    Form.тСК2.isDisabled:=0;
+    Form.оСубК2.isDisabled:=0;
+    Form.коОп5.IsInvisible:=0;
+  EndIf;
+  
+  If аСчет.ВидСубконто3.Selected()=0 Then
+    Form.тСубК3.Caption:="";
+    Form.тСК3.isDisabled:=1;
+    Form.оСубК3.isDisabled:=1;
+    Form.оСубК3.Value:=GetNothing();
+    Form.коОп6.IsInvisible:=1;
+  Else
+    Form.тСубК3.Caption:=аСчет.ВидСубконто3.Name;
+    Form.тСК3.isDisabled:=0;
+    Form.оСубК3.isDisabled:=0;
+    Form.коОп6.IsInvisible:=0;
+  EndIf;
+  
+  НазначитьТип();
+  Exit "";
+EndFunction
+
+//Вызывается для редактора строки
+Function OnSaveRequest()
+  Param:=Form.оСсылка.Tag;
+
+  If (Form.СчетДебет.Value.Selected()<>0)+(Form.СчетКредит.Value.Selected()<>0)<2 Then
+    If Form.СчетДебет.Value.Забалансовый+Form.СчетКредит.Value.Забалансовый=0 Then
+      Box("Не выбран корреспондирующий счет! Такое допускается только для забалансовых счетов!",Q_STOP);
+      Result:=0;
+      Exit;
+    EndIf;
+  ElseIf Form.СчетДебет.Value.Забалансовый+Form.СчетКредит.Value.Забалансовый=1 Then
+    Box("В проводке выбраны забалансовый и обычный счета! Такие проводки запрещены!",Q_STOP);
+    Result:=0;
+    Exit;
+  EndIf;
+
+  СтрокаБылаЗаписана:=1;
+  Form.IsChanged(0);
+  
+  Param.СчДебет:=Form.СчетДебет.Value;
+  Param.СубконтоДебет1:=Form.оСубД1.Value;
+  Param.СубконтоДебет2:=Form.оСубД2.Value;
+  Param.СубконтоДебет3:=Form.оСубД3.Value;
+  
+  Param.СчКредит:=Form.СчетКредит.Value;
+  Param.СубконтоКредит1:=Form.оСубК1.Value;
+  Param.СубконтоКредит2:=Form.оСубК2.Value;
+  Param.СубконтоКредит3:=Form.оСубК3.Value;
+  
+  Param.флВопросы:=Form.коОп1.Value*(1-Form.коОп1.isInvisible)+
+    Form.коОп2.Value*2*(1-Form.коОп2.isInvisible)+
+    Form.коОп3.Value*4*(1-Form.коОп3.isInvisible)+
+    Form.коОп4.Value*8*(1-Form.коОп4.isInvisible)+
+    Form.коОп5.Value*16*(1-Form.коОп5.isInvisible)+
+    Form.коОп6.Value*32*(1-Form.коОп6.isInvisible);
+  
+  Param.ЮрЛицо:=Form.ЮрЛицо.Value;
+  Param.флМинус:=Form.флМинус.Value;
+  Param.Сумма:=max(Form.Сумма.Value.SelectedLine-1,0);
+  Param.Количество:=max(Form.Количество.Value.SelectedLine-1,0);
+  Param.ТипУчета:=Form.ТипУчета.Value;
+  
+  Result:=1;
+EndFunction
+

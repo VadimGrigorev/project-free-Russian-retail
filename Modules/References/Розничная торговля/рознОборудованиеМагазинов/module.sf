@@ -1,0 +1,173 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+//Var Уст Export;
+Var ТекПапка Export; //Содержит "\"
+Var ТекЭлемент Export;
+Var спУровень Export;
+Var спФайлыДрайверов Export;
+Var ТНастройки Export;
+
+Function ПриПодбореНоменклатуры(Эл,Фл)
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("Номенклатура");
+
+  Стр:=0;
+  If aTab.Find(Эл,Стр,"Номенклатура")>0 Then
+    Box("Такая группа номенклатуры уже существует!",Q_STOP);
+    Exit;
+  EndIf;
+  aTab.NewLine();
+  aTab.Номенклатура=Эл;
+  Form.оТМЦ.InvokeEvent("OnInitLine","IndexFrom,IndexTo",aTab.Size(),aTab.Size());
+EndFunction
+
+Function ОбновитьТипОборудования()
+  aEl:=Form.Object;
+  If aEl.Путь="" Then
+    Form.оТип.Value:="";
+    Exit;
+  EndIf;
+  Ини:=Ini.Create();
+  Ини.AddFromFile(AddBackSlash(aEl.Путь)+"Оборудование.ini");
+  Form.оТип.Value:=Ини.GetData("Оборудование");
+  If aEl.Name="" Then
+    Стр:=Ини.GetData("ИмяПоУмолчанию");
+    If Стр<>"" Then
+      i:=1;
+      While i<50 Do
+        Стр2:=Стр+?(i>1," №"+i);
+        bEl:=Ref.рознОборудованиеМагазинов;
+        If not bEl.FindEx(3,"","~(@Parent=aEl.Parent)And(Name=Стр2)") Then
+          aEl.Name:=Стр2;
+          Break;
+        EndIf;
+        i:=i+1;
+      EndDo;
+    EndIf;
+  EndIf;
+  
+  If aEl.Настройки<>"" Then
+    Form.оУстановки.Value:="Выбраны";
+  Else
+    Form.оУстановки.Value:="";
+  EndIf;
+EndFunction
+
+Function СохранитьНастройкиОборудования()
+  aEl:=Form.Object;
+  If not isEmpty(ТНастройки) Then
+    Стр:=ТНастройки.ToString();
+    aEl.Настройки:=Стр;
+    If aEl.Настройки<>"" Then
+      Form.оУстановки.Value:="<выбраны>";
+    Else
+      Form.оУстановки.Value:="";
+    EndIf;
+  EndIf;
+EndFunction
+
+Function ОбновитьТаблицу(флНачало=0)
+  MainTab:=Form.MainTab.Value;
+  ТекСтолбик:=MainTab.SelectedColumn;
+  спУровень:=List.Create();
+  спУровень.FromString(ТекПапка,"\");
+  
+  Тб:=Tab.Create("Наименование,Путь,Папка,Сорт");
+  If спУровень.Size()=0 Then
+    Пер:=Struct.Enum("рознТипыОборудования");
+    For i:=1 To Пер.Values.Count() Do
+      Тб.AddLine("Наименование,Папка,Путь,Сорт",Trim(Enum.Get("рознТипыОборудования."+Пер.Values(i).Name)),1,Пер.Values(i).Name,i);
+    EndDo;
+  Else
+    СтрТип:=ТекПапка;
+    СтрТип:=TearStr(СтрТип,"\");
+    
+    For i:=1 to спФайлыДрайверов.Size() Do
+      //Наименование="ККТ АТОЛ DLL 10.x"
+      //Оборудование="ККТ";
+      If _And(not IsEmpty(спФайлыДрайверов[i]),TypeStr(спФайлыДрайверов[i])<>"INI") Then
+        Ини:=Ini.Create();
+        Ини.AddFromString(спФайлыДрайверов[i]);
+        спФайлыДрайверов[i]:=Ини;
+      EndIf;
+      Ини:=спФайлыДрайверов[i];
+      If IsEmpty(Ини) Then
+        Continue;
+      EndIf;
+      If Ини.GetData("Оборудование")<>СтрТип Then
+        Continue;
+      EndIf;
+      Тб.AddLine("Наименование,Папка,Путь",Ини.GetData("Наименование"),0,GetPath(спФайлыДрайверов.GetName(i)));
+    EndDo;
+  EndIf;  
+  Тб.Sort("Папка-,Сорт+,Наименование+");
+  
+  MainTab.ClearLines();
+  спУровень:=List.Create();
+  Стр:=ТекПапка;
+  СтрТек:="";
+  While Стр<>"" Do
+    Стр2:=TearStr(Стр,"\");
+    If Стр2<>"" Then
+      MainTab.AddLine("Наименование",Стр2);
+      MainTab.Icon(MainTab.CurLine,"Иконка",99);
+      MainTab.BackgroundColor(MainTab.CurLine,"Наименование",_CLR_BTNFACE);
+      СтрТек:=СтрТек+Стр2+"\";
+      спУровень.Add(Стр2);
+    EndIf;
+  EndDo;
+  
+  Тб.Select();
+  While Тб.Next() Do
+    If Тб.Папка=1 Then
+      MainTab.AddLine("Наименование,Путь",Тб.Наименование,Тб.Путь);
+      MainTab.Icon(MainTab.CurLine,"Иконка",98);
+    EndIf;  
+  EndDo;  
+  Тб.Select();
+  While Тб.Next() Do
+    If Тб.Папка=0 Then
+      MainTab.AddLine("Наименование,Путь",Тб.Наименование,Тб.Путь);
+      MainTab.Icon(MainTab.CurLine,"Иконка",122);
+    EndIf;  
+  EndDo;  
+  
+  If isEmpty(ТекЭлемент) Then
+    If MainTab.Size()>0 Then
+      MainTab.SelectedLine:=1;
+    EndIf;  
+  ElseIf MainTab.FindAndGoto(ТекЭлемент,,"Наименование")>0 Then
+    MainTab.SelectedLine:=MainTab.CurLine;
+  ElseIf MainTab.Size()>0 Then
+    MainTab.SelectedLine:=1;
+  EndIf;
+  If флНачало Then
+    MainTab.SelectedColumn:=2;
+  ElseIf ТекСтолбик>0 Then
+    MainTab.SelectedColumn:=ТекСтолбик;
+  EndIf;
+EndFunction
+
+Function OnBeforeElementSave()
+  aEl:=Form.Object;
+  If IsEmpty(aEl.Путь) Then
+    Box("Необходимо выбрать драйвер оборудования!",Q_STOP);
+    Exit 0;
+  EndIf;
+  Ини:=Ini.Create();
+  Ини.AddFromFile(AddBackSlash(aEl.Путь)+"Оборудование.ini");
+  If Ини.GetData("Оборудование")="Контрольно-кассовые терминалы" Then
+    If aEl.Касса.Selected()=0 Then
+      Box("Для контрольно-кассового оборудования необходимо выбрать кассу!",Q_STOP);
+      Exit 0;
+    EndIf;
+  Else
+    aEl.Касса:=0;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+

@@ -1,0 +1,993 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+//Функции:
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, CashDrawerInfo, OpenCashDrawer
+
+//Документация: http://doc.shtrih-m.ru/
+
+Function DriverInit(спНастройки)
+  Try
+    аДрайвер:=CreateOLE("AddIn.DrvFR");
+    Стр:=аДрайвер.DriverVersion();
+    Стр:=TearStr(Стр,".");
+    If Number(Стр)<5 Then
+      Exit "Неверная версия драйвера! Должна быть не менее 5!";
+    EndIf;
+    спНастройки["Драйвер"]:=аДрайвер;
+  Except
+    Exit PopError()+_NEWLINE+"(1) Драйвер не установлен или в нерабочем состоянии!";
+  EndTry;
+EndFunction
+
+Function DriverDeinit(спНастройки)
+EndFunction
+
+
+Function DriverConnect(спНастройки)
+
+  Function ОбновитьТипОплаты(аДрайвер,Поле,Наименование)
+    аДрайвер.TableNumber:=5;
+    аДрайвер.RowNumber:=Поле;
+    аДрайвер.FieldNumber:=1;
+    If аДрайвер.GetFieldStruct()<>0 Then
+      Raise "(1) "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    If аДрайвер.ReadTable()<>0 Then
+      Raise "(2) "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    If аДрайвер.ValueOfFieldString<>Наименование Then
+      аДрайвер.ValueOfFieldString:=Наименование;
+      If аДрайвер.WriteTable()<>0 Then
+        If Поле>1 Then
+          Raise "(3) "+аДрайвер.ResultCodeDescription;
+        EndIf;
+      EndIf;
+    EndIf;
+  EndFunction  
+
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    СтрДоп:=Str(спНастройки["ДопУстановки"]);
+    Ини:=Ini.Create();
+    Ини.AddFromString(СтрДоп);
+    
+    ФлТип:=Number(Ини.GetData("ConnectionType","0"));
+    аДрайвер.ConnectionType:=ФлТип;
+    аДрайвер.ProtocolType:=Number(Ини.GetData("ProtocolType","0"));
+    ФлTCP:=(ФлТип=1)or(ФлТип=2)or(ФлТип=6);
+    If ФлTCP Then
+      Стр:=Ини.GetData("IPAddress","127.0.0.1");
+      If ContainsOnlyCharacters(Стр,"0123456789.") Then
+        аДрайвер.IPAddress:=Стр;
+        аДрайвер.UseIPAddress:=1;
+      Else
+        аДрайвер.ComputerName:=Стр;
+        аДрайвер.UseIPAddress:=0;
+      EndIf;
+      аДрайвер.TCPPort:=Number(Ини.GetData("TCPPort","7778"));
+    Else
+      //Документация пишет 0..255, опытным путем -- 1..256
+      аДрайвер.ComNumber:=Min(Max(Number(Ини.GetData("ComNumber","1")),1),256);
+      aList:=List.Create(2400,4800,9600,19200,38400,57600,115200);
+      Чл:=6;
+      Чл2:=aList.Find(Number(Ини.GetData("BaudRate","115200")));
+      If Чл2>0 Then
+        Чл:=Чл2-1;
+      EndIf;
+      аДрайвер.BaudRate:=Чл;
+    EndIf;
+    аДрайвер.Timeout:=Number(Ини.GetData("Timeout","5000"));
+    спНастройки["_Password"]:=Number(Ини.GetData("Password","30"));
+    спНастройки["_FFDVersion"]:=Number(Ини.GetData("FFDVersion","105"));
+    аДрайвер.Password:=спНастройки["_Password"];
+    
+    //Доп. параметры
+    аДрайвер.DrawerNumber:=Number(Ини.GetData("DrawerNumber","0"));
+    If Ини.GetData("AuthKey","")<>"" Then
+      аДрайвер.AuthKey:=Ини.GetData("AuthKey","");
+    EndIf;
+    
+    If аДрайвер.Connect()<>0 Then
+      Exit "Ошибка открытия ККМ: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    
+    //Обновление видов оплат
+    ОбновитьТипОплаты(аДрайвер,1,"НАЛИЧНЫМИ");
+    ОбновитьТипОплаты(аДрайвер,2,"БЕЗНАЛИЧНЫМИ");
+    ОбновитьТипОплаты(аДрайвер,3,"ПРЕДВАРИТЕЛЬНАЯ ОПЛАТА (АВАНС)");
+    ОбновитьТипОплаты(аДрайвер,14,"ПРЕДВАРИТЕЛЬНАЯ ОПЛАТА (АВАНС)");
+    ОбновитьТипОплаты(аДрайвер,4,"ПОСЛЕДУЮЩАЯ ОПЛАТА (КРЕДИТ)");
+    ОбновитьТипОплаты(аДрайвер,15,"ПОСЛЕДУЮЩАЯ ОПЛАТА (КРЕДИТ)");
+    ОбновитьТипОплаты(аДрайвер,5,"ИНАЯ ФОРМА ОПЛАТЫ");
+    аТип:=Number(Ини.GetData("TaxType","0"));
+    If аТип=0 Then
+      аДрайвер.TableNumber:=18;
+      аДрайвер.FieldNumber:=5;
+      аДрайвер.RowNumber:=1;
+      If аДрайвер.GetFieldStruct()<>0 Then
+        Exit "Ошибка чтения таблицы: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+      If аДрайвер.ReadTable()<>0 Then
+        Exit "Ошибка чтения таблицы: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+      аТип:=Number(аДрайвер.ValueOfFieldInteger);
+    EndIf;
+    спНастройки["_TaxType"]:=аТип;
+    
+    //Неверный режим?
+    If аДрайвер.GetShortECRStatus()<>0 Then
+      Exit "Ошибка выполнения GetShortECRStatus: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    If аДрайвер.ECRAdvancedMode=3 Then
+      If аДрайвер.ContinuePrint()<>0 Then
+        Exit "Ошибка ContinuePrint: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+    EndIf;
+    
+    спНастройки["Соединено"]:=1;
+  Except
+    Exit PopError()+_NEWLINE+"(2) Драйвер не установлен или в нерабочем состоянии!";
+  EndTry;
+EndFunction
+
+Function DriverDisconnect(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    аДрайвер.Disconnect();
+    спНастройки["Соединено"]:=0;
+  Except
+    Exit PopError()+_NEWLINE+"(3) Драйвер не установлен или в нерабочем состоянии!";
+  EndTry;
+EndFunction
+
+Function CashDrawerInfo(спНастройки)
+  Try
+    If спНастройки["Соединено"]<>1 Then
+      спНастройки["ДенежныйЯщикСостояние"]:=-1;
+      спНастройки["ДенежныйЯщикСумма"]:=-1;
+      Exit;
+    EndIf;
+  
+    аДрайвер:=спНастройки["Драйвер"];
+    If аДрайвер.GetShortECRStatus()<>0 Then
+      Raise аДрайвер.ResultCodeDescription;
+    EndIf;
+    спНастройки["ДенежныйЯщикСостояние"]:=аДрайвер.IsDrawerOpen;
+    //241 - Наличность в кассе
+    аДрайвер.RegisterNumber:=241;
+    аДрайвер.GetCashReg();
+    спНастройки["ДенежныйЯщикСумма"]:=аДрайвер.ContentsOfCashRegister;
+  Except
+    Exit "Ошибка команды: "+PopError();
+  EndTry;
+EndFunction
+
+Function OpenCashDrawer(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    If аДрайвер.OpenDrawer()<>0 Then
+      Raise аДрайвер.ResultCodeDescription;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка открытия денежного ящика!";
+  EndTry;
+EndFunction
+
+Function ShiftInfo(спНастройки)
+  Try
+    спНастройки["СменаСостояние"]:=-1;
+    If спНастройки["Соединено"]<>1 Then
+      Exit;
+    EndIf;
+  
+    аДрайвер:=спНастройки["Драйвер"];
+    If аДрайвер.FNGetCurrentSessionParams()<>0 Then
+      Raise "FNGetCurrentSessionParams: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    If спНастройки["ДополнительнаяИнформация"]=1 Then
+      спНастройки["НомерДокумента"]:=аДрайвер.ReceiptNumber;
+    EndIf;
+    
+    //-1 -- ошибка, 0 -- закрыта, 1 -- открыта, 2 -- истекла, 3 -- другое
+    аСмена:=аДрайвер.FNSessionState;
+    If аСмена=0 Then
+      спНастройки["СменаСостояние"]:=0;
+    ElseIf аСмена=1 Then
+      спНастройки["СменаСостояние"]:=1;
+    EndIf;
+    If аДрайвер.GetShortECRStatus()<>0 Then
+      Raise "GetShortECRStatus: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    спНастройки["НомерКассира"]:=Number(аДрайвер.OperatorNumber);
+    If аДрайвер.ECRMode=3 Then //IsFM24HoursOver?
+      спНастройки["СменаСостояние"]:=2;
+    EndIf;
+    спНастройки["НомерСмены"]:=аДрайвер.SessionNumber;
+    
+    If спНастройки["ДополнительнаяИнформация"]=1 Then
+      спНастройки["ДополнительнаяИнформация"]:=0;
+      спНастройки["НомерККТ"]:=аДрайвер.SerialNumber;
+      //Штрих-М не поддерживает получение такой информации
+      спНастройки["БумагаЗаканчивается"]:=0; 
+    EndIf;
+  Except
+    Exit "Ошибка команды: "+PopError();
+  EndTry;
+EndFunction
+
+Function OpenShift(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    
+    //Установка имени кассира
+    Кассир:=спНастройки["Кассир"];
+    //стрИНН:=Trim(Кассир.ИНН);
+    //стрИНН:=TearStr(стрИНН,"/");
+    аДрайвер.TableNumber:=2;
+    аДрайвер.FieldNumber:=2;
+    аДрайвер.RowNumber:=спНастройки["НомерКассира"];
+    If аДрайвер.GetFieldStruct()<>0 Then
+      Raise "(1) "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    аДрайвер.ValueOfFieldString:=Кассир.ПолнНаименование;
+    If аДрайвер.WriteTable()<>0 Then
+      Raise "(2) "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    
+    If аДрайвер.OpenSession<>0 Then
+      Exit "Ошибка открытия смены: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка открыть смену!";
+  EndTry;
+EndFunction
+
+Function CloseShift(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    
+    //Установка имени кассира
+    Кассир:=спНастройки["Кассир"];
+    //стрИНН:=Trim(Кассир.ИНН);
+    //стрИНН:=TearStr(стрИНН,"/");
+    аДрайвер.TableNumber:=2;
+    аДрайвер.FieldNumber:=2;
+    аДрайвер.RowNumber:=спНастройки["НомерКассира"];
+    If аДрайвер.GetFieldStruct()<>0 Then
+      Raise "(1) "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    аДрайвер.ValueOfFieldString:=Кассир.ПолнНаименование;
+    If аДрайвер.WriteTable()<>0 Then
+      Raise "(2) "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    
+    If аДрайвер.FNCloseSession()<>0 Then
+      Exit "Ошибка закрытия смены: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка закрыть смену!";
+  EndTry;
+EndFunction
+
+Function DepositMoney(спНастройки)
+  Try
+    Сумма:=Number(спНастройки["Сумма"]);
+    аДрайвер:=спНастройки["Драйвер"];
+    аДрайвер.Summ1:=Сумма;
+    If аДрайвер.CashIncome()<>0 Then
+      Exit "Ошибка внесения наличных: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная выгрузки внесения наличных!";
+  EndTry;
+EndFunction
+
+Function WithdrawMoney(спНастройки)
+  Try
+    Сумма:=Number(спНастройки["Сумма"]);
+    аДрайвер:=спНастройки["Драйвер"];
+    аДрайвер.Summ1:=Сумма;
+    If аДрайвер.CashOutcome()<>0 Then
+      Exit "Ошибка изъятия наличных: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная выгрузки изъятия наличных!";
+  EndTry;
+EndFunction
+
+
+Function PrintReportX(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    аСмена:=аДрайвер.FNSessionState;
+    If аСмена=0 Then
+      Exit "Смена не открыта!";
+    EndIf;
+    If аДрайвер.PrintReportWithoutCleaning()<>0 Then
+      Exit аДрайвер.ResultCodeDescription;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка печати X-отчета!";
+  EndTry;
+EndFunction
+
+Function PrintReportZ(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    аСмена:=аДрайвер.FNSessionState;
+    If аСмена<>0 Then
+      Exit "Смена не закрыта!";
+    EndIf;
+    
+    If аДрайвер.PrintReportWithCleaning()<>0 Then
+      Exit аДрайвер.ResultCodeDescription;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка печати Z-отчета!";
+  EndTry;
+EndFunction
+
+
+
+
+//ФФД 1.2: https://forum.nalog.ru/index.php?app=core&module=attach&section=attach&attach_id=3772
+//Используются поля:
+//Агент -- не используется
+//ТипЧека -- число (см. ниже)
+//ФлРозничныйПокупатель -- число
+//Контрагент
+//ЮрЛицо
+//ЕГАИССылка -- URL типа "https://check.egais.ru?id=cf1b1096-3cbc-11e7-b3c1-9b018b2ba3f7", если не пустая, будет выведено дополнение к чеку.
+//ЕГАИСПодпись -- строка типа "79DED4A448069B0BFF602FF646F4E9B24D253D311679EA15307AEF38AEEE7933C9175DE5814C3DCF89BF63853CB75003D9FD979F3BEBBC93AFADF1D9A429623F"
+//ТабИСМП -- таблица "Партия,Марка,ФлНеПрошлаПроверку,Причина,Поле1,Поле2" для проверки и прикрепления к чеку
+//Таблица -- Номенклатура,Количество,Сумма,СтавкаНДС
+//Сумма -- сумма документа
+//ЭлектроннаяСумма -- сумма документа электронной оплатой
+//ДругаяБезналичнаяСумма -- сумма документа с особыми оплатами (подарочные сертификаты и пр.)
+//СуммаЗакрытияАванса -- при операции закрытия аванса (11), сумма указывает на часть суммы документа, которая ушла на закрытие аванса
+//ЭлектроннаяСумма+ДругаяБезналичнаяСумма должны быть меньше или равны параметру Сумма
+Function PrintReceipt(спНастройки)
+  ФлОтменитьЧек:=0;
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    
+    //Установка имени кассира
+    Кассир:=спНастройки["Кассир"];
+    //стрИНН:=Trim(Кассир.ИНН);
+    //стрИНН:=TearStr(стрИНН,"/");
+    аДрайвер.TableNumber:=2;
+    аДрайвер.FieldNumber:=2;
+    аДрайвер.RowNumber:=спНастройки["НомерКассира"];
+    If аДрайвер.GetFieldStruct()<>0 Then
+      Raise "GetFieldStruct: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    аДрайвер.ValueOfFieldString:=Кассир.ПолнНаименование;
+    If аДрайвер.WriteTable()<>0 Then
+      Raise "WriteTable: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    
+    //Версия ФФД
+    ФФД12:=спНастройки["_FFDVersion"]>=120;
+    ФФД10:=спНастройки["_FFDVersion"]<105;
+    
+    //Текущее состояние чека
+    If аДрайвер.GetECRStatus()<>0 Then
+      Raise "GetECRStatus: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    //Существует ли сейчас открытый чек?
+    If аДрайвер.ECRMode=8 Then
+      If аДрайвер.SysAdminCancelCheck()<>0 Then
+        Raise "SysAdminCancelCheck: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+    EndIf;
+    //0 -- Без НДС
+    //1 -- НДС 20%
+    //2 -- НДС 10%
+    //3 -- НДС 0%
+    //4 -- Без НДС
+    //5 -- НДС 20/120
+    //6 -- НДС 10/110
+    //Без, 0%, 10%, 18%, 20%
+    спНДС:=List.Create(4,3,2,1,1);
+    
+    //Единица измерения (2108)
+    //0 -- шт    (796)
+    //10 - г
+    //11 - кг    (166)
+    //12 - т
+    //20 - см
+    //21 - дм
+    //22 - м     (006)
+    //30 - см2
+    //31 - дм2
+    //32 - м2    (055)
+    //40 - мл
+    //41 - л     (112)
+    //42 - м3    (113)
+    //...
+    спЕдиница:=List.Create();
+    спЕдиница["166"]:=11;
+    спЕдиница["006"]:=22;
+    спЕдиница["055"]:=32;
+    спЕдиница["112"]:=41;
+    спЕдиница["113"]:=42;
+    
+    //Тип чека:                                 Штрих-М
+    //1 -- ПКО (продажа)                      = CheckType=0
+    //2 -- РКО (возврат продажи)              = CheckType=2
+    //3 -- Коррекция ПКО (продажи)            = FNBuildCorrectionReceipt2 + CalculationSign = 3 (изъятие)
+    //4 -- Коррекция РКО (возврата продажи)   = FNBuildCorrectionReceipt2 + CalculationSign = 1 (внесение)
+    //5 -- РКО (покупка)                      = CheckType=1
+    //6 -- ПКО (возврат покупки)              = CheckType=3
+    //7 -- Коррекция РКО (покупки)            = FNBuildCorrectionReceipt2 + CalculationSign = 1 (внесение)
+    //8 -- Коррекция ПКО (возврата покупки)   = FNBuildCorrectionReceipt2 + CalculationSign = 3 (изъятие)
+    //10 -- Аванс (товар не отдается)         = CheckType=0, 1214=4, 1212=10, Количество = 1, Наименование "Аванс за товары"
+    //11 -- Закрытие аванса                   = CheckType=0, 1214=4, 1212=1, Сумма оплаты = Общая сумма - сумма аванса
+    //12 -- Кредит                            = CheckType=0, 1214=5, 1212=1
+    //13 -- Закрытие кредита                  = CheckType=0, 1214=7, 1212=10, Количество = 1, Наименование "Закрытие кредита за товары"
+    
+    //Признак предмена расчета (1212):
+    //[+] 1. "ТОВАР"                      //Кроме акцизного и марочного, алкоголь марочным товаром не считается ("не такой" марочный)
+    //[+] 2. "ПОДАКЦИЗНЫЙ ТОВАР"          //Для ФФД 1.05,1.1
+    //3. "РАБОТА"
+    //4. "УСЛУГА"
+    //5. "СТАВКА АЗАРТНОЙ ИГРЫ"
+    //6. "ВЫИГРЫШ АЗАРТНОЙ ИГРЫ"
+    //7. "ЛОТЕРЕЙНЫЙ БИЛЕТ"
+    //8. "ВЫИГРЫШ ЛОТЕРЕИ"
+    //9. "ПРЕДОСТАВЛЕ-НИЕ РИД"
+    //[+] 10. "ПЛАТЕЖ"                    //об авансе, задатке, предоплате, кредите
+    //11. "АГЕНТСКОЕ ВОЗНАГРАЖДЕНИЕ"
+    //12. "ВЫПЛАТА"
+    //13. "ИНОЙ ПРЕДМЕТ РАСЧЕТА"
+    //14. "ИМУЩЕСТВЕННОЕ ПРАВО"
+    //15. "ВНЕРЕАЛИЗАЦИОННЫЙ ДОХОД"
+    //16. "ИНЫЕ ПЛАТЕЖИ И ВЗНОСЫ"
+    //17. "ТОРГОВЫЙ СБОР"
+    //18. "КУРОРТНЫЙ СБОР"
+    //19. "ЗАЛОГ"
+    //20. "РАСХОД"
+    //21. "ВЗНОСЫ НА ОБЯЗАТЕЛЬНОЕ ПЕНСИОННОЕ СТРАХОВАНИЕ ИП"
+    //22. "ВЗНОСЫ НА ОБЯЗАТЕЛЬНОЕ ПЕНСИОННОЕ СТРАХОВАНИЕ"
+    //23. "ВЗНОСЫ НА ОБЯЗАТЕЛЬНОЕ МЕДИЦИНСКОЕ СТРАХОВАНИЕ ИП"
+    //24. "ВЗНОСЫ НА ОБЯЗАТЕЛЬНОЕ МЕДИЦИНСКОЕ СТРАХОВАНИЕ"
+    //25. "ВЗНОСЫ НА ОБЯЗАТЕЛЬНОЕ СОЦИАЛЬНОЕ СТРАХОВАНИЕ"
+    //26. "ПЛАТЕЖ КАЗИНО"
+    //27. "ВЫДАЧА ДЕНЕЖНЫХ СРЕДСТВ"
+    //30. подакцизном товаре, подлежащем маркировке средством идентификации, не имеющем кода маркировки
+    //[+] 31. подакцизном товаре, подлежащем маркировке средством идентификации, имеющем код маркировки                 -- Табак
+    //32. товаре, подлежащем маркировке средством идентификации, не имеющем кода маркировки, за исключением подакцизного товара
+    //[+] 33. товаре, подлежащем маркировке средством идентификации, имеющем код маркировки, за исключением подакцизного товара
+    
+    //Признаки способа расчета (1214):
+    //1 -- Предоплата 100%
+    //2 -- Предоплата
+    //3 -- Аванс
+    //4 -- Полная оплата (+ аванс)
+    //5 -- Частичная оплата (+кредит)
+    //6 -- Полный кредит
+    //7 -- Оплата кредита
+    
+    //Summ:
+    //1-"НАЛИЧНЫМИ"
+    //2-"БЕЗНАЛИЧНЫМИ"
+    //3-"ПРЕДВАРИТЕЛЬНАЯ ОПЛАТА (АВАНС)"
+    //4-"ПОСЛЕДУЮЩАЯ ОПЛАТА (КРЕДИТ)" 
+    //5-"ИНАЯ ФОРМА ОПЛАТЫ" 
+    
+    аТип0:=спНастройки["ТипЧека"];
+    
+    //TODO: FNBuildCorrectionReceipt2
+    If (аТип0=3)Or(аТип0=4)Or(аТип0=7)Or(аТип0=8) Then
+      Raise "Чеки коррекции пока не поддерживаются драйвером!";
+    EndIf;
+    
+    ФлТипСуммы:=1;
+    ФлСпособРасчета:=4;
+    If аТип0=1 Then
+      аДрайвер.CheckType:=0;
+    ElseIf аТип0=2 Then
+      аДрайвер.CheckType:=2;
+    ElseIf аТип0=5 Then
+      аДрайвер.CheckType:=1;
+    ElseIf аТип0=6 Then
+      аДрайвер.CheckType:=3;
+    ElseIf аТип0=10 Then
+      аДрайвер.CheckType:=0;
+      ФлТипСуммы:=3;
+    ElseIf аТип0=11 Then
+      аДрайвер.CheckType:=0;
+      ФлТипСуммы:=4;
+    ElseIf аТип0=12 Then
+      аДрайвер.CheckType:=0;
+      ФлТипСуммы:=4;
+      ФлСпособРасчета:=5;
+    ElseIf аТип0=13 Then
+      аДрайвер.CheckType:=0;
+      ФлТипСуммы:=1;
+      ФлСпособРасчета:=7;
+    EndIf;
+    аДрайвер.Summ1:=0;
+    аДрайвер.Summ2:=0;
+    аДрайвер.Summ3:=0;
+    аДрайвер.Summ4:=0;
+    аДрайвер.Summ5:=0;
+    аДрайвер.Summ6:=0;
+    аДрайвер.Summ7:=0;
+    аДрайвер.Summ8:=0;
+    аДрайвер.Summ9:=0;
+    аДрайвер.Summ10:=0;
+    аДрайвер.Summ11:=0;
+    аДрайвер.Summ12:=0;
+    аДрайвер.Summ13:=0;
+    аДрайвер.Summ14:=0;
+    аДрайвер.Summ15:=0;
+    аДрайвер.Summ16:=0;
+    If аДрайвер.OpenCheck()<>0 Then
+      Raise "OpenCheck: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    ФлОтменитьЧек:=1;
+    ТабИСМП:=спНастройки["ТабИСМП"];
+    
+    //Проверка кодов марок ГИС МТ
+    спНастройки["ТабОшибкиПроверкиМарок"]:=0;
+    If (аТип0<>10)And(аТип0<>13)And(ФФД12) Then
+      ТабОшибкиПроверкиМарок:=Tab.Create("Марка,Причина");
+      спНастройки["ТабОшибкиПроверкиМарок"]:=ТабОшибкиПроверкиМарок;
+      СпОшибки1:=List.Create("КМ данного типа не подлежит проверки в ФН",
+        "ФН не содержит ключ проверки кода проверки этого КМ",
+        "Проверка невозможна, так как отсутствуют идентификаторы применения GS1 91 и / или 92 или их формат неверный",
+        "Внутренняя ошибка в ФН при проверке этого КМ");
+      СпОшибки2:=List.Create("КИЗ отсутствует в базе Сервера СКЗКМ или КИЗ отсутствует в базе ИСМ",
+        "Не корректен формат КИЗ",
+        "Криптографическая проверка КПКИЗ дала отрицательный результат",
+        "КИЗ имеет в базе Сервера СКЗКМ статус не совместимый с запрашиваемым изменением",
+        "В списке вложения обнаружены ошибки");
+        
+      ТабИСМП.Select();
+      While ТабИСМП.Next() Do
+        //Преобразование в hex
+        Стр:=ТабИСМП.Марка;
+        СтрМарка:="";
+        For i:=1 To Length(Стр) Do
+          AppendStringToBufferedString(СтрМарка,?(i>1," ","")+DecToHex(Asc(Стр[i]),2));
+        EndDo;
+        ТабИСМП.Поле1:=СтрМарка;//Сохраняем, чтобы не переделывать
+        аДрайвер.BarcodeHex:=СтрМарка;
+        //1 -Штучный товар, подлежащий обязательной маркировке средством идентификации, реализован
+        //2 -Мерный товар, подлежащий обязательной маркировке средством идентификации, в стадии реализации
+        //3 -Штучный товар, подлежащий обязательной маркировке средством идентификации, возвращен
+        //4 -Часть товара, подлежащего обязательной маркировке средством идентификации, возвращена
+        //255 -Статус товара, подлежащего обязательной маркировке средством идентификации, не изменился
+        аДрайвер.ItemStatus:=?((аТип0=2)Or(аТип0=5),3,1);
+        аДрайвер.DivisionalQuantity:=0;
+        //1023: для марок упаковки при продаже единицы может записываться как "1/x", где x -- количество в упаковке
+        If аДрайвер.FNCheckItemBarcode2()<>0 Then
+          Raise "FNCheckItemBarcode2: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+        Фл:=аДрайвер.CheckItemLocalResult;
+        Фл2:=аДрайвер.KMServerErrorCode;
+        If (Фл=2)or(Фл2>1) Then
+          If Фл=2 Then
+            Фл:=Max(аДрайвер.CheckItemLocalError,0);
+            ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,?(Фл<=СпОшибки1.Size(),СпОшибки1[Фл],"Код марки недостоверен"));
+          Else
+            Фл2:=Max(Фл2,0);
+            ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,?(Фл2<=СпОшибки2.Size(),СпОшибки2[Фл2],"Неизвестная ошибка: "+Фл2));
+          EndIf;
+        EndIf;
+      EndDo;
+    EndIf;
+    
+    ФлРозничныйПокупатель:=Number(спНастройки["ФлРозничныйПокупатель"]);
+    //Заполняем: 1227, 1228, 1008 
+    If not ФлРозничныйПокупатель Then
+      зК:=спНастройки["Контрагент"];
+      стрИНН:=Trim(зК.ИНН);
+      стрИНН:=TearStr(стрИНН,"/");
+      
+      //1008: "client@mail.ru"
+      //1008: "+79161234567"
+      аДрайвер.TagNumber:=1256;//Информация о покупателе
+      If аДрайвер.FNBeginSTLVTag()<>0 Then
+        Raise "FNBeginSTLVTag: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+      
+      аДрайвер.TagNumber:=1227;
+      аДрайвер.TagType:=7;//Строка
+      аДрайвер.TagValueStr:=зК.ПолнНаименование;
+      If аДрайвер.FNAddTag()<>0 Then
+        Raise "FNAddTag: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+      
+      аДрайвер.TagNumber:=1228;
+      аДрайвер.TagType:=7;//Строка
+      аДрайвер.TagValueStr:=стрИНН;
+      If аДрайвер.FNAddTag()<>0 Then
+        Raise "FNAddTag: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+      
+      аДрайвер.TagNumber:=1256;
+      If аДрайвер.FNSendSTLVTag()<>0 Then
+        Raise "FNSendSTLVTag: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+    EndIf;
+    
+    
+    //Позиции
+    ФлНДС:=спНастройки["ЮрЛицо"].УчитыватьНДС<>0;
+    См:=0;
+    If (аТип0=10)Or(аТип0=13) Then
+      См:=спНастройки["Сумма"];
+      аДрайвер.StringForPrinting:=?(аТип0=10,"Аванс за товары","Закрытие кредита за товары");
+      аДрайвер.Quantity:=1;
+      аДрайвер.Price:=Round(См,2);
+      If ФлНДС Then
+        аДрайвер.Tax1:=спНДС[2];
+      Else
+        аДрайвер.Tax1:=спНДС[1];
+      EndIf;
+      аДрайвер.Department:=1;
+      аДрайвер.TaxValueEnabled:=0;
+      аДрайвер.Summ1Enabled:=0;
+      аДрайвер.PaymentTypeSign:=ФлСпособРасчета;
+      аДрайвер.PaymentItemSign:=10;//Платеж
+      аДрайвер.MeasureUnit:=0;
+      аДрайвер.DivisionalQuantity:=0;
+      
+      If аДрайвер.FNOperation()<>0 Then
+        Raise "FNOperation: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+    Else
+      aTab:=спНастройки["Таблица"];
+      aTab.Select();
+      While aTab.Next() Do
+        If (not aTab.Номенклатура.флПодлежитПрослеживаемости)or(ФФД10) Then
+          аДрайвер.StringForPrinting:=aTab.Номенклатура.Name;
+          аДрайвер.Quantity:=aTab.Количество;
+          аДрайвер.Price:=Round(aTab.Сумма/aTab.Количество,2);
+          аДрайвер.Tax1:=?(ФлНДС,спНДС[Max(aTab.СтавкаНДС.Index(),1)],спНДС[1]);
+          аДрайвер.Department:=1;
+          аДрайвер.TaxValueEnabled:=0;
+          аДрайвер.Summ1Enabled:=0;
+          аДрайвер.PaymentTypeSign:=ФлСпособРасчета;
+          аДрайвер.PaymentItemSign:=1;//Товар
+          аДрайвер.DivisionalQuantity:=?(aTab.Номенклатура.флВесовойТовар,1,0);
+          аДрайвер.MeasureUnit:=0;
+          If аДрайвер.FNOperation()<>0 Then
+            Raise "(2)FNOperation: "+аДрайвер.ResultCodeDescription;
+          EndIf;
+        Else
+          //Для марочного ГИС МТ товара необходимо передавать каждую марку
+          зЦ:=Round(aTab.Сумма/aTab.Количество,2);
+          зК:=aTab.Количество;
+          While зК>0 Do
+            аДрайвер.StringForPrinting:=aTab.Номенклатура.Name;
+            аДрайвер.Quantity:=1;
+            аДрайвер.Price:=зЦ;
+            аДрайвер.Tax1:=?(ФлНДС,спНДС[Max(aTab.СтавкаНДС.Index(),1)],спНДС[1]);
+            аДрайвер.Department:=1;
+            аДрайвер.TaxValueEnabled:=0;
+            аДрайвер.Summ1Enabled:=0;
+            аДрайвер.PaymentTypeSign:=ФлСпособРасчета;
+            If not ТабИСМП.FindAndGoto(aTab.Номенклатура,,"Номенклатура",1) Then
+              Exit "Не все марки заданы для позиции "+aTab.Номенклатура+", внутренняя ошибка!";
+            EndIf;
+            If ФФД12 Then
+              аДрайвер.PaymentItemSign:=33;//Марочный товар
+              аДрайвер.DivisionalQuantity:=0;
+              аДрайвер.MeasureUnit:=0;
+            Else
+              аДрайвер.PaymentItemSign:=2;//Подакцизный товар
+            EndIf;
+            
+            If аДрайвер.FNOperation()<>0 Then
+              Raise "(2)FNOperation: "+аДрайвер.ResultCodeDescription;
+            EndIf;            
+            If ФФД12 Then
+              аДрайвер.BarcodeHex:=ТабИСМП.Поле1;
+              If аДрайвер.FNSendItemBarcode()<>0 Then
+                Raise "FNSendItemBarcode: "+аДрайвер.ResultCodeDescription;
+              EndIf;
+            Else
+              аДрайвер.TagNumber:=1162;
+              аДрайвер.TagType:=9;//Byte array              
+              аДрайвер.TagValueBinHex:="44 4D "+ТабИСМП.Поле1;
+              If аДрайвер.FNSendTagOperation()<>0 Then
+                Raise "FNSendTagOperation: "+аДрайвер.ResultCodeDescription;
+              EndIf;
+            EndIf;
+            зК:=зК-1;
+            ТабИСМП.Remove(ТабИСМП.CurLine);
+          EndDo;
+        EndIf;
+        См:=См+aTab.Сумма;
+      EndDo;
+    EndIf;
+    If Round(спНастройки["Сумма"],2)<>Round(См,2) Then
+      Exit "Неверная сумма строк "+См+", не совпадает с суммой документа "+спНастройки["Сумма"];
+    EndIf;
+    
+    аДрайвер.Summ1:=0;
+    аДрайвер.Summ2:=0;
+    аДрайвер.Summ3:=0;
+    аДрайвер.Summ4:=0;
+    аДрайвер.Summ5:=0;
+    аДрайвер.Summ14:=0;
+    аДрайвер.Summ15:=0;
+    
+    //Оплата
+    //Summ1 -- Наличные
+    //Summ2 -- Картой
+    //Summ14 -- Аванс    //Summ3, но для FNCloseCheckEx используется заданное заранее
+    //Summ15 -- Кредит     //Summ4, но для FNCloseCheckEx используется заданное заранее
+    //Summ5 -- Другое
+    ЭлектроннаяСумма:=Number(спНастройки["ЭлектроннаяСумма"]);                //Summ2
+    ДругаяБезналичнаяСумма:=Number(спНастройки["ДругаяБезналичнаяСумма"]);    //Summ5
+    СуммаЗакрытияАванса:=Number(спНастройки["СуммаЗакрытияАванса"]);          //Summ4
+    If Round(ЭлектроннаяСумма,2)+Round(ДругаяБезналичнаяСумма,2)>Round(См,2) Then
+      Exit "Безналичные суммы оплаты "+ЭлектроннаяСумма+" больше суммы документа "+спНастройки["Сумма"];
+    EndIf;
+    If аТип0=10 Then
+      аДрайвер.Summ3:=Round(См,2);
+    ElseIf аТип0=12 Then
+      аДрайвер.Summ4:=Round(См,2);
+    ElseIf (аТип0=11)And(СуммаЗакрытияАванса>0) Then
+      If Round(СуммаЗакрытияАванса,2)>Round(См,2) Then
+        Exit "Сумма закрытия аванса "+СуммаЗакрытияАванса+" больше суммы документа "+спНастройки["Сумма"];
+      EndIf;
+      См:=СуммаЗакрытияАванса;//Round(См-СуммаЗакрытияАванса,2);
+      //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_CREDIT);
+      //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(СуммаЗакрытияАванса,2));
+      //аДрайвер.payment;
+      If (См>0)And(ЭлектроннаяСумма>0) Then
+        ЭлектроннаяСумма:=Min(ЭлектроннаяСумма,См);
+        См:=Round(См-ЭлектроннаяСумма,2);
+        аДрайвер.Summ2:=Round(ЭлектроннаяСумма,2);
+      EndIf;
+      If (См>0)And(ДругаяБезналичнаяСумма>0) Then
+        ДругаяБезналичнаяСумма:=Min(ДругаяБезналичнаяСумма,См);
+        См:=Round(См-ДругаяБезналичнаяСумма,2);
+        аДрайвер.Summ5:=Round(ДругаяБезналичнаяСумма,2);
+      EndIf;
+      If См>0 Then
+        аДрайвер.Summ1:=Round(См,2);
+      EndIf;  
+    Else
+      If ЭлектроннаяСумма>0 Then
+        См:=Round(См-ЭлектроннаяСумма,2);
+        аДрайвер.Summ2:=Round(ЭлектроннаяСумма,2);
+      EndIf;
+      If ДругаяБезналичнаяСумма>0 Then
+        См:=Round(См-ДругаяБезналичнаяСумма,2);
+        аДрайвер.Summ5:=Round(ДругаяБезналичнаяСумма,2);
+      EndIf;
+      If См>0 Then
+        аДрайвер.Summ1:=Round(См,2);
+      EndIf;  
+    EndIf;
+    If not IsEmpty(спНастройки["_TaxType"]) Then
+      аДрайвер.TaxType:=спНастройки["_TaxType"];
+    EndIf;
+    аДрайвер.RoundingSumm:=0;
+    аДрайвер.StringForPrinting:="";
+    
+    Try
+      //Закрытие чека
+      If аДрайвер.FNCloseCheckEx()<>0 Then
+        While 1 Do
+          If аДрайвер.ResultCode=-1 Then
+            If AskQuestion("Отсутствует связь с кассовой машиной! Исправьте соединение и нажмите ОК или нажмите отмену для отмены закрытия чека!",Q_QUESTION+Q_OKCANCEL)=R_CANCEL Then
+              Raise "FNCloseCheckEx: Чек был отменен оператором";
+            EndIf;
+            аДрайвер.Beep;
+            If аДрайвер.ResultCode=0 Then
+              //Документ все еще открыт?
+              If аДрайвер.GetShortECRStatus()<>0 Then
+                Raise "GetShortECRStatus: "+аДрайвер.ResultCodeDescription;
+              EndIf;
+              If аДрайвер.ECRMode=8 Then
+                If аДрайвер.FNCloseCheckEx()<>0 Then
+                  If аДрайвер.ResultCode=-1 Then
+                    Continue;
+                  Else
+                    Raise "(2)FNCloseCheckEx: "+аДрайвер.ResultCodeDescription;
+                  EndIf;
+                EndIf;
+              EndIf;
+              Break;
+            EndIf;
+          EndIf;
+          Raise "(3)FNCloseCheckEx: "+аДрайвер.ResultCodeDescription;
+        EndDo;
+      EndIf;
+      //Ожидаем окончания печати
+      While 1 Do
+        If аДрайвер.GetShortECRStatus()<>0 Then
+          Raise "(2)GetShortECRStatus: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+        If (аДрайвер.ECRAdvancedMode=0)And((аДрайвер.ECRMode=3)Or(аДрайвер.ECRMode=2)) Then
+          ФлОтменитьЧек:=0;
+          Break;
+        EndIf;
+        If аДрайвер.ECRAdvancedMode=1 Then //Нет бумаги, печать не начиналась
+          If AskQuestion("В ККМ отсутствует бумага для печати. Вставьте кассовую ленту и нажмите ОК или нажмите отмену для отмены закрытия чека!",Q_QUESTION+Q_OKCANCEL)=R_CANCEL Then
+            Raise "ECRAdvancedMode: Чек был отменен оператором";
+          EndIf;
+        ElseIf аДрайвер.ECRAdvancedMode=2 Then //Нет бумаги во время печати
+          While 1 Do //Ожидание вставки бумаги
+            If AskQuestion("В ККМ закончилась бумага для печати во время печати чека. Вставьте кассовую ленту и нажмите ОК или нажмите отмену для отмены закрытия чека (не рекомендуется)!",Q_QUESTION+Q_OKCANCEL)=R_CANCEL Then
+              Raise "(2)ECRAdvancedMode: Чек был отменен оператором";
+            EndIf;
+            If аДрайвер.GetShortECRStatus()<>0 Then
+              Raise "(3)GetShortECRStatus: "+аДрайвер.ResultCodeDescription;
+            EndIf;
+            If аДрайвер.ECRAdvancedMode=3 Then
+              If аДрайвер.ContinuePrint()<>0 Then
+                Raise "(3)ECRAdvancedMode: "+аДрайвер.ResultCodeDescription;
+              EndIf;
+              Continue 2;
+            EndIf;
+          EndDo; //Ожидание вставки бумаги
+        EndIf;
+        Sleep(500);
+      EndDo;
+    Finally  
+      If ФлОтменитьЧек=1 Then
+        If аДрайвер.GetECRStatus()<>0 Then
+          Raise "(2)GetECRStatus: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+        If аДрайвер.ECRMode=8 Then
+          If аДрайвер.SysAdminCancelCheck()<>0 Then
+            Raise "(8)ECRMode: "+аДрайвер.ResultCodeDescription;
+          EndIf;
+        EndIf;
+        Exit;
+      EndIf;
+    EndTry;  
+    Try
+      ЕГАИССылка:=спНастройки["ЕГАИССылка"];
+      ЕГАИСПодпись:=спНастройки["ЕГАИСПодпись"];
+      If Trim(ЕГАИССылка)<>"" Then
+        //ЕГАИССылка -- URL типа "https://check.egais.ru?id=cf1b1096-3cbc-11e7-b3c1-9b018b2ba3f7", если не пустая, будет выведено дополнение к чеку.
+        //ЕГАИСПодпись -- строка типа "79DED4A448069B0BFF602FF646F4E9B24D253D311679EA15307AEF38AEEE7933C9175DE5814C3DCF89BF63853CB75003D9FD979F3BEBBC93AFADF1D9A429623F"
+  
+        стрДок:=0;
+        НомерСмены:=спНастройки["НомерСмены"];
+        If аДрайвер.FNGetCurrentSessionParams()=0 Then
+          стрДок:=аДрайвер.ReceiptNumber;
+          НомерСмены:=аДрайвер.SessionNumber;
+        EndIf;
+                
+        //If аДрайвер.OpenNonfiscalDocument()<>0 Then
+        //  Raise "OpenNonfiscalDocument: "+аДрайвер.ResultCodeDescription;
+        //EndIf;
+      
+        зЮЛ:=спНастройки["ЮрЛицо"];
+        стрКПП:=Trim(зЮЛ.ИНН);
+        стрИНН:=TearStr(стрКПП,"/");
+        
+        аДрайвер.StringForPrinting:="ИНН: "+стрИНН+?(стрКПП<>""," КПП: "+стрКПП);
+        аДрайвер.UseReceiptRibbon:=1;
+        аДрайвер.UseJournalRibbon:=0;
+        If аДрайвер.PrintString()<>0 Then
+          Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+        
+        аДрайвер.StringForPrinting:="СМЕНА: "+НомерСмены;
+        If аДрайвер.PrintString()<>0 Then
+          Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+      
+        аДрайвер.StringForPrinting:="ЧЕК: "+стрДок+" ДАТА: "+FormatDate(Date(),"dd.mm.YYYY hh:tt");
+        If аДрайвер.PrintString()<>0 Then
+          Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+      
+        аДрайвер.StringForPrinting:=" ";
+        If аДрайвер.PrintString()<>0 Then
+          Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+        
+        Стр0:=UnicodeToUTF8(ЕГАИССылка);
+        аДрайвер.BlockType:=0;
+        aLen:=Length(Стр0);
+        aNum:=0;
+        While Стр0<>"" Do
+          Стр:=Left(Стр0,64);
+          Стр0:=Mid(Стр0,65);
+          Стр2:="";
+          For i:=1 To Length(Стр) Do
+            AppendStringToBufferedString(Стр2,DecToHex(Asc(Стр[i]),2));
+          EndDo;
+          аДрайвер.BlockDataHex=Стр2;
+          аДрайвер.BlockNumber:=aNum;
+          aNum:=aNum+1;
+          аДрайвер.LoadBlockData();
+        EndDo;
+        аДрайвер.BarcodeType:=3;
+        аДрайвер.BarcodeAlignment:=0;
+        аДрайвер.BarcodeDataLength:=aLen;
+        аДрайвер.BarcodeStartBlockNumber:=0;
+        аДрайвер.BarcodeParameter1:=0;
+        аДрайвер.BarcodeParameter2:=0;
+        аДрайвер.BarcodeParameter3:=5;
+        аДрайвер.BarcodeParameter4:=0;
+        аДрайвер.BarcodeParameter5:=2;
+        аДрайвер.Print2DBarcode();
+        If аДрайвер.WaitForPrinting()<>0 Then
+          Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+        
+        //Получение ширины ленты в символах
+        аДрайвер.TableNumber:=8;
+        аДрайвер.RowNumber:=1;
+        аДрайвер.FieldNumber:=1;
+        If аДрайвер.GetFieldStruct()<>0 Then
+          Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+        If аДрайвер.ReadTable()<>0 Then
+          Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+        аНом:=аДрайвер.ValueOfFieldInteger;
+        аДрайвер.FontType:=аНом;
+        If аДрайвер.GetFontMetrics()<>0 Then
+          Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+        аШирина:=Trunc(аДрайвер.PrintWidth/Max(аДрайвер.CharWidth,1));
+        If аШирина<5 Then
+          аШирина:=32;
+        EndIf;
+        
+        аДрайвер.StringForPrinting:=" ";
+        If аДрайвер.PrintString()<>0 Then
+          Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+      
+        While ЕГАИССылка<>"" Do
+          Стр:=Left(ЕГАИССылка,аШирина);
+          ЕГАИССылка:=Mid(ЕГАИССылка,аШирина+1);
+          аДрайвер.StringForPrinting:=Стр;
+          If аДрайвер.PrintString()<>0 Then
+            Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+          EndIf;
+        EndDo;
+      
+        аДрайвер.StringForPrinting:=" ";
+        If аДрайвер.PrintString()<>0 Then
+          Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+        EndIf;
+      
+        ЕГАИСПодпись:=Trim(ЕГАИСПодпись);
+        Стр:="";
+        While ЕГАИСПодпись<>"" Do
+          Стр:=Стр+?(Стр="",""," ")+Left(ЕГАИСПодпись,2);
+          ЕГАИСПодпись:=Mid(ЕГАИСПодпись,3);
+          If Length(Стр)>аШирина-3 Then
+            аДрайвер.StringForPrinting:=Стр;
+            If аДрайвер.PrintString()<>0 Then
+              Raise "Чек ЕГАИС: "+аДрайвер.ResultCodeDescription;
+            EndIf;
+            Стр:="";
+          EndIf;
+        EndDo;
+        
+        //CutType:=1;
+        //CutCheck();
+      EndIf;
+    Except
+      Message("Ошибка печати нефискальной части чека: "+PopError(),"!");
+    EndTry;
+  Except
+    If ФлОтменитьЧек Then
+      Try
+        аДрайвер.SysAdminCancelCheck();
+      Except
+      EndTry;
+    EndIf;
+    Exit PopError()+_NEWLINE+"Неудачная попытка выгрузки чека!";
+  EndTry;
+EndFunction

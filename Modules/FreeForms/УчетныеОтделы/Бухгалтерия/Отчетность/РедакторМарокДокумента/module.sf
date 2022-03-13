@@ -1,0 +1,392 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var аДок Export;
+Var флТолькоПросмотр Export;
+Var ТекущаяСтрокаМарок Export;
+Var ТМарки Export;
+Var тШтрихкод Export;
+Var Т Export;
+Var ПропорцияПечати Export;
+Var НакопленноеСообщение Export;
+Var КодЯщикаСканирование Export;
+
+Var ФлТолькоОднаПартия Export;
+Var ОднаПартия Export, ОднаПартияКоличество Export;
+
+//Переменные редактора ящика
+Var МаркиРедактор Export;
+Var СтрокиРедактор Export;
+Var ТекущаяСтрокаРедактор Export;
+Var ДокументРедактор Export;
+Var ВыбранныйПринтер Export;
+Var МаксКоличествоВРежимеОднаПартия Export;
+
+Function СохранитьИОбновитьТекущиеМарки() Forward;
+
+Function ОбновитьИнформацию()
+  оМарки:=Form.оМарки.Value;
+  аНом:=оМарки.SUM("Тип");
+  If аНом=0 Then
+    Form.пВсего.Caption:="";
+  Else
+    Form.пВсего.Caption:="Всего марок в выбранной партии: "+аНом;
+  EndIf;  
+EndFunction
+
+
+Function СообщениеСп(Текст,флДиалог)
+    If флДиалог Then
+      Box(Текст,Q_STOP);
+    Else
+      Message(Текст,"!");
+    EndIf;  
+EndFunction
+
+
+Function ДобавлениеСуществующегоЯщика(КодЯщика="")
+  оМарки:=Form.оМарки.Value;
+  оСтроки:=Form.оСтроки.Value;
+  If оСтроки.SelectedLine=0 Then
+    Exit;
+  EndIf;
+  оСтроки.CurLine:=оСтроки.SelectedLine;
+  аПартия:=оСтроки.Партия;
+  
+  If флТолькоПросмотр=1 Then
+    Exit;
+  EndIf;
+  If isEmpty(КодЯщика) Then
+    aList:=List.Create();
+    LoadModule(10,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\СканированиеШтрихкода",aList,0,"Module","Form");
+    If aList["Ответ"]<>1 Then
+      Exit;
+    EndIf;
+    Ящик:=aList["Результат"];
+    If Ящик="" Then
+      Exit;
+    EndIf;
+  Else
+    Ящик:=КодЯщика;
+  EndIf;
+  оМарки.CurLine:=0;
+  If оМарки.Locate("Тип,Коды",0,Ящик)>0 Then
+    СообщениеСп("Ящик "+Ящик+" уже был добавлен в таблицу!",КодЯщика="");
+    Exit;
+  EndIf;
+
+  аМарк:=Ref.тмцМаркировкаПозиций;
+  aList:=аМарк.Load(0,"~(@Parent=аПартия)And(@IsFolder=0)And(@Folder.КодМарки=Ящик)And(@Status=0)");
+
+  If aList.Size()=0 Then
+    СообщениеСп("При поступлении товара за указанной партией не было закреплено ящика "+Ящик+", либо все марки данного ящика уже были списаны! Если вы добавляете новый или сборный ящик, используйте функцию ""создать ящик""!",КодЯщика="");
+    Exit;
+  EndIf;
+
+  //Проверка на наличие в таблице
+  For i:=1 To aList.Size() Do
+    aEl:=aList[i];
+    //TODO: Плохо
+    If оМарки.Find("    "+aEl.КодМарки,,"Коды")>0 Then
+      СообщениеСп("Некоторые марки из ящика "+Ящик+", уже присутствуют в таблице! Проверьте, не сканируете ли вы ящик повторно!",КодЯщика="");
+      Exit;
+    EndIf;
+  EndDo;
+  
+  //TODO: При сканировании кода паллеты, должны быть добавлены все ящики паллеты
+  оМарки.Lock();
+  Try
+    Фл:=0;
+    Ном:=0;
+    оМарки.AddLine("Номер,Тип,Коды","",0,Ящик);
+    оМарки.BackgroundColor(оМарки.CurLine,0,MixColors(_CLR_WINDOW,_CLR_RED,25));
+    For i:=1 To aList.Size() Do
+      aEl:=aList[i];
+      Ном:=Ном+1;
+      оМарки.AddLine("Номер,Тип,Коды",Ном,1,"    "+aEl.КодМарки);
+    EndDo;
+  Finally
+    оМарки.Unlock();
+  EndTry;  
+  ОбновитьИнформацию();
+  Form.IsChanged(1);
+EndFunction
+
+Function Печать(ШтрихКод,флСразу=0)
+  If Trim(ШтрихКод)="" Then
+    Exit;
+  EndIf;
+  If AskQuestion("Распечатать текущий штрихкод, вы уверены!",Q_QUESTION+Q_YESNO)<>R_YES Then
+    Exit;
+  EndIf;
+  тШтрихкод:=ШтрихКод;
+  Т:=Table.Create();
+  Т.SetSourceName("Штрихкод");
+  Т.CopyByX("v"+ПропорцияПечати,1);
+  Т.Printing.Fields.Up:=0;
+  Т.Printing.Fields.Down:=0;
+  Т.Printing.Fields.Left:=0;
+  Т.Printing.Fields.Right:=0;
+  Т.Printing.Titles.Up.Size:=0;
+  Т.Printing.Titles.Down.Size:=0;
+  Т.Printing.PageOptions:=_PRN_PAGE_CENTERX+_PRN_PAGE_CENTERY;
+  Сп:=List.Create();
+  If not isEmpty(ВыбранныйПринтер) Then
+    Сп.Add(флСразу,"ПечататьБезВывода");
+    Сп.Add(ВыбранныйПринтер,"Принтер");
+  EndIf;  
+  глПечатнаяФорма(Т,Сп,"Штрихкод",1,"",1);
+EndFunction;
+
+Function OnFinishCopyObject(Name,Index)
+  If (Name="Штрихкод")And(Trim(тШтрихкод)<>"") Then
+    Try
+      iX:=0;iY:=0;
+      Generate1DBarcode("Code 128",iX,iY,Trim(тШтрихкод),"BR:2,F:Consolas|8,SCALE:5,BRT:0");
+      iY:=iX*(Т.Objects(Index).Height/Т.Objects(Index).Width);
+      Картинка:=Generate1DBarcode("Code 128",iX,iY,Trim(тШтрихкод),"BR:2,F:Consolas|8,SCALE:5,BRT:0,BPP:32");
+      Т.Objects(Index).Picture.Assign(Картинка);
+    Except
+    EndTry;
+  EndIf;
+EndFunction;
+
+Function ПечатьТекст(пТекст,флСразу=1,Короткий=0)
+  Чл:=1;
+  If (not isEmpty(ВыбранныйПринтер))And(флСразу=1) Then
+    If not AskNumber(Чл,"Количество копий:",15,0) Then
+      Exit;
+    EndIf;
+  EndIf;
+  If (Чл>100)or(Чл<0) Then
+    Box("Неверное количество!",Q_STOP);
+    Exit;
+  EndIf;
+  //If AskQuestion("Распечатать текст на этикетке, вы уверены!",Q_QUESTION+Q_YESNO)<>R_YES Then
+  //  Exit;
+  //EndIf;
+  Т:=Table.Create();
+  Т.SetSourceName(?(Короткий=0,"","Короткий")+"ТекстНаЭтикетку");
+  Т.CopyByX("v"+ПропорцияПечати,1);
+  Т.Printing.Fields.Up:=0;
+  Т.Printing.Fields.Down:=0;
+  Т.Printing.Fields.Left:=0;
+  Т.Printing.Fields.Right:=0;
+  Т.Printing.Titles.Up.Size:=0;
+  Т.Printing.Titles.Down.Size:=0;
+  Т.Printing.PageOptions:=_PRN_PAGE_CENTERX+_PRN_PAGE_CENTERY;
+  Сп:=List.Create();
+  If not isEmpty(ВыбранныйПринтер) Then
+    Сп.Add(флСразу,"ПечататьБезВывода");
+    Сп.Add(ВыбранныйПринтер,"Принтер");
+    Сп.Add(Чл,"КоличествоКопий");
+  EndIf;  
+  глПечатнаяФорма(Т,Сп,?(Короткий=0,"","Короткий")+"ТекстНаЭтикетку",1,"",0);
+EndFunction;
+
+
+
+Function РедакторИнфо()
+  Form.оМарки.UpdateValue();
+  Стр:=Trim(Form.оМарки.Value);
+  Рез:="";
+  Try
+    AssertStringValues(Стр,150,_NEWLINE,5);
+  Except
+    Try
+      AssertStringValues(Стр,68,_NEWLINE,5);
+    Except
+      СтрОшибка:=PopError();
+      TearStr(СтрОшибка,"Value #");
+      СтрОшибка:=TearStr(СтрОшибка," ");
+      Рез:="ошибка длины марки в строке "+СтрОшибка;
+    EndTry;  
+  EndTry;  
+  Стр:=GroupStringValues(Стр,_NEWLINE);
+  Ном:=LinesCount(Стр);
+  Рез:="Марок: "+Ном+?(Рез<>"",", "+Рез);
+  Form.Инфо3.Caption:=Рез;
+EndFunction
+
+Function ОбновитьСтрокиДокумента(ИзДокумента=0)
+  оСтроки:=Form.оСтроки.Value;
+  ТекСправки:="";
+  If оСтроки.SelectedLine>0 Then
+    оСтроки.CurLine:=оСтроки.SelectedLine;
+    ТекСправки:=оСтроки.Справка;
+  EndIf;
+  оСтроки.ClearLines();
+  If ИзДокумента=0 Then
+    ИзДокумента:=аДок;
+  EndIf;
+  
+  If ФлТолькоОднаПартия Then
+    if isEmpty(ТМарки) Then
+      ТМарки:=Tab.Create("Партия,Марка,Ящик");
+    EndIf;
+    aTab:=ИзДокумента.InitStorageTab("ОстаткиТМЦ");
+    aTab.AddLine("Номенклатура,Партия,Количество",ОднаПартия.Parent(),ОднаПартия,ОднаПартияКоличество);
+  ElseIf ИзДокумента.Status()<2 Then
+    aTab:=ИзДокумента.LineParts("Номенклатура").Copy();
+    ТМарки:=глМаркиЗагрузитьДокумент(ИзДокумента,,1);
+  Else
+    aTab:=ИзДокумента.LoadStorage("ОстаткиТМЦ");
+    ТМарки:=глМаркиЗагрузитьДокумент(ИзДокумента,,1);
+  EndIf;  
+  aTab.Select();
+  While aTab.Next() Do
+    If (aTab.Номенклатура.флАлкогольнаяПродукция=0)And(aTab.Номенклатура.флПодлежитПрослеживаемости=0) Then
+      Continue;
+    EndIf;
+    If aTab.Партия.Selected()=0 Then
+      Message("В движении #"+aTab.CurLine+" документа не выбрана партия! Движение будет пропущено!","!");
+      Continue;
+    EndIf;
+    Справки:=Trim(aTab.Партия.ЕГАИСКодСправок);
+    
+    оСтроки.AddLine("СтрН,Партия,Справка,Ед,Коэфф",aTab.Номенклатура,aTab.Партия,Справки,
+      "("+aTab.Номенклатура.оснКоэффициент+") "+aTab.Номенклатура.базЕдиница+" / "+aTab.Номенклатура.оснЕдиница,aTab.Номенклатура.оснКоэффициент);
+    оСтроки.Количество:=aTab.Количество;
+  EndDo;
+  If _And(оСтроки.SelectedLine=0,оСтроки.Size()>0) Then
+    оСтроки.SelectedLine:=1;
+    оСтроки.SelectedColumn:=2;
+    ТекущаяСтрокаМарок:=0;
+    СохранитьИОбновитьТекущиеМарки();
+  EndIf;
+EndFunction
+
+Function СохранитьИОбновитьТекущиеМарки()
+  оСтроки:=Form.оСтроки.Value;
+  оМарки:=Form.оМарки.Value;
+  If (ТекущаяСтрокаМарок>0)And(флТолькоПросмотр<>1) Then
+    оСтроки.CurLine:=ТекущаяСтрокаМарок;
+    ТМарки.CurLine:=0;
+    ТМарки.RemoveLocated("Партия",оСтроки.Партия);
+    оМарки.Select();
+    Ящик:="";
+    While оМарки.Next() Do
+      If оМарки.Тип=0 Then
+        Ящик:=Trim(оМарки.Коды);
+        Continue;
+      EndIf;
+      ТМарки.AddLineSorted("Партия,Ящик,Марка","Партия,Ящик,Марка",оСтроки.Партия,Ящик,Trim(оМарки.Коды));
+    EndDo;
+  EndIf;
+  If (оСтроки.SelectedLine<>ТекущаяСтрокаМарок)and(оСтроки.SelectedLine>0) Then
+    ТекущаяСтрокаМарок:=оСтроки.SelectedLine;
+    оСтроки.CurLine:=ТекущаяСтрокаМарок;
+    аПартия:=оСтроки.Партия;
+    оМарки.ClearLines();
+    оМарки.Lock();
+    Try
+      If ТМарки.FindAndGoto(аПартия,,"Партия",1) Then
+        Ящик0:=0;
+        Ном:=0;
+        Repeat
+          If ТМарки.Ящик<>Ящик0 Then
+            Ящик0:=ТМарки.Ящик;
+            Ном:=0;
+            оМарки.AddLine("Номер,Тип,Коды","",0,Ящик0);
+            оМарки.BackgroundColor(оМарки.CurLine,0,MixColors(_CLR_WINDOW,_CLR_RED,25));
+          EndIf;
+          Ном:=Ном+1;
+          оМарки.AddLine("Номер,Тип,Коды",Ном,1,"    "+ТМарки.Марка);
+        Until _Or(not ТМарки.Next(),ТМарки.Партия<>аПартия);
+      EndIf;
+    Finally
+      оМарки.Unlock();
+    EndTry;  
+  EndIf;
+  ОбновитьИнформацию();
+  Exit 1;
+EndFunction
+
+Function СохранитьИзменения()
+  оСтроки:=Form.оСтроки.Value;
+  If not СохранитьИОбновитьТекущиеМарки() Then
+    Exit 0;
+  EndIf;
+
+  If (флТолькоПросмотр<>1)and(оСтроки.Size()>0) Then
+    ФлПриход:=(аДок.DBName()="ПоступлениеТМЦ")Or(_And(аДок.DBName()="РегистрацияТМЦ",аДок.КодОперации=Enum.коРегистрацияТМЦ.ОприходованиеТМЦ));
+    
+    оСтроки.Select();
+    While оСтроки.Next() Do
+      //Количество марок
+      Ном:=ТМарки.FindAndGoto(оСтроки.Партия,,"Партия")>0;
+      If (not Ном)And(оСтроки.Партия.флМарочныйУчет) Then
+        If not глПользователь.общиеАдминистратор Then
+          Box("В строке ЕГАИС "+оСтроки.CurLine+" марки не указаны, однако, партия помечена для обязательного марочного учета!",Q_STOP);
+          Exit 0;
+        Else
+          If AskQuestion("В строке ЕГАИС "+оСтроки.CurLine+" марки не указаны, однако, партия помечена для обязательного марочного учета! Игнорировать (НЕ РЕКОМЕНДУЕТСЯ)?",Q_WARNING+Q_YESNO)<>R_YES Then
+            Exit 0;
+          EndIf;
+        EndIf;
+      EndIf;  
+      If Ном Then
+        Ном:=0;
+        Repeat
+          Ном:=Ном+1;
+          If not ТМарки.Next() Then
+            Break;
+          EndIf;
+        Until ТМарки.Партия<>оСтроки.Партия;
+      EndIf;
+      
+      If _And(Ном>0,Ном<>Round(оСтроки.Количество,6)) Then
+        If not глПользователь.общиеАдминистратор Then
+          Box("Общее количество списания по партии ЕГАИС строки "+оСтроки.CurLine+": "+глФРМЧл(оСтроки.Количество)+", однако, количество, указываемых марок "+Ном+"!",Q_STOP);
+          Exit 0;
+        Else
+          If AskQuestion("Общее количество списания по партии ЕГАИС строки "+оСтроки.CurLine+": "+глФРМЧл(оСтроки.Количество)+
+              ", однако, количество, указываемых марок "+Ном+"! Игнорировать (НЕ РЕКОМЕНДУЕТСЯ)?",Q_WARNING+Q_YESNO)<>R_YES Then
+            Exit 0;
+          EndIf;
+        EndIf;
+      EndIf;
+    EndDo;
+    
+        
+    If аДок.DBName()<>"ПоступлениеТМЦ" Then
+      If not глМаркиЗарегистрироватьДокумент(аДок,ТМарки,0,?(ФлТолькоОднаПартия,ОднаПартия,"")) Then
+        Exit 0;
+      EndIf;
+    Else
+      Box("Изменение марок в поступлениях не предусмотрено!",Q_STOP);
+    EndIf;  
+  EndIf;  
+  Form.IsChanged(0);
+  
+  If ФлТолькоОднаПартия Then
+    Param.SetByName("Изменения",1);
+    Param.SetByName("ТМарки",ТМарки);
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+
+Function OnDoubleClick(Таб)
+  result:=0;
+  If глРаботаСОсобымиИконкамиТаблицы(Таб) Then
+    Exit;
+  EndIf;
+  if Таб.SelectionMode>1 then
+    Exit 1;
+  EndIf;  
+  Сп:=Таб.Area(Таб.CurCol,Таб.CurLine,Таб.CurCol,Таб.CurLine).Value;
+  If TypeStr(Сп)<>"LIST" Then
+    Exit 1;
+  EndIf;
+  If Сп.GetByName("ПоказатьМарки")=1 Then
+    Зн:=глВыполнитьВыборВМеню("Вывести список марок",,2);
+    If Зн=1 Then
+      Тч:=Text.Create();
+      Тч.AddString(Replace(Сп.GetByName("Марки"),"###",_NEWLINE));
+      Тч.Show("Марки",,1);
+    EndIf;
+  EndIf;
+EndFunction

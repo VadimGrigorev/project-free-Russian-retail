@@ -1,0 +1,62 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+//Функции:
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, UploadPositions, DownloadPositions
+
+Function DriverInit(спНастройки)
+EndFunction
+
+Function DriverDeinit(спНастройки)
+EndFunction
+
+Function DriverConnect(спНастройки)
+EndFunction
+
+Function DriverDisconnect(спНастройки)
+EndFunction
+
+Function UploadPositions(спНастройки)
+  //aTab:"Элемент,Наименование,Код,Штрихкод,Количество,Цена,ЭтоПапка,КодПапки"
+  Т:=Text.Create(1);
+  Т.AddString("Позиция"+_TAB+"Штрихкод"+_TAB+"Количество"+_TAB+"Цена"+_TAB);
+  aTab:=спНастройки["Позиции"];
+  aTab.Select();
+  While aTab.Next() Do
+    If aTab.ЭтоПапка=0 Then
+      Т.AddString(aTab.Наименование+_TAB+aTab.Штрихкод+_TAB+aTab.Количество+_TAB+aTab.Цена+_TAB);
+    EndIf;
+  EndDo;
+  Имя:="";
+  If SaveFileDialog(Имя,"Сохранение выгруженных позиций:","Файлы txt (*.txt)|*.txt",0,"txt") Then
+    If Т.Save(Имя,1200,1)=0 Then
+      Exit "Невозможно сохранить файл";
+    EndIf;
+  Else
+    Exit "Сохранение отменено";
+  EndIf;
+EndFunction
+
+Function DownloadPositions(спНастройки)
+  //aTab:"Код,Штрихкод,Количество"
+  aTab:=Tab.Create("Код,Штрихкод,Количество");
+  Имя:="";
+  If OpenFileDialog(Имя,"Выберите файл для загрузки (Штрихкод _TAB Количество):","Файлы txt (*.txt)|*.txt",0) Then
+    Т:=Text.Create(1);
+    Т.Load(Имя,0);
+    For i:=1 To Т.Size() Do
+      Стр:=Т.GetLine(i);
+      Симв:=_TAB;
+      If pos(Симв,Стр)=0 Then
+        Симв:=";";
+      EndIf;
+      aTab.AddLine("Код,Штрихкод,Количество","",TearStr(Стр,Симв),Number(TearStr(Стр,Симв)));
+    EndDo;
+    спНастройки["Позиции"]:=aTab;
+  Else
+    Exit "Загрузка отменена";
+  EndIf;
+EndFunction
+

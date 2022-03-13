@@ -1,0 +1,54 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function Видимость()
+  aEl:=Form.Object;
+  
+  If aEl.СтатьяМаркетинга.Selected()<>0 Then
+    Form.оТабМаркетинг.isDisabled:=1;
+  Else
+    Form.оТабМаркетинг.isDisabled:=0;
+  EndIf;  
+EndFunction
+
+Function OnCreateFromObject()
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+    Form.Close(0);
+    Exit;
+  EndIf;
+  aEl.УчитыватьВНалоговомУчете:=1;
+EndFunction
+
+Function OnAfterCustomBuhChanged()
+  Видимость();
+EndFunction
+
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("Содержание");
+  
+  If aEl.Договор.Selected()=0 Then
+    Box("Необходимо выбрать контрагента и договор, прежде чем записывать или обрабатывать документ!",Q_STOP);
+    Exit 0;
+  EndIf;
+
+  If aEl.ТипПроводки.Selected()<>0 Then
+    If Trim(aEl.СубконтоТипаПроводки)="" Then
+      If not глРедактироватьСубконтоТипаПроводки(aEl,1) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  If not глКорректностьСуммыМаркетинга(aEl,aTab.Sum("Сумма")) Then
+    Exit 0;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+

@@ -1,0 +1,246 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=445
+  Height=190
+  OnTimerInterval=0
+  MaxControlSerial=12
+  LoadModes=0
+  Object GROUPBOX
+    LayerName=Main
+    Left=5
+    Top=30
+    Width=440
+    Height=130
+    Font=Default, 8
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=2
+    Caption=Свойства:
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\ОсновныеКнопки.sfg
+    LayerName=Main
+    Left=5
+    Top=165
+    Width=280
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=1
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=160
+    Top=72
+    Width=145
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=65544
+    Hint=
+    Name=Процент
+    ControlSerial=3
+    AttachedButtons=0#0@5#0###
+    Caption=
+    HotKey=
+    HAlign=2
+    Mask=
+    Length=16
+    DBSource
+      @@>@e@)VU@*T_?U@{V_=U_;UT@~R@-#!8_l#_6
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=75
+    Width=140
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=4
+    Caption=Процент наценки:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=160
+    Top=47
+    Width=275
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=65544
+    Hint=
+    Name=ГруппаНоменклатуры
+    ControlSerial=5
+    AttachedButtons=0#0@1#0###@2#0###
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=
+    Length=0
+    DBSource
+      @@>@e@)VU@*T_?U@{V_=U_;UT@~R@)#!8_j#_5
+    End
+    OnBeforeSelect
+      @@>@e@fy_I@4_Oh5_)@x_?@=Z@^@v@[@o_Y@3_<_J@G_?,_/v_/@Q(@q@q@Hn@/@I_^_a@Ml_X_I@{_N&
+      @Hws^>_G_2_O@7_"@jZ_a_8_Dr_>i_X&_$n@e_a_e_k@e_O_O_O@R_]@^_<s@Z@/_bH;ic_9_U@i@y_5
+      @_Bv^aLiGQ@1@p_AC>>_c_K(F[_4@~@/$F@+@e@r_H@X@u@^@2&@Dp@\_mK@qN@u@W_'_d@H@mwqS@d@s
+      @_kk@Yyj_Vh]@Q@~l_g_!.@._B_V_9x_P_/T_A0_c@W_J@7D[@3@[E@fBu_&.@\@Y_[nI_0X@x@3_%_*@
+      @=@C_jr}_KZ@xS@%_,@/@~7L@t6v_4@rx@:@|Y?@ejz_-_=@)@R@\@#*kmP_B@._;B@X@s@S_>@~_3_c_
+      @>_M@bQ_i\@c_mT_$@k_l@9h_[,j@v?OQ_mz'@W/r^e@Y@m@Uem@#@O_D@|@9_C@J"@+@n@|fo-_0@=@*
+      @@C_%_!_lkz@3_4@q'@:_%w_Q@g@3zA_h:b@L@po!_HF_A_>@lz@+g@7_F_b_O@>@,{\_W@Y$@G@xI@R_
+      @U_f@8V@i_C@Z@t_0J;_;_g@*@A_a_Y_Qq%N@F;@X!@s@k=+@*.@vL@d@Rx-B@/@"@n<_=@jr&K@s_=@z
+      @_F@TC_d@m*@O_aT_B4@$@O_-@._;@4@sk@;_6akgc_8_0@(_l_I_Q_b_^@,d_f@<_]_W_j@AT_1=_*S!
+      @e@&@\@4!@W@Q>@u@M>^z@7&_&@6_U@sD@x"_?@6@U/r2]@)@1(z$@,T_-t@.@H@P_F'_)_[_g_T_^_
+      @S}_G@/)@}B@R_Zw@7_6T@y@=@%@b(@v@B30@]R_R_4:"@|_3}@A_K_g_D_l@5@i@)_O:@1@~y_I_ae@q
+      @@K_g@K(_]@jQ@%@,_.@-_Sc_+y_mw_;@F@BL@q@B@Ea@ck_>_E@wa@;_4_1@xdo@fY9_#@Jr@L@+@#@E
+      @_LZ_L_<_U'@E@C@G_Q_&@0_Y@(@C@:@eu@I_,w@]@W@y_G@+0$@+@z_2@v+_I_#N@L_G@[_8Bt/_2_Rr
+      @_K@)_E_(@$sE@~_W@;Z@m_e_L_-*@|@I@,J8@S@=@%_Q@H_h_M_g_c_f_VB@W_a@,T@f@%p@x@k_U7@
+      @Y@|@S_J&_GHX@E@Z@v_>X_7_"a6@h@t_j_.N+_Q_F_V@%qj@R@d_]/@'@5_m@9_\W5n_+j_<_#_V_UwI
+      @_5~L@*@AI@(W_=G9_H[@"_:{_/(@8_HZ_3@Q@y@T@'_T@i@(_#h@o_M_N@2K/_.O@,_a_4q@B@M_*_$@
+      @g_8@=_c@K\9&@1@IV_I@/@R_Q@Y<_!@9_M_g_=@Qyt@o_[|@LW_e@dGK{}_K4{m_X_X;@;@$;_;@|#@
+      @c@A_)_F_V_Jg_"[_:_*_3_W_J_6@5@z@Q7_#@"@65|_.e@6_-@h_0@/V@S_R@N@J_;I7_M_l@L@Z@&
+      @@z@J_9@&@1_&_.=_H_j@D@O@E@;@{6_S_L_0e@och@(_A@%_J_+_Y_=g_R@^Q#@x'@|@Z_5_MO"@c_5O
+      @_dp@)@7@v_35@u@a_U@f@,@p_G@,_*,0_MU_A_e_e_d_e_-C[@B@;_h_0_l_Jc_i+(@*
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=50
+    Width=140
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=6
+    Caption=Группа:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=160
+    Top=97
+    Width=145
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=65544
+    Hint=
+    Name=Сумма
+    ControlSerial=7
+    AttachedButtons=0#0@5#0###
+    Caption=
+    HotKey=
+    HAlign=2
+    Mask=
+    Length=16
+    DBSource
+      @@>@e@)VU@*T_?U@{V_=U_;UT@~@y@&#!9!#_7
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=100
+    Width=140
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=8
+    Caption=Сумма наценки:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=125
+    Width=140
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=9
+    Caption=Округление:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object COMBOBOX
+    LayerName=Main
+    Left=160
+    Top=122
+    Width=275
+    Height=21
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=флОкругление
+    ControlSerial=10
+    Caption=
+    HotKey=
+    AttachedButtons=
+    DropDownCount=10
+    Items
+      @@>@e_>W@*V@&T@&\_i_b4@Z"@W@+_3@:_P@f@I@r_-@t@=_[@hb@D&7S#@P9;B,:@J@K@St@Kp_+_ht@
+      @Kp_,;6b@C@E_f_hc|_+-@(Xl_L_Uo@y@O[_?@2FC,@q_Elf@]t@|@'f!tRr2
+    End
+    DBSource
+      @@>@e@)VU@*T_?U@{V_=U_;UT@~@y@*#!9##_8
+    End
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\ЗаголовокБезИмени.sfg
+    LayerName=Main
+    Left=5
+    Top=5
+    Width=440
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=11
+  End
+End

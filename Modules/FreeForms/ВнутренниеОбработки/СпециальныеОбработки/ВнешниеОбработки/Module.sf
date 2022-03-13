@@ -1,0 +1,85 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var Уст Export;
+Var ТекПапка Export; //Содержит "\"
+Var ТекЭлемент Export;
+Var спУровень Export;
+
+
+Function ОбновитьТаблицу(флНачало=0)
+  MainTab:=Form.MainTab.Value;
+  ТекБаза:=Trim(DBVar.ПрефиксИБ);
+  ТекСтолбик:=MainTab.SelectedColumn;
+  
+  Тб:=Tab.Create("Наименование,Описание,Объект,Параметр,Папка");
+  For i:=1 to Уст.ComponentsInBranch(ТекПапка) Do
+    Стр:=Уст.GetComponentByNumberName(ТекПапка,i);
+    If not Уст.IsBranch(ТекПапка+Стр) Then
+      Continue;
+    EndIf;
+    СтрОграничение:=Уст.GetData(ТекПапка+Стр+"\Restriction","");
+    If _And(СтрОграничение<>"",Pos(ТекБаза,СтрОграничение)=0) Then
+      Continue;
+    EndIf;
+    флПапка:=0;
+    For j:=1 To Уст.ComponentsInBranch(ТекПапка+Стр) Do
+      Стр2:=Уст.GetComponentByNumberName(ТекПапка+Стр,j);
+      If Уст.IsBranch(ТекПапка+Стр+"\"+Стр2) Then
+        флПапка:=1;
+        Break;
+      EndIf;
+    EndDo;
+    Тб.AddLine("Наименование,Описание,Объект,Папка,Параметр",Стр,Уст.GetData(ТекПапка+Стр+"\Description",""),Уст.GetData(ТекПапка+Стр+"\Object",""),флПапка,Уст.GetData(ТекПапка+Стр+"\Parameter",""));
+  EndDo;
+  Тб.Sort("Папка-,Наименование+,Описание+");
+  
+  MainTab.ClearLines();
+  спУровень:=List.Create();
+  Стр:=ТекПапка;
+  СтрТек:="";
+  While Стр<>"" Do
+    Стр2:=TearStr(Стр,"\");
+    If Стр2<>"" Then
+      СтрОпис:=Уст.GetData(СтрТек+Стр2+"\Description","");
+      MainTab.AddLine("Наименование,Описание",Стр2,СтрОпис);
+      MainTab.Icon(MainTab.CurLine,"Иконка",99);
+      MainTab.BackgroundColor(MainTab.CurLine,"Наименование",_CLR_BTNFACE);
+      MainTab.BackgroundColor(MainTab.CurLine,"Описание",_CLR_BTNFACE);
+      СтрТек:=СтрТек+Стр2+"\";
+      спУровень.Add(Стр2);
+    EndIf;
+  EndDo;
+  
+  Тб.Select();
+  While Тб.Next() Do
+    If Тб.Папка=1 Then
+      MainTab.AddLine("Наименование,Описание,Объект,Параметр",Тб.Наименование,Тб.Описание,Тб.Объект,Тб.Параметр);
+      MainTab.Icon(MainTab.CurLine,"Иконка",98);
+    EndIf;  
+  EndDo;  
+  Тб.Select();
+  While Тб.Next() Do
+    If Тб.Папка=0 Then
+      MainTab.AddLine("Наименование,Описание,Объект,Параметр",Тб.Наименование,Тб.Описание,Тб.Объект,Тб.Параметр);
+      MainTab.Icon(MainTab.CurLine,"Иконка",122);
+    EndIf;  
+  EndDo;  
+  
+  If isEmpty(ТекЭлемент) Then
+    If MainTab.Size()>0 Then
+      MainTab.SelectedLine:=1;
+    EndIf;  
+  ElseIf MainTab.FindAndGoto(ТекЭлемент,,"Наименование")>0 Then
+    MainTab.SelectedLine:=MainTab.CurLine;
+  ElseIf MainTab.Size()>0 Then
+    MainTab.SelectedLine:=1;
+  EndIf;
+  If флНачало Then
+    MainTab.SelectedColumn:=2;
+  ElseIf ТекСтолбик>0 Then
+    MainTab.SelectedColumn:=ТекСтолбик;
+  EndIf;
+EndFunction
+

@@ -1,0 +1,594 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var СтарНаименование Export,СтарыйНДС Export,СтарыйКф Export;
+//Для формы подбора
+Var СкладОстатков Export, ТипЦен Export, ДатаДок Export;
+Var оЕстьЦена Export;
+Var флПодборПоПартиям Export;
+Var ТабПодборОстатки Export;
+
+Function OnAfterFormPeriodChange()
+  aEl:=Form.Object;
+  If _And(aEl.Status()>=0,глПользователь.Магазин.Selected()<>0,глПользователь.Магазин.Склад.Selected()<>0) Then
+    Form.Цена.Value:=глПолучитьОсновнуюЦену(aEl,глПользователь.Магазин.Склад,Form.Object.EndPeriodDate(),1);
+  EndIf;
+EndFunction
+
+Function НазначитьТип()
+  Function НазначитьТипРекв(оСуб,ВС)
+    If Trim(ВС.ТипЗначенияЛокальный)="" Then
+      оСуб.SetType("Ref.бухЗначенияСубконто");
+      If _And(not isEmpty(оСуб.Value),оСуб.Value.Parent()<>ВС) Then
+        оСуб.Value:=0;
+      EndIf;
+    Else
+      оСуб.SetType(Replace(Uppercase(ВС.ТипЗначенияЛокальный),"СПРАВОЧНИК","REF"));
+    EndIf;
+  EndFunction
+
+  аСчет:=Form.Счет.Value;
+  If аСчет.Selected()=0 Then
+    Exit;
+  EndIf;
+  НазначитьТипРекв(Form.оСуб1,аСчет.ВидСубконто1);
+  НазначитьТипРекв(Form.оСуб2,аСчет.ВидСубконто2);
+  НазначитьТипРекв(Form.оСуб3,аСчет.ВидСубконто3);
+EndFunction
+
+
+Function ОбновитьАмортизацию()
+  aEl:=Form.Object;
+  аСчет:=Form.Счет.Value;
+  If аСчет.Selected()=0 Then
+    Form.оСуб1.Value:=GetNothing();
+    Form.оСуб2.Value:=GetNothing();
+    Form.оСуб3.Value:=GetNothing();
+    Form.тСчет.Caption:="";
+  Else
+    Form.тСчет.Caption:=аСчет.Name;
+  EndIf;
+  
+  If аСчет.ВидСубконто1.Selected()=0 Then
+    Form.тСуб1.Caption:="";
+    Form.тС1.isDisabled:=1;
+    Form.оСуб1.isDisabled:=1;
+    Form.оСуб1.Value:=GetNothing();
+  Else
+    Form.тСуб1.Caption:=аСчет.ВидСубконто1.Name;
+    Form.тС1.isDisabled:=0;
+    Form.оСуб1.isDisabled:=0;
+  EndIf;
+  
+  If аСчет.ВидСубконто2.Selected()=0 Then
+    Form.тСуб2.Caption:="";
+    Form.тС2.isDisabled:=1;
+    Form.оСуб2.isDisabled:=1;
+    Form.оСуб2.Value:=GetNothing();
+  Else
+    Form.тСуб2.Caption:=аСчет.ВидСубконто2.Name;
+    Form.тС2.isDisabled:=0;
+    Form.оСуб2.isDisabled:=0;
+  EndIf;
+  
+  If аСчет.ВидСубконто3.Selected()=0 Then
+    Form.тСуб3.Caption:="";
+    Form.тС3.isDisabled:=1;
+    Form.оСуб3.isDisabled:=1;
+    Form.оСуб3.Value:=GetNothing();
+  Else
+    Form.тСуб3.Caption:=аСчет.ВидСубконто3.Name;
+    Form.тС3.isDisabled:=0;
+    Form.оСуб3.isDisabled:=0;
+  EndIf;
+  НазначитьТип();
+  Exit "";
+EndFunction
+
+Function СохранитьПараметрыФормыПодбора()
+  StoreValue("оВопрос",Form.оВопрос.Value.SelectedLine);
+  StoreValue("оНаличие",Form.оНаличие.Value);
+EndFunction
+
+Function ОбновитьТекстыНаФормеПодбора()
+  Form.тСклад.Caption:="Склад подбора: """+СкладОстатков+"""";
+  Form.тТипЦен.Caption:=?(оЕстьЦена=1,"Тип цен для подбора: "+ТипЦен.Name,"");
+  aTab:=Form.ResTab.Value;
+  Form.тИтоговаяСумма.Caption:=?((оЕстьЦена=1)and(aTab.Sum("Сумма")>0),"Сумма выбранных: "+глФРМ(aTab.Sum("Сумма")),"");
+EndFunction
+
+Function ИзменитьДоступность(Измен=0)
+  
+  aEl:=Form.Object;
+  //Видимость закладок
+  If aEl.ВидНоменклатуры=Enum.ВидыНоменклатуры.Инвентарь Then
+    Form.оЗакладки.Pages.Page("Сертификат").isInvisible:=1;
+    Form.оЗакладки.Pages.Page("Амортизация").isInvisible:=0;
+  ElseIf aEl.ВидНоменклатуры=Enum.ВидыНоменклатуры.Услуга Then
+    Form.оЗакладки.Pages.Page("Сертификат").isInvisible:=1;
+    Form.оЗакладки.Pages.Page("Амортизация").isInvisible:=1;
+  Else
+    Form.оЗакладки.Pages.Page("Сертификат").isInvisible:=0;
+    Form.оЗакладки.Pages.Page("Амортизация").isInvisible:=1;
+  EndIf;
+  
+  ОбновитьАмортизацию();  
+  
+  If not глПользователь.общиеОсновныеСправочники Then
+    Form.DisableControls(1-глПользователь.общиеОсновныеСправочники);
+    Exit;
+  ElseIf Form.Mode()=4 Then
+    Exit;
+  EndIf;
+  
+  
+  If Измен=1 Then
+    Form.оОднаЕд.Value:=0;
+    If (aEl.базЕдиница=aEl.оснЕдиница)And(aEl.оснКоэффициент=1) Then
+      Form.оОднаЕд.Value:=1;
+    EndIf;
+  EndIf;
+  Form.ЦенаМинимальнаяПродажная.isDisabled:=1-глПользователь.общиеРедактированиеЦенВДокументах;
+  Form.ЦенаМаксимальнаяПродажная.isDisabled:=1-глПользователь.общиеРедактированиеЦенВДокументах;
+  
+  Form.тТ1.isDisabled:=Form.оОднаЕд.Value;
+  Form.оснЕдиница.isDisabled:=Form.оОднаЕд.Value;
+  Form.тТ3.isDisabled:=Form.оОднаЕд.Value;
+  Form.оснКоэффициент.isDisabled:=Form.оОднаЕд.Value;
+  Form.тГИСМТТоварнаяГруппа.isDisabled:=(1-Form.флПодлежитПрослеживаемости.Value)or(Not глПользователь.общиеАдминистратор);
+  Form.ГИСМТТоварнаяГруппа.isDisabled:=(1-Form.флПодлежитПрослеживаемости.Value)or(Not глПользователь.общиеАдминистратор);
+  
+  If Form.оОднаЕд.Value=1 Then
+    If aEl.базЕдиница<>aEl.оснЕдиница Then
+      aEl.оснЕдиница:=aEl.базЕдиница;
+    EndIf;
+    If aEl.оснКоэффициент<>1 Then
+      aEl.оснКоэффициент:=1;
+    EndIf;
+  EndIf;
+EndFunction
+
+Function ПоказатьЕдиницы(Эл)
+  If Эл.Selected()<>0 Then
+    If not Эл.IsFolder() Then
+      Exit ?(not IsEmpty(Эл),"("+Эл.оснКоэффициент+") "+Эл.базЕдиница+" / "+Эл.оснЕдиница,"?");
+    Else
+      Exit "";
+    EndIf;
+  Else
+    Exit "";
+  EndIf;
+EndFunction
+
+
+Function СопоставитьШтрихкод(Данные)
+  аН:=0;
+  If глНайтиПартиюПоКодуМарки(Данные,аН) Then
+    Box("Штрихкод закреплен за маркой, принадлежащей партии ТМЦ "+аН.Parent()+" ("+аН.Parent().Code+")!",Q_INFORMATION);
+    OpenObject(аН,0,1);
+  ElseIf Length(Данные)>100 Then
+    Box("Штрихкод марки не найден в базе данных!",Q_WARNING);
+    Exit;
+  EndIf; 
+  Фл:=глНайтиТМЦПоШтрихКоду(Данные,аН);
+  If Фл>0 Then
+    If аН.DBName()="тмцПартииТМЦ" Then
+      Box("Штрихкод "+Trim(Данные)+" уже зарегистрирован за партией ТМЦ "+аН+" ("+аН.Code+")!",Q_WARNING);
+      OpenObject(аН,0,1);
+      Exit;
+    EndIf;
+  
+    Form.MainTab.PositionOnElement(аН);
+    Box("Штрихкод "+Trim(Данные)+" уже зарегистрирован за ТМЦ "+аН+" ("+аН.Code+")!",Q_WARNING);
+    Exit;
+  EndIf;
+  If IsEmpty(Form.MainTab.SelectedElement) Then
+    Exit;
+  EndIf;
+  If Form.MainTab.SelectedElement.isFolder() Then
+    Box("Закреплять штрихкод за папками не имеет смысла!",Q_STOP);
+    Exit;
+  EndIf;
+  
+  а:=Form.MainTab.SelectedElement;
+  If AskQuestion("Закрепить штрихкод "+Trim(Данные)+" за ТМЦ "+а+" ("+а.Code+")?",Q_QUESTION+Q_YESNO)<>R_YES Then
+    Exit;
+  EndIf;
+  
+  б:=Ref.тмцШтрихкоды;
+  б.New();
+  б.Parent(а);
+  б.Name:=Trim(Данные);
+  б.Коэффициент:=1;
+  б.Save();
+EndFunction
+
+Function ПоКнопкеЦены(aEl)
+  If IsEmpty(aEl) Then
+    Exit;
+  EndIf;
+  If aEl.Selected()<0 Then
+    MsgBox("Сначала сохраните элемент!");
+  EndIf;
+  If aEl.IsFolder() Then
+    Exit;
+  EndIf;
+  If (глПользователь.бухГлавныйБухгалтер=1)And(DBVar.ЦентральнаяБаза=1) Then
+    а:=глВыполнитьВыборВМеню("Обычные цены@Основные цены");
+    If а=1 Then
+      глОткрытьФормуСправочника("цЦены",,,aEl);
+    ElseIf а=2 Then
+      глОткрытьФормуСправочника("рбОсновныеЦены",,,aEl);
+    EndIf;
+  Else
+    глОткрытьФормуСправочника("цЦены",,,aEl);
+  EndIf;
+EndFunction;
+
+Function ПоКнопкеPLUКоды(aEl)
+  If IsEmpty(aEl) Then
+    Exit;
+  EndIf;
+  If aEl.Selected()<0 Then
+    MsgBox("Сначала сохраните элемент!");
+  EndIf;
+  If aEl.IsFolder() Then
+    Exit;
+  EndIf;
+  глОткрытьФормуСправочника("тмцPLUКоды",,,aEl);
+EndFunction
+
+Function ПоКнопкеПартииТМЦ(aEl)
+  If IsEmpty(aEl) Then
+    Exit;
+  EndIf;
+  If aEl.Selected()<0 Then
+    MsgBox("Сначала сохраните элемент!");
+  EndIf;
+  If aEl.IsFolder() Then
+    Exit;
+  EndIf;
+  глОткрытьФормуСправочника("тмцПартииТМЦ",,,aEl);
+EndFunction
+
+Function ПриПереносеЭлементаВДругуюГруппу(Эл,Гр)
+  if IsEmpty(Гр) Then
+    Гр:=GetNothing("Ref.тмцНоменклатура");
+  EndIf;
+  If (Эл.IsFolder())And(not глПользователь.общиеАдминистратор) Then
+    Box("Вы не имеете права переносить папки!",Q_STOP);
+    Exit 0;
+  ElseIf Эл.IsFolder() Then
+    Exit 1;
+  EndIf;
+  а:=Гр;БылВид:=0;БылаГруппа:=0;
+  While а.Selected()<>0 Do
+    If (а.ВидНоменклатуры.Selected()<>0)And(БылВид=0) Then
+      If (а.ВидНоменклатуры<>Эл.ВидНоменклатуры)And(Эл.ВидНоменклатуры.Selected()<>0) Then
+        Box("В папке "+а+" ("+а.Code+") должна храниться только номенклатура вида """+а.ВидНоменклатуры+"""!",Q_STOP);
+        If not глРаботаетРобот Then
+          Exit 0;
+        EndIf;
+      EndIf;
+      БылВид:=1;
+    EndIf;
+    If (а.ТоварнаяГруппа.Selected()<>0)And(БылаГруппа=0) Then
+      If (а.ТоварнаяГруппа<>Эл.ТоварнаяГруппа)And(Эл.ТоварнаяГруппа.Selected()<>0) Then
+        Box("В папке "+а+" ("+а.Code+") должна храниться только номенклатура с товарной группой """+а.ТоварнаяГруппа+"""!",Q_STOP);
+        If not глРаботаетРобот Then
+          Exit 0;
+        EndIf;
+      EndIf;
+      БылаГруппа:=1;
+    EndIf;
+    If БылаГруппа+БылВид=2 Then
+      Break;
+    EndIf;
+    а:=а.Folder();
+  EndDo;
+  
+  
+  ФлЗапретПер:=0;
+  Сп:=List.Create();
+  Род:=Эл;
+  While Род.Folder().Selected()<>0 Do
+    Род:=Род.Folder();
+    If Сп.Find(Род)>0 Then
+      Break;
+    EndIf;
+    Сп.Add(Род);
+    If Trunc(Род.флЗапреты/2)%2=1 Then
+      ФлЗапретПер:=1;
+      Break;
+    EndIf;
+  EndDo;
+  If ФлЗапретПер=1 Then
+    If Гр<>Род Then
+      Сп:=List.Create();
+      Род2:=Гр;Фл:=0;
+      While Род2.Folder().Selected()<>0 Do
+        Род2:=Род2.Folder();
+        If Сп.Find(Род2)>0 Then
+          Break;
+        EndIf;
+        Сп.Add(Род2);
+        If Род2=Род Then
+          Фл:=1;
+          Break;
+        EndIf;
+      EndDo;
+      If Фл=0 Then
+        Box("Из папки "+Род+" ("+Род.Code+") запрещено перемещение номенклатуры во внешние папки!",Q_STOP);
+        If not глРаботаетРобот Then
+          Exit 0;
+        EndIf;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  If (Эл.Folder().Selected()<>0)And(not Эл.IsFolder()) Then
+    If Гр.Selected()=0 Then
+      Box("Запрещено перемещать номенклатуру в корневую папку!",Q_STOP);
+      If not глРаботаетРобот Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  EndIf;
+  
+  Сп:=List.Create();
+  Род:=Гр;
+  While Род.Selected()<>0 Do
+    If Trunc(Род.флЗапреты/8)%2=1 Then
+      Чл:=Storage.ОстаткиТМЦ.Total("Количество",CurDate(),,"Номенклатура",Эл);
+      If Чл<>0 Then
+        Box("Остатки на складах для данной номенклатуры не равны нулю! Запрещено Перемещать подобную номенклатуру в эту группу!",Q_STOP);
+        If not глРаботаетРобот Then
+          Exit 0;
+        EndIf;
+      EndIf;
+      Break;
+    EndIf;
+    Род:=Род.Folder();
+    If Сп.Find(Род)>0 Then
+      Break;
+    EndIf;
+    Сп.Add(Род);
+  EndDo;
+  
+  Exit 1;
+EndFunction
+
+Function IsPeriodSavePermitted()
+  If Form.Object.isFolder() Then
+    Result:=глПользователь.бухБухгалтер;
+  Else
+    Result:=глПользователь.общиеАдминистратор;
+  EndIf;
+EndFunction
+
+Function ПолучитьЭлементОС()
+  Эл:=Form.Object;
+  If Эл.Selected()<0 Then
+    Exit 0;
+  EndIf;
+  а:=Ref.тмцСвойстваОсновныхСредств;
+  If а.Find("@Parent",Эл)=0 Then
+    а.New();
+    а.Parent(Эл);
+    //Умолчания
+    а.СрокПолезногоИспользования:=61;
+    а.ДатаВводаВЭксплуатацию:=BegOfMonth(CurDate());
+    If not глЗаписать(а) Then
+      Exit 0;
+    EndIf;
+  EndIf;  
+  Exit а;
+EndFunction
+
+Function ПрочитатьСвойстваОС()
+  а:=ПолучитьЭлементОС();
+  If а=0 Then
+    Exit;
+  EndIf;
+  Form.ПервоначальнаяСтоимость.Value:=а.ПервоначальнаяСтоимость;
+  Form.СтоимостьМодернизации.Value:=а.СтоимостьМодернизации;
+  Form.ДатаВводаВЭксплуатацию.Value:=а.ДатаВводаВЭксплуатацию;
+  Form.ДатаВыбытия.Value:=а.ДатаВыбытия;
+  Form.ДатаМодернизации.Value:=а.ДатаМодернизации;
+  Form.флНачислятьАмортизацию.Value:=а.флНачислятьАмортизацию;
+  Form.СрокПолезногоИспользования.Value:=а.СрокПолезногоИспользования;
+  Form.Счет.Value:=а.Счет;
+  
+  НазначитьТип();
+  Form.оСуб1.Value:=а.Субконто1;
+  Form.оСуб2.Value:=а.Субконто2;
+  Form.оСуб3.Value:=а.Субконто3;
+  ОбновитьАмортизацию();
+EndFunction
+
+Function OnChangeName()
+  Эл:=Form.Object;
+  If not глИсправитьНаименованиеНоменклатуры(Form.Object,Form.Object.isFolder()) Then
+    Form.CallOnStatusChange();
+    Exit 0;
+  EndIf;
+  Form.CallOnStatusChange();
+  
+  Exit 1;
+EndFunction
+
+
+Function OnBeforeElementSave()
+
+  Function ПроверитьЗаполнение(Эл,Ткс)
+    If IsEmpty(Эл) Then
+      Message("Не заполнено поле """+Ткс+"""!","!");
+      If not глПользователь.общиеАдминистратор Then
+        Exit 1;
+      EndIf;
+    EndIf;
+    Exit 0;
+  EndFunction
+
+  Эл:=Form.Object;
+  If Эл.isFolder() Then
+    If IsEmpty(Эл.рбДатаСоздания) Then
+      Эл.рбДатаСоздания:=BegOfDay(Date());
+    Else
+      If (СтарНаименование<>Trim(Эл.Name))And(Эл.рбДатаСоздания<BegOfDay(Date())) Then
+        If not глПользователь.общиеАдминистратор Then
+          Box("Внимание! Запрещается изменять наименования папок, только администратор сможет выполнить эту процедуру (ее нужно выполнить одновременно во всех связанных базах)!",Q_STOP);
+          Exit 0;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    If IsEmpty(Эл.Name) Then
+      Box("Введите наименование папки!",Q_STOP);
+      Form.cName.SetFocus();
+      Exit 0;
+    EndIf;
+  Else
+//Запись элемента//Запись элемента//Запись элемента//Запись элемента//Запись элемента
+    If Эл.Folder().Selected()=0 Then
+      Box("При записи нового элемента номенклатуры, необходимо выбрать папку справочника!",Q_STOP);
+      Exit 0;
+    EndIf;
+    If IsEmpty(Эл.рбДатаСоздания) Then
+      Эл.рбДатаСоздания:=BegOfDay(Date());
+    Else
+      If (СтарНаименование<>Trim(Эл.Name))And(Эл.рбДатаСоздания<BegOfDay(Date())) Then
+        If not глПользователь.общиеАдминистратор Then
+          Box("Внимание! Запрещается создавать новые ТМЦ из старых! Если вы ошиблись в наименовании, разрешается его исправить, но если вы хотите "+
+            "исправить наименование старого не использующегося ТМЦ на новое, такая операция запрещена. В последнем случае, нужно всегда создавать новые элементы. "+
+            "Для того, чтобы изменить наименования старых ТМЦ, пожалуйста, обратитесь к администратору!",Q_STOP);
+          Exit 0;
+        EndIf;
+      EndIf;
+      If (СтарыйНДС<>Эл.СтавкаНДС)And(Эл.рбДатаСоздания<BegOfDay(Date())) Then
+        If not глПользователь.общиеАдминистратор Then
+          Box("Для того, чтобы изменить ставку НДС в рабочей номенклатуре, обратитесь к администратору!",Q_STOP);
+          Exit 0;
+        EndIf;
+      EndIf;
+      If (СтарыйКф<>Эл.оснКоэффициент)And(Эл.рбДатаСоздания<BegOfDay(Date())) Then
+        If not глПользователь.общиеАдминистратор Then
+          Box("Для того, чтобы изменить коэффициент основной единицы в рабочей номенклатуре, обратитесь к администратору!",Q_STOP);
+          Exit 0;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    
+    If Эл.СтавкаНДС<>Enum.СтавкиНДС.БезНДС Then
+      If (Эл.ВидНоменклатуры=Enum.ВидыНоменклатуры.Тара)Or(Эл.ВидНоменклатуры=Enum.ВидыНоменклатуры.АрендованноеИмущество) Then
+        Эл.СтавкаНДС:=Enum.СтавкиНДС.БезНДС;
+      EndIf;
+    EndIf;
+    
+    If (Эл.флАлкогольнаяПродукция)And(Эл.сертКрепость=0) Then
+      Box("Для алкогольной продукции необходимо обязательно заполнить крепость!",Q_STOP);
+      Exit 0;
+    ElseIf (not Эл.флАлкогольнаяПродукция)And(Эл.сертКрепость<>0) Then
+      Box("Вы заполнили крепость, однако не отметили номенклатуру, как алкогольную продукцию! Убедитесь в правильности заполнения реквизитов!",Q_STOP);
+      Exit 0;
+    EndIf;
+      
+    If Эл.Selected()<0 Then
+      б:=Ref.тмцНоменклатура;
+      If б.Find("Name",Trim(Эл.Name)) Then
+        Box("В справочнике уже есть ТМЦ с таким же наименованием, как данная (код "+б.Code+")! Невозможно дублирование ТМЦ!",Q_STOP);
+        If not глРаботаетРобот Then
+          Exit 0;
+        EndIf;
+      EndIf;
+      If Trim(Эл.ВнешнийТекстовыйКод)<>"" Then
+        If б.Find("ВнешнийТекстовыйКод,<>@Status",Trim(Эл.ВнешнийТекстовыйКод),1) Then
+          Box("В справочнике уже есть ТМЦ с таким же внешним кодом (ЕГАИС), как данная (код "+б.Code+")! Невозможно дублирование ТМЦ!",Q_STOP);
+          If not глРаботаетРобот Then
+            Exit 0;
+          EndIf;
+        EndIf;
+      EndIf;
+      If Length(Эл.Name)>60 Then
+        If AskQuestion("Не рекомендуется создавать номенклатуру с таким длинным именем, так как оно может не вместиться в поле имени при печати ценника! Игнорировать (не рекомендуется)?",Q_QUESTION+Q_YESNO)<>R_YES Then
+          Exit 0;
+        EndIf;
+      EndIf;
+    EndIf;
+    
+    
+    //Правильный ли тип?
+    а:=Эл.Folder();Фл:=0;
+    While а.Selected()<>0 Do
+      If а.ВидНоменклатуры.Selected()<>0 Then
+        If (а.ВидНоменклатуры<>Эл.ВидНоменклатуры)And(Эл.ВидНоменклатуры.Selected()<>0) Then
+          Box("В папке "+а+" ("+а.Code+") должна храниться только номенклатура вида """+а.ВидНоменклатуры+"""!",Q_STOP);
+          Exit 0;
+        EndIf;
+      EndIf;
+      If (а.ТоварнаяГруппа.Selected()<>0)And(Фл=0) Then
+        If а.ТоварнаяГруппа<>Эл.ТоварнаяГруппа Then
+          Box("В папке "+а+" ("+а.Code+") должна храниться только номенклатура с тов. группой """+а.ТоварнаяГруппа+"""!",Q_STOP);
+          Exit 0;
+        Else
+          Фл:=1;
+        EndIf;
+      EndIf;
+      а:=а.Folder();
+    EndDo;
+    
+    ИзменитьДоступность();
+    Ошибка:=Ошибка or ПроверитьЗаполнение(Эл.Name,"Наименование");
+    Ошибка:=Ошибка or ПроверитьЗаполнение(Эл.ВидНоменклатуры,"Тип номенклатуры");
+    Ошибка:=Ошибка or ПроверитьЗаполнение(Эл.базЕдиница,"Вид базовой единицы");
+    Ошибка:=Ошибка or ПроверитьЗаполнение(Эл.оснЕдиница,"Вид основной единицы");
+    Ошибка:=Ошибка or ПроверитьЗаполнение(Эл.оснКоэффициент,"Коэффициент основной единицы");
+    
+    If Ошибка Then
+      Exit 0;
+    EndIf;
+    глПриЗаписиЭлементаСправочника(Эл);
+    If Эл.ВидНоменклатуры=Enum.ВидыНоменклатуры.Инвентарь Then
+      If Form.Object.Selected()<0 Then
+        Form.Object.Save();
+      EndIf;
+      а:=ПолучитьЭлементОС();
+      If а=0 Then
+        Exit;
+      EndIf;
+      а.ПервоначальнаяСтоимость:=Form.ПервоначальнаяСтоимость.Value;
+      а.СтоимостьМодернизации:=Form.СтоимостьМодернизации.Value;
+      а.ДатаВводаВЭксплуатацию:=Form.ДатаВводаВЭксплуатацию.Value;
+      а.ДатаВыбытия:=Form.ДатаВыбытия.Value;
+      а.ДатаМодернизации:=Form.ДатаМодернизации.Value;
+      а.флНачислятьАмортизацию:=Form.флНачислятьАмортизацию.Value;
+      а.СрокПолезногоИспользования:=Form.СрокПолезногоИспользования.Value;
+      а.Счет:=Form.Счет.Value;
+      а.Субконто1:=Form.оСуб1.Value;
+      а.Субконто2:=Form.оСуб2.Value;
+      а.Субконто3:=Form.оСуб3.Value;
+      глЗаписать(а);
+    EndIf;
+    
+    Стр:=Trim(Эл.Name);
+    If (Left(Стр,1)="""")And(Right(Стр,1)="""") Then
+      Эл.Name:=Trim(Mid(Стр,2,Length(Стр)-2));
+    ElseIf Left(Стр,1)="""" Then  
+      Эл.Name:=Trim(Mid(Стр,2));
+    EndIf;
+    Стр:=Replace(Replace(Trim(Эл.Name),"  "," "),"  "," ");
+    Эл.Name:=Стр;
+//Запись элемента//Запись элемента//Запись элемента//Запись элемента//Запись элемента
+  EndIf;
+    
+  Exit 1;
+EndFunction
+
+Function OnOpenPeriodicalsEditor(Путь,Эл,ByRef НачДатаРедактирования,ByRef НачДатаПросмотра)
+  aEl:=Form.Object;
+  If Эл.Name="Цена" Then
+    Result:=?(глПользователь.бухГлавныйБухгалтер=1,1,2);
+  EndIf;
+EndFunction

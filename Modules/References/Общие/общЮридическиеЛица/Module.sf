@@ -1,0 +1,118 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var фАдрес Export;
+
+Function ПоКнопкеОткрытьСправочник(Вид,флГруппа=0,ИмяФормы="SelectForm")
+  aEl:=Form.MainTab.SelectedElement;
+  If IsEmpty(aEl) Then
+    Exit;
+  EndIf;
+  If aEl.Selected()<0 Then
+    Exit;
+  EndIf;
+  If aEl.Контрагент.Selected()=0 Then
+    Box("В юр. лице не выбран контрагент!",Q_STOP);
+    Exit;
+  EndIf;
+  If (not флГруппа)and(aEl.IsFolder()) Then
+    Exit;
+  EndIf;
+  глОткрытьФормуСправочника(Вид,ИмяФормы,,aEl.Контрагент);
+EndFunction
+
+Function ПоКнопкеОткрытьСправочникИзЭлемента(Вид)
+  aEl:=Form.Object;
+  If IsEmpty(aEl) Then
+    Exit;
+  EndIf;
+  If aEl.Selected()<0 Then
+    Box("Сначала запишите элемент!",Q_STOP);
+    Exit;
+  EndIf;
+  If aEl.Контрагент.Selected()=0 Then
+    Box("В юр. лице не выбран контрагент!",Q_STOP);
+    Exit;
+  EndIf;
+  глОткрытьФормуСправочника(Вид,,,aEl.Контрагент);
+EndFunction
+
+Function ОбновитьАдреса()
+  aEl:=Form.Object;
+  Form.тЮрАдрес.Caption:="Юридический адрес: "+глПредставлениеАдреса(aEl.ЮрАдрес,1);
+  Form.тФактАдрес.Caption:="Фактический адрес: "+глПредставлениеАдреса(aEl.ФактАдрес,1);
+  Form.тАдресИМНС.Caption:="Адрес ИФНС: "+глПредставлениеАдреса(aEl.АдресИМНС,1);
+EndFunction
+
+
+Function ИзменитьМаскуИНН(ФлОткрытие=0)
+  aEl:=Form.Object;
+  If aEl.Контрагент.Selected()=0 Then
+    Form.ИНН.Mask:="cccccccccccccccccccc;1;_";
+    Exit;
+  EndIf;
+  Дл:=Length(Form.ИНН.Value);
+  if aEl.Контрагент.ВидКонтрагента=Enum.ВидыКонтрагентов.ФизЛицо Then
+    Form.ИНН.Mask:="000000000000;1;_";
+    if (Дл>12)or(Pos("/",Form.ИНН.Value)>0)Or(Trim(Form.ИНН.Value)="") Then
+      If not ФлОткрытие Then
+        aEl.ИНН:="";
+      EndIf;
+    EndIf;
+  ElseIf aEl.Контрагент.ВидКонтрагента=Enum.ВидыКонтрагентов.ЮрЛицо Then
+    Form.ИНН.Mask:="0000000000/000000000;1;_";
+    If (Дл<20)And(not ФлОткрытие) Then
+      aEl.ИНН:="";
+    EndIf;
+  Else
+    Form.ИНН.Mask:="cccccccccccccccccccc;1;_";
+  EndIf;
+EndFunction
+
+
+Function OnBeforeElementSave()
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("ОбособленныеПодразделения");
+  bTab:=aTab.Copy();
+  bTab.AddColumn("Чл",,"Number");
+  
+  aTab.Select();
+  While aTab.Next() Do
+    If aTab.Магазин.Selected()=0 Then
+      Box("Необходимо выбрать магазины во всех строках таблицы обособленных подразделений!",Q_STOP);
+      Exit 0;
+    EndIf;
+    Стр:=Replace(Replace(aTab.ИНН,"\","/")," ","");
+    If Стр<>aTab.ИНН Then
+      aTab.ИНН:=Стр;
+    EndIf;  
+    bTab.CurLine:=aTab.CurLine;
+    bTab.Чл:=1;
+  EndDo;
+  bTab.Group("Магазин","Чл");
+  bTab.Select();
+  While bTab.Next() Do
+    If bTab.Чл>1 Then
+      Box("Магазин "+bTab.Магазин+" указан более одного раза в таблице обособленных подразделений! Каждый магазин должен быть указан не более одного раза!",Q_STOP);
+      Exit 0;
+    EndIf;
+  EndDo;
+  
+  If IsBlankString(aEl.Name) Then
+    Box("Не указано наименование юридического лица!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  If aEl.Контрагент.Selected()=0 Then
+    Box("Не забудьте выбрать контрагента, соответствующего текущему юр. лицу!",Q_WARNING);
+  EndIf;
+  
+  Exit 1;
+EndFunction
+
+
+Function OnOpenPeriodicalsEditor(Путь,Эл,ByRef НачДатаРедактирования,ByRef НачДатаПросмотра)
+  Result:=?(глПользователь.бухГлавныйБухгалтер=1,1,2);
+EndFunction
+

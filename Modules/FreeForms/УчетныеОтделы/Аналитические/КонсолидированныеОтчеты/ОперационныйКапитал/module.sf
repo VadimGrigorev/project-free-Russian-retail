@@ -1,0 +1,663 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function ПустыеСтолбики(Т,ТабФорма,ВСекция)
+  НачДата:=BegOfDay(глПолучитьУстановку(ТабФорма,"НачДата"));
+  КонДата:=BegOfDay(глПолучитьУстановку(ТабФорма,"КонДата"));
+
+  а:=НачДата;
+  While а<=КонДата Do
+    пДень:=""+а;
+    Т.CopyByX(ВСекция+"|h2");
+    а=а+1;
+  EndDo;
+  Т.CopyByX(ВСекция+"|h3");
+EndFunction    
+
+Function ПодсчитатьРекурсивно(Тб,КолВоГр,ДеньНом)
+  If КолВоГр>0 Then
+    См:=0;
+    Тб.Select();
+    While Тб.Next() Do
+      См:=См+ПодсчитатьРекурсивно(Тб.Тб,КолВоГр-1,ДеньНом);
+    EndDo;
+    Exit См;
+  EndIf;
+  Exit Тб.Get(ДеньНом,"См");
+EndFunction
+
+Function ВывестиГруппировку(ТабФорма,Т,Актив,пИмя,пИмяР,Тб,КолВоГр,НГр=0,Верхний=1)
+  НачДата:=BegOfDay(глПолучитьУстановку(ТабФорма,"НачДата"));
+  КонДата:=BegOfDay(глПолучитьУстановку(ТабФорма,"КонДата"));
+  ВсегоДней:=КонДата-НачДата+1;
+  Баланс:=глПолучитьИзМодуля("Баланс");
+  оУровни:=глПолучитьУстановку(ТабФорма,"оУровни");
+
+  //Подсчет верхней 
+  НомерСекции:=?(Актив="А",2,?(Актив="О",8,5));
+  Секция:="v"+(НомерСекции+НГр);
+  Т.CopyByX(Секция+"|h1",1);
+  For i:=1 To ВсегоДней Do
+    пЗн:=ПодсчитатьРекурсивно(Тб,КолВоГр,i);
+    If Верхний=1 Then
+      Баланс.Set(i,Баланс.Get(i)+пЗн);
+    EndIf;
+    пЗн:=глФРМ(?(Актив="П",-пЗн,пЗн));
+    Т.CopyByX(Секция+"|h2");
+  EndDo;
+  Т.CopyByX(Секция+"|h3");
+  If КолВоГр=0 Then
+    Exit;
+  EndIf;
+  НачВыс:=Т.Height();
+  //Вывод младших
+  Тб.Select();
+  While Тб.Next() Do
+    ВывестиГруппировку(ТабФорма,Т,Актив,Тб.Эл,Тб.ЭлР,Тб.Тб,КолВоГр-1,НГр+1,0);
+  EndDo;
+  If оУровни=1 Then
+    глДобавитьУровень(Т,НачВыс,Т.Height());
+  EndIf;
+EndFunction
+
+Function РасчетПоБанкам(ТабФорма,Т,оПЮЛ,Имя,Актив,Имя2)
+  НачДата:=BegOfDay(глПолучитьУстановку(ТабФорма,"НачДата"));
+  КонДата:=BegOfDay(глПолучитьУстановку(ТабФорма,"КонДата"));
+  ВсегоДней:=КонДата-НачДата+1;
+
+  Form.StatusText(Имя);
+  ТЗ:="Period From НачДата to КонДата;
+  |День:=Storage.Банк.@DAY;
+  |зСчет:=Storage.Банк.БанковскийСчет;
+  |зКА:=Storage.Банк.БанковскийСчет.@Parent.ТипАктива;
+  |зПЮЛ:=Storage.Банк.БанковскийСчет.@Parent.СвоеЮрЛицо;
+  |зК:=Storage.Банк.БанковскийСчет.@Parent;"+оПЮЛ+
+  "зП:=Income(Сумма);
+  |зКО:=EndTotals(Сумма);
+  |Group зК,зСчет,День;";
+  
+  З:=Query.Create();
+  З.Execute(ТЗ,2);
+  
+  Тб:=Tab.Create("Эл,ЭлР,Тб");
+  While З.Next(1) Do
+    Тб2:=Tab.Create("Эл,ЭлР,Тб");
+    Тб.AddLine("Эл,ЭлР,Тб",З.зК,З.зК,Тб2);
+    While З.Next(2) Do
+      Тб3:=Tab.Create();
+      Тб3.AddColumn("См",,"Number");
+      Тб2.AddLine("Эл,ЭлР,Тб",З.зСчет,З.зСчет,Тб3);
+      For i:=1 To ВсегоДней Do
+        Тб3.NewLine();
+      EndDo;
+      While З.Next(3) Do
+        Ном:=З.День-НачДата+1;
+        Тб3.Set(Ном,"См",З.зКО);
+      EndDo;
+    EndDo;
+  EndDo;
+  ВывестиГруппировку(ТабФорма,Т,Актив,Имя2,GetNothing(),Тб,2);
+EndFunction
+
+
+Function ПростойРасчетДолга(ТабФорма,Т,ТипА,Имя,Имя2,Имя3,Имя4)
+  НачДата:=BegOfDay(глПолучитьУстановку(ТабФорма,"НачДата"));
+  КонДата:=BegOfDay(глПолучитьУстановку(ТабФорма,"КонДата"));
+  ВсегоДней:=КонДата-НачДата+1;
+
+  Form.StatusText(Имя);
+  ТЗ:="Period From НачДата to КонДата;
+  |зКТА:=Storage.Взаиморасчеты.Договор.@Parent.ТипАктива;
+  |зК:=Storage.Взаиморасчеты.Договор.@Parent;
+  |зЧЮЛ:=Storage.Взаиморасчеты.Договор.ЮрЛицо.флЧужоеЮЛ;Condition(зЧЮЛ=0);
+  |зТара:=Storage.Взаиморасчеты.Тара;
+  |зДД:=Storage.Взаиморасчеты.ДатаЗадолженности;
+  |зДП:=Storage.Взаиморасчеты.ДатаПродажи;
+  |День:=Storage.Взаиморасчеты.@DAY;
+  |зСмК:=EndTotals(Сумма);
+  |Condition(isEmpty(зТара));
+  |Condition(зКТА="+ТипА+");
+  |Group зК,День;";
+  ЗП:=Query.Create();
+  ЗП.Execute(ТЗ,1,1,"зК");
+  
+  Тб:=Tab.Create("Эл,ЭлР,Тб");
+  Form.StatusText(Имя2);
+  While ЗП.Next(1) Do
+    Form.StatusText(Имя2+", контрагент "+ЗП.зК);
+    Тб2:=Tab.Create();
+    Тб2.AddColumn("См",,"Number");
+    Тб.AddLine("Эл,ЭлР,Тб",ЗП.зК,ЗП.зК,Тб2);
+    For i:=1 To ВсегоДней Do
+      Тб2.AddLine("См",0);
+    EndDo;
+    While ЗП.Next(2) Do
+      Тб2.CurLine:=ЗП.День-НачДата+1;
+      Тб2.См:=ЗП.зСмК;
+    EndDo;
+  EndDo;
+  
+  Form.StatusText(Имя3);
+  ВывестиГруппировку(ТабФорма,Т,"П",Имя4,GetNothing(),Тб,1);
+EndFunction
+
+
+Function ФорматироватьЧарт(Х)
+  Х.ActiveChart.Axes(1,1).HasTitle:=1;
+  Х.ActiveChart.Axes(1,1).AxisTitle.Characters.Text:="Дни";
+  Х.ActiveChart.Axes(2,1).HasTitle:=1;
+  Х.ActiveChart.Axes(2,1).AxisTitle.Characters.Text:="Рубли";
+  Х.ActiveChart.Axes(1).HasMajorGridlines:=0;
+  Х.ActiveChart.Axes(1).HasMinorGridlines:=0;
+  Х.ActiveChart.Axes(2).HasMajorGridlines:=1;
+  Х.ActiveChart.Axes(2).HasMinorGridlines:=0;
+  Х.ActiveChart.ApplyDataLabels(-4142,0);
+  Х.ActiveChart.HasDataTable:=0;
+  Х.ActiveChart.Axes(1).TickLabels.Alignment:=-4108;
+  Х.ActiveChart.Axes(1).TickLabels.Offset:=100;
+  Х.ActiveChart.Axes(1).TickLabels.Orientation:=-4170;
+  Х.ActiveChart.PlotArea.Interior.ColorIndex:=2;
+  Х.ActiveChart.PlotArea.Interior.PatternColorIndex:=2;
+  Х.ActiveChart.PlotArea.Interior.Pattern:=1;
+EndFunction
+
+
+
+Function Печать(СпУстановки)
+  ТабФорма:=СпУстановки.GetByName("Установки");
+  Т:=СпУстановки.GetByName("Таблица");
+  НачДата:=BegOfDay(глПолучитьУстановку(ТабФорма,"НачДата"));
+  КонДата:=BegOfDay(глПолучитьУстановку(ТабФорма,"КонДата"));
+  оВО:=глПолучитьУстановку(ТабФорма,"оВО").SelectedLine;
+  оБезПодотч:=глПолучитьУстановку(ТабФорма,"оБезПодотч");
+  оБезВнКр:=глПолучитьУстановку(ТабФорма,"оБезВнКр");
+  оДиаг:=глПолучитьУстановку(ТабФорма,"оДиаг");
+  оУровни:=глПолучитьУстановку(ТабФорма,"оУровни");
+
+
+  ФлЛок:=0;
+  If Т=0 Then
+    If not глПроверитьДатуВОтчетах(Param,Form.НачДата.Value,Form.КонДата.Value,-1) Then
+      Exit;
+    EndIf;
+    Т:=Table.Create();
+    НачДата:=BegOfDay(Form.НачДата.Value);
+    КонДата:=BegOfDay(Form.КонДата.Value);
+  Else  
+    ФлЛок:=1;
+    Т.Lock();
+    Т.Clear();
+  EndIf;  
+  
+  Try
+    ВсегоДней:=КонДата-НачДата+1;
+  
+    //Выводим шапку
+    оЗагол:="Операционный капитал (консолидированный баланс)"+?(оВО=1,""," (включая поставщиков Б)");
+    оСвойства:=?(НачДата=КонДата,"На "+FormatDate(НачДата,"dd.mm.YYYY (NN)"),"Период формирования с "+Str(НачДата)+" по "+Str(КонДата)+" (Дней: "+Str(КонДата-НачДата+1)+")");
+    Строчка:=0;
+    Сп:=СпУстановки;
+    Т.CopyByX("v1|h1",1);ПустыеСтолбики(Т,ТабФорма,"v1");
+    Т.Options.FixedLine:=Т.Height();
+  
+    Баланс:=List.Create();
+    For i:=1 To ВсегоДней Do
+      Баланс.Add(0);
+    EndDo;
+    глСохранитьВМодуле("Баланс",Баланс);
+    
+    пИтоги:="Итого по секциям актива:";
+    Т.CopyByX("v8|h1",1);
+    For i:=1 To ВсегоДней Do
+      пЗн:="";
+      Т.CopyByX("v8|h2");
+    EndDo;
+    Т.CopyByX("v8|h3");
+    
+    АктивНач:=Т.Height()+1;
+    
+    //Банки
+    РасчетПоБанкам(ТабФорма,Т,"Condition(NOT isEmpty(зПЮЛ));","Запрос по банкам...","А","Банковские счета");
+    
+    Т.Area(2,АктивНач,2,АктивНач).Text:="Актив";
+    
+    
+    //Кассы
+    Form.StatusText("Запрос по кассам...");
+    ТЗ:="Period From НачДата to КонДата;
+    |зЧЮЛ:=Storage.Касса.ЮрЛицо.флЧужоеЮЛ;Condition(зЧЮЛ=0);
+    |День:=Storage.Касса.@DAY;
+    |зК:=Storage.Касса.Касса;
+    |зП:=Income(Сумма);зКО:=EndTotals(Сумма);
+    |Group зК,День;";
+    
+    З:=Query.Create();
+    З.Execute(ТЗ,2);
+    
+    Тб:=Tab.Create("Эл,ЭлР,Тб");
+    While З.Next(1) Do
+      Тб2:=Tab.Create();
+      Тб2.AddColumn("См",,"Number");
+      Тб.AddLine("Эл,ЭлР,Тб",З.зК,З.зК,Тб2);
+      For i:=1 To ВсегоДней Do
+        Тб2.NewLine();
+      EndDo;
+      While З.Next(2) Do
+        Ном:=З.День-НачДата+1;
+        Тб2.Set(Ном,"См",З.зКО);
+      EndDo;
+    EndDo;
+    ВывестиГруппировку(ТабФорма,Т,"А","Остатки в кассах",GetNothing(),Тб,1);
+    
+    //Скидки поставщиков
+    If оВО=2 Then
+      Form.StatusText("Запрос по скикдкам поставщиков...");
+      ТЗ:="Period From НачДата to КонДата;
+      |зК:=Storage.СкидкиПоставщиков.Поставщик;
+      |День:=Storage.СкидкиПоставщиков.@DAY;
+      |зП:=Income(Сумма);зКО:=EndTotals(Сумма);
+      |Group зК,День;";
+      З:=Query.Create();
+      З.Execute(ТЗ,2);
+      
+      Тб:=Tab.Create("Эл,ЭлР,Тб");
+      While З.Next(1) Do
+        Тб2:=Tab.Create();
+        Тб2.AddColumn("См",,"Number");
+        Тб.AddLine("Эл,ЭлР,Тб",З.зК,З.зК,Тб2);
+        For i:=1 To ВсегоДней Do
+          Тб2.NewLine();
+        EndDo;
+        While З.Next(2) Do
+          Ном:=З.День-НачДата+1;
+          Тб2.Set(Ном,"См",З.зКО);
+        EndDo;
+      EndDo;
+      ВывестиГруппировку(ТабФорма,Т,"А","Начисленные скидки поставщиков",GetNothing(),Тб,1);
+    EndIf;
+    
+    //Инкассация
+    Form.StatusText("Запрос по инкассации...");
+    Инк:=Enum.ТипыПодотчетныхОпераций.Инкассация;
+    ТЗ:="Period From НачДата to КонДата;
+    |зЧЮЛ:=Storage.ПодотчетныеОперации.ЮрЛицо.флЧужоеЮЛ;Condition(зЧЮЛ=0);
+    |зК:=Storage.ПодотчетныеОперации.ПодотчетноеЛицо;
+    |День:=Storage.ПодотчетныеОперации.@DAY;
+    |зТип:=Storage.ПодотчетныеОперации.ТипОперации;Condition(зТип=Инк);
+    |зП:=Income(Сумма);зКО:=EndTotals(Сумма);
+    |Group зК,День;";
+    З:=Query.Create();
+    З.Execute(ТЗ,2);
+    
+    Тб:=Tab.Create("Эл,ЭлР,Тб");
+    While З.Next(1) Do
+      Тб2:=Tab.Create();
+      Тб2.AddColumn("См",,"Number");
+      Тб.AddLine("Эл,ЭлР,Тб",З.зК,З.зК,Тб2);
+      For i:=1 To ВсегоДней Do
+        Тб2.NewLine();
+      EndDo;
+      While З.Next(2) Do
+        Ном:=З.День-НачДата+1;
+        Тб2.Set(Ном,"См",З.зКО);
+      EndDo;
+    EndDo;
+    ВывестиГруппировку(ТабФорма,Т,"А","Инкассация (деньги в пути)",GetNothing(),Тб,1);
+    
+  
+    //Подотчет
+    If оБезПодотч=0 Then
+      Form.StatusText("Запрос по подотчету...");
+      Под:=Enum.ТипыПодотчетныхОпераций.ПодотчетнаяОперация;
+      ТЗ:="Period From НачДата to КонДата;
+      |зЧЮЛ:=Storage.ПодотчетныеОперации.ЮрЛицо.флЧужоеЮЛ;Condition(зЧЮЛ=0);
+      |зК:=Storage.ПодотчетныеОперации.ПодотчетноеЛицо;
+      |День:=Storage.ПодотчетныеОперации.@DAY;
+      |зТип:=Storage.ПодотчетныеОперации.ТипОперации;Condition(зТип=Под);
+      |зП:=Income(Сумма);зКО:=EndTotals(Сумма);
+      |Group зК,День;";
+      З:=Query.Create();
+      З.Execute(ТЗ,2);
+      
+      Тб:=Tab.Create("Эл,ЭлР,Тб");
+      While З.Next(1) Do
+        Тб2:=Tab.Create();
+        Тб2.AddColumn("См",,"Number");
+        Тб.AddLine("Эл,ЭлР,Тб",З.зК,З.зК,Тб2);
+        For i:=1 To ВсегоДней Do
+          Тб2.NewLine();
+        EndDo;
+        While З.Next(2) Do
+          Ном:=З.День-НачДата+1;
+          Тб2.Set(Ном,"См",З.зКО);
+        EndDo;
+      EndDo;
+      ВывестиГруппировку(ТабФорма,Т,"А","Подотчетники",GetNothing(),Тб,1);
+    EndIf;
+    
+    //Бух. счета
+    Form.StatusText("Запрос по бух. счетам...");
+    ТЗ:="Period From НачДата to КонДата;
+    |зЧЮЛ:=Storage.БухгалтерскиеСчета.ЮрЛицо.флЧужоеЮЛ;Condition(зЧЮЛ=0);
+    |зСч:=Storage.БухгалтерскиеСчета.Счет;
+    |День:=Storage.БухгалтерскиеСчета.@DAY;
+    |зФл:=Storage.БухгалтерскиеСчета.Счет.флИспользуетсяВББЛ;Condition(зФл=1);
+    |зП:=Income(Сумма);зКО:=EndTotals(Сумма);
+    |Group зСч,День;";
+    З:=Query.Create();
+    З.Execute(ТЗ,2);
+    
+    Тб:=Tab.Create("Эл,ЭлР,Тб");
+    Фл:=0;
+    While З.Next(1) Do
+      Фл:=1;
+      Тб2:=Tab.Create();
+      Тб2.AddColumn("См",,"Number");
+      Тб.AddLine("Эл,ЭлР,Тб",З.зСч,З.зСч,Тб2);
+      For i:=1 To ВсегоДней Do
+        Тб2.NewLine();
+      EndDo;
+      While З.Next(2) Do
+        Ном:=З.День-НачДата+1;
+        Тб2.Set(Ном,"См",З.зКО);
+      EndDo;
+    EndDo;
+    If Фл Then
+      ВывестиГруппировку(ТабФорма,Т,"А","Остатки по бух. счетам",GetNothing(),Тб,1);
+    EndIf;
+    
+    //Остатки на складах
+    СпАктив:=List.Create();
+    Тб:=Tab.Create("Эл,ЭлР,Тб");
+    б:=Ref.общСклады;
+    б.Select("@IsFolder,ИспользоватьВАктиве",0,1);
+    While б.Next() Do
+      Эл:=б.Copy();
+      СпАктив.Add(Эл);
+      Тб2:=Tab.Create();
+      Тб2.AddColumn("См",,"Number");
+      Тб.AddLine("Эл,ЭлР,Тб",Эл,Эл,Тб2);
+      For i:=1 To ВсегоДней Do
+        Тб2.NewLine();
+      EndDo;
+    EndDo;
+    
+    Товар:=Enum.ВидыНоменклатуры.Товар;
+    For i:=1 To ВсегоДней Do
+      ТекДата:=НачДата+i-1;
+      Form.StatusText("Запрос по остаткам, "+Str(ТекДата));
+      ТОстатки:=Stor.ОстаткиТМЦ.Gross("Склад,Номенклатура","Количество",ТекДата,0,"->Склад",СпАктив);
+      Form.StatusText("Расчет остатков: "+Str(ТекДата));
+      
+      тЦена:=Tab.Create("Индекс,Цена");
+      ТОстатки.Select();
+      While ТОстатки.Next() Do
+        If ТОстатки.CurLine%100=0 Then
+          Form.StatusText("Расчет остатков: "+Str(ТекДата)+", "+ТОстатки.CurLine+"/"+ТОстатки.Size());
+        EndIf;  
+        If Тб.FindAndGoto(ТОстатки.Склад,,"Эл")=0 Then
+          Continue;
+        EndIf;
+        If ТОстатки.Номенклатура.ВидНоменклатуры<>Товар Then
+          Continue;
+        EndIf;
+        If ТОстатки.Количество=0 Then
+          Continue;
+        EndIf;
+        Сумма:=ТОстатки.Количество*глПолучитьОсновнуюЦену(ТОстатки.Номенклатура,ТОстатки.Склад,ТекДата,0,тЦена);
+        Тб.Тб.Set(i,"См",Тб.Тб.Get(i,"См")+Сумма);
+      EndDo;  
+    EndDo;
+    
+    i:=0;
+    While i<Тб.Size() Do
+      i:=i+1;
+      Тб.CurLine:=i;
+      Тб2:=Тб.Тб;
+      Фл:=0;
+      Тб2.Select();
+      While Тб2.Next() Do
+        If Тб2.См<>0 Then
+          Фл:=1;
+          Break;
+        EndIf;
+      EndDo;
+      If Фл Then
+        Continue;
+      EndIf;
+      Тб.Remove(i);
+      i:=i-1;
+    EndDo;
+    
+    ВывестиГруппировку(ТабФорма,Т,"А","Товарные остатки",GetNothing(),Тб,1);
+    
+    //Долги покупателей
+    Form.StatusText("Запрос по покупателям...");
+    ТЗ:="Period From НачДата to КонДата;
+    |зЮЛ:=Storage.Взаиморасчеты.Договор.ЮрЛицо;
+    |зЧЮЛ:=Storage.Взаиморасчеты.Договор.ЮрЛицо.флЧужоеЮЛ;Condition(зЧЮЛ=0);
+    |зКТА:=Storage.Взаиморасчеты.Договор.@Parent.ТипАктива;
+    |зТара:=Storage.Взаиморасчеты.Тара;
+    |зДД:=Storage.Взаиморасчеты.ДатаЗадолженности;
+    |зДП:=Storage.Взаиморасчеты.ДатаПродажи;
+    |День:=Storage.Взаиморасчеты.@DAY;
+    |зСмК:=EndTotals(Сумма);
+    |Condition(isEmpty(зТара));
+    |Condition(зКТА=0);
+    |Group зЮЛ,День;";
+    З:=Query.Create();
+    З.Execute(ТЗ);
+    
+    Тб:=Tab.Create("Эл,ЭлР,Тб");
+    //Полный расчет долгов
+    Form.StatusText("Расчет долгов, покупатели.");
+    З.First();
+    While З.Next(1) Do
+      Form.StatusText("Расчет долгов, покупатели, юр. лицо "+З.зЮЛ);
+      Тб.AddLine("Эл,ЭлР",З.зЮЛ,З.зЮЛ);
+      
+      Тб3:=Tab.Create();
+      Тб3.AddColumn("См",,"Number");
+      Тб.Тб:=Тб3;
+      For i:=1 To ВсегоДней Do
+        Тб3.AddLine("См",0);
+      EndDo;
+
+      While З.Next(2) Do
+        Тб3.CurLine:=З.День-НачДата+1;
+        Тб3.См:=З.зСмК;
+      EndDo;
+    EndDo;
+    
+    Form.StatusText("Вывод группировки по покупателям.");
+    ВывестиГруппировку(ТабФорма,Т,"А","Долг покупателей",GetNothing(),Тб,1);
+    
+    //If АктивНач+1<Т.Height() Then
+    //  Т.Area(2,АктивНач,2,Т.Height()).Merge();
+    //EndIf;
+    For i:=1 To ВсегоДней Do
+      Т.Area(3+i,АктивНач-1,3+i,АктивНач-1).Text:=глФРМ(Баланс.Get(i));
+    EndDo;
+    БалансА:=Баланс;
+    пИтоги:="Итого по секциям пассива:";
+    Т.CopyByX("v8|h1",1);
+    For i:=1 To ВсегоДней Do
+      пЗн:="";
+      Т.CopyByX("v8|h2");
+    EndDo;
+    Т.CopyByX("v8|h3");
+    Баланс:=List.Create();
+    For i:=1 To ВсегоДней Do
+      Баланс.Add(0);
+    EndDo;
+    глСохранитьВМодуле("Баланс",Баланс);
+    
+    ПассивНач:=Т.Height()+1;
+    
+    
+    ПростойРасчетДолга(ТабФорма,Т,1,"Запрос по поставщикам...","Расчет долгов, поставщики","Вывод группировки по поставщикам.","Долг перед поставщиками");
+    ПростойРасчетДолга(ТабФорма,Т,4,"Запрос по кредиторам...","Расчет долгов, кредиторы","Вывод группировки по кредиторам.","Долг перед кредиторами");
+    
+    Т.Area(2,ПассивНач,2,ПассивНач).Text:="Пассив";
+    
+    If оВО=2 Then
+      ПростойРасчетДолга(ТабФорма,Т,2,"Запрос по поставщикам Б...","Расчет долгов, поставщики Б","Вывод группировки по поставщикам Б.","Долг перед поставщиками услуг (Б)");
+    EndIf;
+    
+    //Банки
+    If оБезВнКр=0 Then
+      РасчетПоБанкам(ТабФорма,Т,"Condition(isEmpty(зПЮЛ));Condition(зКА=3);","Запрос по внутренним кредитам...","П","Кредиты");
+    EndIf;
+    РасчетПоБанкам(ТабФорма,Т,"Condition(isEmpty(зПЮЛ));Condition(зКА<>3);","Запрос по банковским кредитам...","П","Банковские кредиты");
+    
+    //If ПассивНач+1<Т.Height() Then
+    //  Т.Area(2,ПассивНач,2,Т.Height()).Merge();
+    //EndIf;  
+    For i:=1 To ВсегоДней Do
+      Т.Area(3+i,ПассивНач-1,3+i,ПассивНач-1).Text:=глФРМ(-Баланс.Get(i));
+    EndDo;
+    
+  //Партнерские дивиденды, вливание средств в бизнес
+    If глПользователь.бухГлавныйБухгалтер Then
+      НДата:=BegOfMonth(НачДата);
+      //Корректировка за счет ЦЗ.Внутр=2
+      ТЗ:="Period From НДата to КонДата;
+      |зЦЗ:=Storage.Затраты.ЦентрЗатрат;
+      |зОТ:=Storage.Затраты.ЦентрЗатрат.Ответственный;
+      |зВН:=Storage.Затраты.ЦентрЗатрат.ВнутреннееПеремещение;
+      |День:=Storage.Затраты.@DAY;
+      |Condition(зВН=2);
+      |зТЗ:=Storage.Затраты.ТипЗаписи;Condition(зТЗ<2);
+      |зСЗ:=Storage.Затраты.СтатьяЗатрат;
+      |зС0:=Storage.Затраты.Сумма;
+      |зСм:=SUM(зС0);
+      |Group зОТ,зСЗ,День;";
+      З:=Query.Create();
+      З.Execute(ТЗ,2);
+      
+      While З.Next(1) Do
+        Тб:=Tab.Create("Эл,ЭлР,Тб");
+        While З.Next(2) Do
+          Тб2:=Tab.Create();
+          Тб2.AddColumn("См",,"Number");
+          Тб.AddLine("Эл,ЭлР,Тб",З.зСЗ,З.зСЗ,Тб2);
+          For i:=1 To ВсегоДней Do
+            Тб2.NewLine();
+          EndDo;
+          While З.Next(3) Do
+            Мес:=Min(EndOfMonth(З.День),КонДата);
+            For i:=1 To Мес-З.День+1 Do
+              Ном:=З.День-НачДата+i;
+              If Ном>0 Then
+                Тб2.Set(Ном,"См",Тб2.Get(Ном,"См")+З.зСм);
+              EndIf;
+            EndDo;
+          EndDo;
+        EndDo;
+        ВывестиГруппировку(ТабФорма,Т,"О","Движение ден. средств ("+З.зОТ+")",GetNothing(),Тб,1);
+      EndDo;
+    Else
+      Message("Особые центры затрат при формировании пропущены из-за недостатка прав...","I");
+    EndIf;
+    
+  //Итоги//Итоги//Итоги//Итоги//Итоги//Итоги//Итоги//Итоги//Итоги//Итоги//Итоги//Итоги
+    Form.StatusText("Вывод итогов.");
+    //Итоги
+    Т.CopyByX("v9|h1",1);
+    For i:=1 To ВсегоДней Do
+      пДень:=Str(НачДата+i-1);
+      пЗн:=Баланс.Get(i)+БалансА.Get(i);
+      пЗн:=глФРМ(пЗн);
+      Т.CopyByX("v9|h2");
+    EndDo;
+    Т.CopyByX("v9|h3");
+      
+    While (оДиаг=1)And(НачДата<>КонДата) Do
+      Form.StatusText("Создание диаграммы...");
+      Try
+        Х:=CreateOLE("Excel.Application");
+        Х.WorkBooks.Add();
+      Except
+        Message(PopError(),"!");
+        Message("Ошибка создании диаграммы! Возможно, не установлен MS-Excel!","!");
+        Break;
+      EndTry;
+      Х.DisplayAlerts:=0;
+      While Х.Worksheets.Count>1 Do
+        Х.Worksheets(1).Delete();
+      EndDo;
+      Х.WorkSheets(1).Name:="Данные";
+      Л:=Х.WorkSheets(1);
+      Л.Activate();
+      Л.Select();
+      //Заполнение значений
+      For i:=1 To ВсегоДней Do
+        Л.Cells(i+2,1).Value:=Str(НачДата+i-1);
+        Л.Cells(i+2,2).Value:=Баланс.Get(i)+БалансА.Get(i);
+        Л.Cells(i+2,3).Value:=Str(НачДата+i-1);
+        Л.Cells(i+2,4).Value:=БалансА.Get(i);
+        Л.Cells(i+2,5).Value:=-Баланс.Get(i);
+      EndDo;
+      
+      Л.Range("A3:B"+(ВсегоДней+2)).Select();
+      Х.Charts.Add();
+      Х.ActiveChart.ChartType:=65;
+      Х.ActiveChart.SeriesCollection(1).Name:="=""Операционный капитал""";
+      //Х.ActiveChart.Location(1);
+      Х.ActiveSheet.Name:="Операционный капитал";
+      Х.ActiveChart.HasTitle:=1;
+      Х.ActiveChart.ChartTitle.Characters.Text:="Операционный капитал за период с "+Str(НачДата)+" по "+Str(КонДата);
+      ФорматироватьЧарт(Х);
+      Х.ActiveChart.SeriesCollection(1).Border.ColorIndex:=57;
+      Х.ActiveChart.SeriesCollection(1).Border.Weight:=4;
+      Х.ActiveChart.SeriesCollection(1).MarkerForegroundColorIndex:=57;
+      Х.ActiveChart.SeriesCollection(1).MarkerBackgroundColorIndex:=57;
+      Х.ActiveChart.ChartTitle.Font.Bold:=1;
+      Х.ActiveChart.ChartTitle.Font.Size:=14;
+      
+      Л.Activate();
+      Л.Select();
+      Л.Range("C3:E"+(ВсегоДней+2)).Select();
+      Х.Charts.Add();
+      Х.ActiveChart.ChartType:=65;
+      //Х.ActiveChart.Location(1);
+      Х.ActiveSheet.Name:="Актив и пассив";
+      Х.ActiveChart.SeriesCollection(1).Name:="=""Актив""";
+      Х.ActiveChart.SeriesCollection(2).Name:="=""Пассив""";
+      Х.ActiveChart.HasTitle:=1;
+      Х.ActiveChart.ChartTitle.Characters.Text:="Актив и пассив за период с "+Str(НачДата)+" по "+Str(КонДата);
+      ФорматироватьЧарт(Х);
+      Х.ActiveChart.SeriesCollection(1).Border.ColorIndex:=10;
+      Х.ActiveChart.SeriesCollection(1).Border.Weight:=-4138;
+      Х.ActiveChart.SeriesCollection(1).MarkerForegroundColorIndex:=10;
+      Х.ActiveChart.SeriesCollection(1).MarkerBackgroundColorIndex:=10;
+      Х.ActiveChart.SeriesCollection(2).Border.ColorIndex:=3;
+      Х.ActiveChart.SeriesCollection(2).Border.Weight:=-4138;
+      Х.ActiveChart.SeriesCollection(2).MarkerForegroundColorIndex:=3;
+      Х.ActiveChart.SeriesCollection(2).MarkerBackgroundColorIndex:=3;
+      Х.ActiveChart.ChartTitle.Font.Bold:=1;
+      Х.ActiveChart.ChartTitle.Font.Size:=14;
+      
+      Х.Visible:=1;
+      Break;
+    EndDo;
+    
+    If оУровни=1 Then
+      Т.Levels().Close();
+    EndIf;
+    глПечатнаяФормаОтчета(Т,Param,оЗагол);
+  Finally
+    If ФлЛок Then
+      Т.Unlock();
+      Т.EditorMode:=1;
+    EndIf;
+  EndTry;
+EndFUnction
+
+
+Function OnExecute(СпУстановки)
+  Печать(СпУстановки);
+EndFunction
+

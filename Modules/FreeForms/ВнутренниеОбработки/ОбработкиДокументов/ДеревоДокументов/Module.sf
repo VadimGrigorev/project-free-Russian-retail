@@ -1,0 +1,271 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var Т Export;
+Var Док Export;
+
+
+Function ВывестиДокумент(Док,Д,Т,Шир)
+  Тек:=?(Д=Док,0,3);
+  Стат:=?(Д.Status()>1,0,?(Д.Status()=1,2,1));
+  пДок:=Trim(Д)+?(Стат=0," (обработан)",?(Стат=1,""," (удален)"));
+  
+  См:="";
+  Кнт:="";
+  Try
+    If глЕстьРеквизитДокумента("СуммаВзаиморасчетов",Д.DBName()) Then
+      См:=глФРМ(Д.СуммаВзаиморасчетов);
+    EndIf;
+    If См="" Then
+      If глЕстьРеквизитДокумента("Сумма",Д.DBName()) Then
+        См:=глФРМ(Д.Сумма);
+      EndIf;
+    EndIf;  
+    If глЕстьРеквизитДокумента("Контрагент",Д.DBName()) Then
+      Кнт:=Д.Контрагент;
+    EndIf;
+  Except
+  EndTry;
+  
+  пДокДоп:=?(См="","","Сумма: "+См+", ")+?(Кнт="","",Кнт);
+  пДокР:=Д;
+  
+  Сп:=List.Create();
+  Сп.SetByName("Module","Modules\FreeForms\ВнутренниеОбработки\ОбработкиДокументов\ДеревоДокументов");
+  Сп.SetByName("Документ",Док);
+  Сп.SetByName("Строка",Т.Height()+1);
+  Сп.SetByName("Столбец",Шир);
+  Сп.SetByName("ДокР",Д);
+  Сп.SetByName("Таблица",Т);
+  
+  Т.CopyByX("v2|h2");
+  
+  
+  Т2:=Т.Source();
+  Т.Area(Шир+1,Т.Height()-1,Шир+10,Т.Height()).ColorProfile:=Т2.Area(2,10+Тек+Стат,2,10+Тек+Стат).ColorProfile;
+EndFunction
+
+Function ПечатьПодчинения(Док,Д,Т,СпГлоб=0,Отс=0)
+  If СпГлоб=0 Then
+    СпГлоб:=List.Create();
+    Отс:=List.Create();
+  EndIf;
+  СпГлоб.Add(Д);
+  
+  //Выводим подчиненные документа Д
+  СпЛок:=List.Create();
+  а:=Д.LoadLinkedDocuments(1);
+  а.Sort();
+  For i:=1 to а.Size() Do
+    Д2:=а.Get(i);
+    If СпГлоб.Find(Д2)=0 Then
+      СпЛок.Add(Д2);
+    EndIf;
+  EndDo;
+  
+  For а:=1 to СпЛок.Size() Do
+    Д2:=СпЛок.Get(а);
+    
+    Т.CopyByX("v3|h1",1);
+    For б:=1 to Отс.Size() Do
+      If Отс.Get(б)=0 Then
+        Т.CopyByX("v3|h3");
+      Else
+        Т.CopyByX("v3|h4");
+      EndIf;
+      Т.CopyByX("v3|h3");
+    EndDo;
+    Т.CopyByX("v3|h4");
+    Т.CopyByX("v3|h3");
+    
+    Шир:=1;
+    Т.CopyByX("v4|h1",1);
+    For б:=1 to Отс.Size() Do
+      If Отс.Get(б)=0 Then
+        Т.CopyByX("v4|h3");
+      Else
+        Т.CopyByX("v4|h4");
+      EndIf;
+      Т.CopyByX("v4|h3");
+      Шир:=Шир+2;
+    EndDo;
+    If а=СпЛок.Size() Then
+      Т.CopyByX("v4|h6");
+    Else
+      Т.CopyByX("v4|h4");
+    EndIf;
+    Т.CopyByX("v4|h5");
+    Шир:=Шир+2;
+    
+    ВывестиДокумент(Док,Д2,Т,Шир);
+    
+    Отс.Add(?(а=СпЛок.Size(),0,1));
+    ПечатьПодчинения(Док,Д2,Т,СпГлоб,Отс);
+    Отс.Remove(Отс.Size());
+  EndDo;
+EndFunction
+
+
+
+Function Печать(Док,Т)
+  Fl:=0;
+  Д:=глНайтиКорень(Док);
+  If IsEmpty(Т) Then
+    Т:=Table.Create();
+  Else
+    Т.Lock();
+    Т.Clear();
+    Fl:=1;
+  EndIf;
+  Try
+    Т.SetSourceName("Table");
+    
+    Сп:=List.Create();
+    Сп.SetByName("Документ",Док);
+    Сп.SetByName("Таблица",Т);
+    Сп.SetByName("Module","Modules\FreeForms\ВнутренниеОбработки\ОбработкиДокументов\ДеревоДокументов");
+    Т.CopyByX("v1",1);
+    
+    Т.Options.FixedLine:=Т.Height();
+    Т.CopyByX("v5",1);
+    
+    Т.CopyByX("v4|h1",1);
+    ВывестиДокумент(Док,Д,Т,1);
+    ПечатьПодчинения(Док,Д,Т);
+    If not Fl Then
+      глПечатнаяФорма(Т,Param,"Дерево подчиненности документов");
+    EndIf;
+    
+    Т.FindByValue(Док,0,,1);
+  Finally
+    If Fl Then
+      Т.Unlock();
+      Т.EditorMode:=1;
+    EndIf;
+  EndTry;  
+EndFunction
+
+
+Function OnDoubleClick(Т2)
+  If Т2.SelectionMode>1 Then
+    if Т2.SelectedObjects().Count()<1 Then
+      Exit 1;
+    EndIf;
+    Obj:=Т2.SelectedObjects().Get(1);
+    Сп:=Obj.Value;
+    If TypeStr(Сп)<>"LIST" Then
+      Exit 1;
+    EndIf;
+    Док:=Сп.GetByName("Документ");
+    Т:=Сп.GetByName("Таблица");
+  
+    Док:=Док.Copy();//refresh
+    Печать(Док,Т);
+    Exit 1;
+  EndIf;
+
+  Сп:=Т2.Area(Т2.CurCol,Т2.CurLine,Т2.CurCol,Т2.CurLine).Value;
+  If TypeStr(Сп)<>"LIST" Then
+    Exit 1;
+  EndIf;
+  Result:=0;
+  
+  а:=List.Create();
+  а.Add(0,"Открыть форму документа");
+  а.Add(3,"Открыть в журнале");
+  а.Add(-1,"-");
+  ДокР:=Сп.GetByName("ДокР");
+  Док:=Сп.GetByName("Документ");
+  Т:=Сп.GetByName("Таблица");
+  
+  If ДокР.Status()=0 Then
+    а.Add(1,"Обработать документ");
+  ElseIf ДокР.Status()>1 Then
+    а.Add(1,"Отменить обработку документа");
+  EndIf;
+  If ДокР.Status()<>1 Then
+    а.Add(2,"Удалить документ");
+  Else
+    а.Add(2,"Отменить удаление документа");
+  EndIf;
+  Зн:=0;
+  Поз:=а.Select(Зн,1);
+  If Поз=0 Then
+    Exit;
+  EndIf;
+  Ткс:=а.GetName(Поз);
+  If Зн<0 Then
+    Exit;
+  EndIf;
+  If Зн=0 Then
+    OpenObject(ДокР,0,1);
+    Exit;
+  ElseIf Зн=3 Then
+    LoadModule(1,"Jor.ОбщийЖурнал",ДокР);
+    Exit;
+  ElseIf Зн=1 Then
+    If not глПроверкаРазрешенияРедактирования(ДокР,1) Then
+      Box("Вам запрещено изменять этот документ!",Q_STOP);
+      Exit;
+    EndIf;
+    If AskQuestion(Ткс+", вы уверены?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Exit;
+    EndIf;
+    Try
+      If ДокР.Status()<2 Then
+        ДокР.Publish();
+      Else
+        ДокР.Unpublish();
+      EndIf;
+    Except
+      Message(глПодготовитьОшибкуОбработки(),"!");
+    EndTry;  
+  ElseIf Зн=2 Then
+    If not глПроверкаРазрешенияРедактирования(ДокР,1) Then
+      Box("Вам запрещено изменять этот документ!",Q_STOP);
+      Exit;
+    EndIf;
+    If AskQuestion(Ткс+", вы уверны?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Exit;
+    EndIf;
+    If ДокР.Status()<>1 Then
+      ДокР.Mark(1);
+    Else
+      ДокР.Mark(0);
+    EndIf;
+  EndIf;
+  Печать(Док,Т);
+EndFunction
+
+Function OnRightClick(Т2)
+  OnDoubleClick(Т2);
+EndFunction
+
+Function OnOpen()
+  Result:=0;
+  If IsEmpty(Param)=1 Then
+    Exit;
+  EndIf;
+  If typestr(Param)="LIST" Then
+    If Param.GetByName("SimpleRootCall")=1 Then
+      OnDoubleClick(Param.GetByName("Table"));
+      Exit;
+    EndIf;
+  EndIf;
+  
+  If not глПриОткрытииОтчета("ДеревоДокументов",Param,0) Then
+    Exit;
+  EndIf;
+  
+  If typestr(Param)="LIST" Then
+    Док:=Param.GetByName("Док");
+    Т:=Param.GetByName("Table");
+  Else
+    Док:=Param;
+    Т:=GetNothing();
+  EndIf;
+  Печать(Док,Т);
+EndFunction
+
+

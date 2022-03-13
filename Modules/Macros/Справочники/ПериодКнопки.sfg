@@ -1,0 +1,70 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=195
+  Height=25
+  OnOpen
+    @@>@e@Du_6@4_>d5_Ik_5c@"@;@\l@Pg|7@;@J@cn@Xd@r@ic_L_B/|@8_XL@<t@F0@P&@(e_g@K_4_/_
+    @"?_E@g_]@>@"$@\g_6Z@o@0X@:U@x@B_9_$_S_H:@T@,_J_X_=_d@i@^o@[WG_e@=@Ot@O@;@v9_d@'Z
+    @@C^0@G@Q@a@|@m&t_3h@M@"@Ht@P_?_Q(_#6T@t_&@f_<_To_F@$'@3@T3_7_Vn49Q@[N<3m_"@"@*B_
+    @]@M@+)_(DU_L@T@5~@-_)_[@g_f_6&5@W4mTx@A@'_\#9@S_i_%ah@KY_'_B1@Jl5@s_7@?.@QFY)[n_
+    @?_V_'_1_1_0@r_$V8$@a@#@M@U_[@/@L_"_)@+_%_[_X@&_Q@M@J>VD]@-)=@9u_T@B@j@q@,,@&S_H@
+    @]^_g@r]_X_&T_L@F_,J@R_bd@Q^@3@p_"2B3r@g_8@nw_'_X0;@h@+f@(_=@a_J_a_m@[@S+O@S_A_*_
+    @30@\@wdp_dI@4_+_C|@|@W_W(+@F5@t@g@KL|@^u@r@c@V@l@Y_H@'E)@}@U@~s_h_&_'@N@"@Q@T_d@
+    @Z@\j_"@|m_*@x_$@ip@3_*@7@XI_X;G42_i@Li_-@sA@at7UG@.@x_m@s_G@b_&@Nk@d_b~@m_G|t@kR
+    @_I;_W@{_h@"z<@YL@[;S@f_.@z@5(IM_[@k@b_m_P_5*_-_J_,VZ@~@^@U@5_(Yc_E_h@}@6_-_;_!/'
+    @_Ob@e@D@}_(@4(@iu@g@"_E8@t_;@E_Pbg_>@TH@gW@f_W@D_eg_SO_Z@~_k_,@6@I@)IR_:@#_G\^;0
+    @_S@w@M@:]@F"@%I_G_f
+  End
+  OnTimerInterval=0
+  MaxControlSerial=7
+  LoadModes=0
+  Object BUTTON
+    LayerName=Main
+    Left=0
+    Top=0
+    Width=95
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=Дата начала изменения периодических реквизитов при записи
+    Name=bPeriodBeg
+    ControlSerial=5
+    Caption=c 01.01.2001 по
+    HotKey=
+    Picture=0
+    OnClick
+      @@>@eW_1S/@It-'_L@f@K]@:@Kh_/_I_<$@>)I@l_]@s_N.+~_g_>k,^@(@SS;@;@6_h_)@{@"Az_i_Y@
+      @,k:@V@y_G_L@,PV@A_k@S@W@e@Q_N_m:W_J;@[_K02_V(@W'_T@=r@xB@f|@e)"@*@C_Q@O@h@m_R_(r
+      @_aV[@N@Q@1@V@C\_5!_*_LP@l@kgG_F@ii_P/_ED@%@om@c@C!_4@+@-@4
+    End
+  End
+  Object BUTTON
+    LayerName=Main
+    Left=95
+    Top=0
+    Width=100
+    Height=25
+    Font=Default, 8, B
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=Дата просмотра периодических реквизитов
+    Name=bPeriodEnd
+    ControlSerial=6
+    Caption=01.01.2001
+    HotKey=
+    Picture=59
+    OnClick
+      @@>@eW_1e+@It1'_L_(_L>@,@r@Wm_W@]>@ig@}@Q@k@t@,Y9@v_4@h@?_9@qsDD@Q@0_<_V_i_5@8@D|
+      @_Y_"@d>@+^_-@4@J@d_$_;_T_cUf@8L@Q_m@-_?@>@1t@Ech@qAd;@i_K[_(@I@:@(@7D%@W_]@\E@E@
+      @Y@c_e\_8_>_P=L@wa_^_UJ$_j@I_&@S@Q/@\@.@J7@X]@*@R@C@bH@/_^"_4@2@-@5
+    End
+  End
+End

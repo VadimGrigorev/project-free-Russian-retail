@@ -1,0 +1,48 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var оГород Export,оРегион Export;
+
+Function ОбновитьНаименование()
+  Form.пНаименование.Value:=Replace(Trim(Form.пСтрана.Value),",","")+","+Replace(Trim(Form.Индекс.Value),",","")+","+Replace(Trim(Form.пРегион.Value),",","")+","+
+    Replace(Trim(Form.пРайон.Value),",","")+","+Replace(Trim(Form.пГород.Value),",","")+",,"+Replace(Trim(Form.пУлица.Value),",","")+","+
+    Replace(Trim(Form.НомерДома.Value),",","")+","+Replace(Trim(Form.НомерКорпуса.Value),",","")+","+Replace(Trim(Form.НомерКвартиры.Value),",","");
+  Form.isChanged(Form.пНаименование.Value<>Form.пСт.Value);
+EndFunction
+
+Function ВыбратьРайонИлиГород()
+  If not IsEmpty(оРегион) Then
+    а:=SelectObject("Ref.адГорода",оРегион,0,"Module","SelectForm",оГород,,"Выберите населенный пункт/район");
+    if not isEmpty(а) Then
+      Form.пГород.Value:=Trim(а.Name)+" "+Replace(Trim(а.ТипНаселенногоПункта),".","");
+      оГород:=а;
+      If а.Folder().Selected()<>0 Then
+        Form.пРайон.Value:=Trim(а.Folder())+" "+Replace(Trim(а.Folder().ТипНаселенногоПункта),".","");
+        If Trim(Form.пРайон.Value)=Trim(Form.пГород.Value) Then
+          If а.Folder().Folder().Selected()=0 Then
+            Form.пРайон.Value:="";
+          Else
+            б:=а.Folder().Folder();
+            Form.пРайон.Value:=Trim(б)+" "+Replace(Trim(б.ТипНаселенногоПункта),".","");
+          EndIf;
+        EndIf;
+      EndIf;
+      //If IsEmpty(оРегион) Then
+      //  Form.пРегион.Value:=Trim(а.Parent().Name)+" "+Replace(Trim(а.Parent().ТипДеления),".","");
+      //  оРегион:=а.Parent();
+      //EndIf;
+      If Trim(а.Индекс)<>"" Then
+        Form.Индекс.Value:=Trim(а.Индекс);
+      EndIf;
+      Form.пУлица.SetFocus();
+      ОбновитьНаименование();
+    EndIf;
+  EndIf;
+EndFunction
+
+Function OnSaveRequest()
+  Param:=Form.пНаименование.Value;
+  Form.isChanged(0);
+  Exit 1;
+EndFunction

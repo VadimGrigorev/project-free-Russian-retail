@@ -1,0 +1,417 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=520
+  Height=355
+  OnTimerInterval=0
+  MaxControlSerial=35
+  LoadModes=0
+  Object GROUPBOX
+    LayerName=Main
+    Left=5
+    Top=80
+    Width=515
+    Height=240
+    Font=Default, 8
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=2
+    Caption=Свойства лицензии:
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\Заголовок.sfg
+    LayerName=Main
+    Left=5
+    Top=5
+    Width=490
+    Height=47
+    Font=Default, 8
+    Color=00000000
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=3
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\ОсновныеКнопки.sfg
+    LayerName=Main
+    Left=5
+    Top=330
+    Width=280
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=4
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=210
+    Top=122
+    Width=120
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=65544
+    Hint=
+    Name=ДатаВыдачиЛицензии
+    ControlSerial=6
+    AttachedButtons=0#0@6#0###
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=!00.00.00;1; 
+    Length=8
+    DBSource
+      @@>@e@)VU@*T_?US_?U_;UV@|!T@T";d#_Z
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=125
+    Width=190
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=7
+    Caption=Дата выдачи лицензии:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=210
+    Top=97
+    Width=300
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=65544
+    Hint=
+    Name=ТипЛицензии
+    ControlSerial=19
+    AttachedButtons=0#0@1#0###@2#0###
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=
+    Length=0
+    DBSource
+      @@>@e@)VU@*T_?US_?U_;U%T"2_j#y
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=100
+    Width=190
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=20
+    Caption=Тип лицензии:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\ЗаголовокРодитель.sfg
+    LayerName=Main
+    Left=0
+    Top=55
+    Width=495
+    Height=20
+    Font=Default, 8
+    Color=00000000
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=21
+  End
+  Object BEVEL
+    LayerName=Main
+    Left=10
+    Top=150
+    Width=505
+    Height=5
+    Font=Default, 8
+    Color=00000000
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=22
+    Shape=0
+    Style=0
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=210
+    Top=162
+    Width=120
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=65544
+    Hint=
+    Name=ДатаНачалаДействияЛицензии
+    ControlSerial=23
+    AttachedButtons=0#0@6#0###
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=!00.00.00;1; 
+    Length=8
+    DBSource
+      @@>@e@)VU@*T_?US_?U_;UVU#T@T";D#_T
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=165
+    Width=190
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=24
+    Caption=Дата начала действия:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=210
+    Top=188
+    Width=120
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=65544
+    Hint=
+    Name=ДатаОкончанияДействияЛицензии
+    ControlSerial=25
+    AttachedButtons=0#0@6#0###
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=!00.00.00;1; 
+    Length=8
+    DBSource
+      @@>@e@)VU@*T_?US_?U_;UVU'T@T";I#_U
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=191
+    Width=190
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=26
+    Caption=Дата окончания действия:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=210
+    Top=213
+    Width=300
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=65544
+    Hint=
+    Name=ОрганВыдавшийЛицензию
+    ControlSerial=27
+    AttachedButtons=
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=
+    Length=100
+    DBSource
+      @@>@e@)VU@*T_?US_?U_;UVU@'#!3##|
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=216
+    Width=190
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=28
+    Caption=Орган, выдавший лицензию:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=210
+    Top=238
+    Width=120
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=65544
+    Hint=
+    Name=лицСерия
+    ControlSerial=29
+    AttachedButtons=
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=
+    Length=10
+    DBSource
+      @@>@e@)VU@*T_?US_?U_;UVU@+#!3%#}
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=241
+    Width=190
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=30
+    Caption=Серия лиц. (если применимо):
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=210
+    Top=263
+    Width=300
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=65544
+    Hint=
+    Name=лицНомер
+    ControlSerial=31
+    AttachedButtons=
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=
+    Length=100
+    DBSource
+      @@>@e@)VU@*T_?US_?U_;UVU@)#!3'#~
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=266
+    Width=190
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=32
+    Caption=Номер лицензии:
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+  Object EDITBOX
+    LayerName=Main
+    Left=210
+    Top=288
+    Width=120
+    Height=20
+    Font=Default, 8
+    Color=FF000005
+    AnchorType=9
+    Flags=65544
+    Hint=
+    Name=лицРегНомер
+    ControlSerial=33
+    AttachedButtons=
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=
+    Length=100
+    DBSource
+      @@>@e@)VU@*T_?US_?U_;UVU@-#!3)#
+    End
+  End
+  Object LABEL
+    LayerName=Main
+    Left=15
+    Top=291
+    Width=190
+    Height=15
+    Font=Default, 8, B
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=34
+    Caption=Рег ном. лиц. (если примен.):
+    HAlign=2
+    VAlign=0
+    AttachedButtons=
+  End
+End

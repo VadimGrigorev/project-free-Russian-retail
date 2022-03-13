@@ -1,0 +1,159 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function ИзменитьГалкуНалУчета()
+  aEl:=Form.Object;
+  If aEl.ЮрЛицо.УчитыватьНДС=0 Then
+    aEl.УчитыватьВНалоговомУчете:=?(aEl.КодОперации=Enum.коВыпискаБанкаПриход.Инкассация,0,aEl.УчитыватьВНалоговомУчете);
+  EndIf;
+EndFunction
+
+Function Видимость()
+  aEl:=Form.Object;
+  
+  If Form.оЗатраты.Value=1 Then
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=0;
+  Else
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=1;
+  EndIf;
+  СтрСлои:="Main";
+  
+  ФлБух:=0;
+  If (aEl.КодОперации=Enum.коВыпискаБанкаПриход.ОплатаПокупателя)Or(aEl.КодОперации=Enum.коВыпискаБанкаПриход.ВозвратОтПоставщика) Then
+    СтрСлои:=СтрСлои+",Контрагент";
+    Form.тЮрЛицо.FontColor:=_CLR_GRAYTEXT;
+  ElseIf aEl.КодОперации=Enum.коВыпискаБанкаПриход.Инкассация Then
+    СтрСлои:=СтрСлои+",Подотчетник";
+    Form.тЮрЛицо.FontColor:=_CLR_WINDOWTEXT;
+  ElseIf aEl.КодОперации=Enum.коВыпискаБанкаПриход.ОплатаУслуг Then
+    СтрСлои:=СтрСлои+",Контрагент,Услуга";
+    Form.тЮрЛицо.FontColor:=_CLR_GRAYTEXT;
+  Else
+    СтрСлои:=СтрСлои+",БухСчет";
+    Form.тЮрЛицо.FontColor:=_CLR_WINDOWTEXT;
+    ФлБух:=1;
+  EndIf;
+  If СтрСлои<>Form.оЗакладки.Pages.Page("Основное").Layers.GetLayers Then
+    Form.оЗакладки.Pages.Page("Основное").Layers.SetLayers(СтрСлои);
+  EndIf;  
+  
+  Стр:=?(aEl.БанковскийСчет.Selected()=0,"","№ р/с: "+aEl.БанковскийСчет.НомерСчета);
+  If Form.пБанковскийСчет.Caption<>Стр Then
+    Form.пБанковскийСчет.Caption:=Стр;
+  EndIf;  
+  
+  Фл:=?(aEl.КодОперации=Enum.коВыпискаБанкаПриход.Инкассация,1,0);
+  Form.УчитыватьВНалоговомУчете.isDisabled:=Фл;
+  
+  If aEl.ТипПроводки.Selected()<>0 Then
+    Form.оСчет.isInvisible:=1;
+  Else
+    Form.оСчет.isInvisible:=0;
+  EndIf;
+EndFunction
+
+
+Function OnAfterCustomBuhChanged()
+  Видимость();
+EndFunction
+
+Function OnAfterChangeOperationCode()
+  aEl:=Form.Object;
+  aEl.ТипПроводки:=0;
+  ИзменитьГалкуНалУчета();
+  Видимость();
+EndFunction
+
+Function OnAfterChangeAccount()
+  aEl:=Form.Object;
+  If aEl.ЮрЛицо.УчитыватьНДС=0 Then
+    If (Pos("58.",aEl.Счет.Code)=1)Or(Pos("66.",aEl.Счет.Code)=1) Then
+      aEl.УчитыватьВНалоговомУчете:=0;
+    Else
+      aEl.УчитыватьВНалоговомУчете:=1;
+    EndIf;
+  EndIf;
+EndFunction
+
+
+Function OnCreateFromObject()
+  //Ввод на основании
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+   
+  if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+    Form.Close(0);
+    Exit;
+  EndIf;
+  
+  Видимость();
+EndFunction
+
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  If aEl.ЮрЛицо.Selected()=0 Then
+    Box("Выберите юр. лицо документа!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  If aEl.КодОперации=Enum.коВыпискаБанкаПриход.Инкассация Then
+    Инкассо:=Storage.ПодотчетныеОперации.Gross1("Сумма",,0,"ПодотчетноеЛицо,ТипОперации",aEl.ПодотчетноеЛицо,Enum.ТипыПодотчетныхОпераций.Инкассация);
+    If aEl.Status()>1 Then
+      Инкассо:=Max(Инкассо-aEl.Copy().СуммаВзаиморасчетов,0);
+    EndIf;
+    If Инкассо<>aEl.СуммаВзаиморасчетов Then
+      Box("За физ. лицом "+aEl.ПодотчетноеЛицо+" числится инкассируемая сумма "+глФРМ(Инкассо,"")+", вы же указали сумму "+глФРМ(aEl.СуммаВзаиморасчетов,"")+"! Проверьте правильность указания суммы инкассации!",Q_WARNING);
+    EndIf;
+  EndIf;
+  
+  If Form.оЗатраты.Value=1 Then
+    If (aEl.ЦентрЗатрат.Selected()=0)Or(aEl.СтатьяЗатрат.Selected()=0) Then
+      Box("Не выбраны центр затрат или статья затрат!",Q_STOP);
+      Exit 0;
+    EndIf;
+  Else
+    aEl.ЦентрЗатрат:=0;
+    aEl.СтатьяЗатрат:=0;
+  EndIf;
+  
+  If aEl.ТипПроводки.Selected()<>0 Then
+    If Trim(aEl.СубконтоТипаПроводки)="" Then
+      If not глРедактироватьСубконтоТипаПроводки(aEl,1) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+    aEl.Счет:=0;
+    aEl.Субконто1:=0;
+    aEl.Субконто2:=0;
+    aEl.Субконто3:=0;
+  EndIf;
+  
+  If aEl.КодОперации=Enum.коВыпискаБанкаПриход.Прочее Then
+    If aEl.ТипПроводки.Selected()=0 Then
+      If aEl.Счет.Code="51" Then
+        Box("Для перемещения между банковскими счетами используйте документ ""перемещение денег банк""!",Q_STOP);
+        Exit 0;
+      EndIf;
+      If not глПроверитьКорректностьЗаполненияСубконто(aEl,1) Then
+        Exit 0;
+      EndIf;
+      If not глПроверитьПроблемностьУказанныхСчетов(aEl,глНайтиСчет("51"),aEl.Счет,0,1,"71.1") Then
+        Exit 0;
+      EndIf;
+    Else
+      If not глПроверитьПроблемностьНестандартнойПроводки(aEl,aEl.ТипПроводки,0) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+  ElseIf aEl.ТипПроводки.Selected()<>0 Then
+    If not глПроверитьПроблемностьНестандартнойПроводки(aEl,aEl.ТипПроводки,0) Then
+      Exit 0;
+    EndIf;
+  EndIf;
+
+  Exit 1; 
+EndFunction
+

@@ -1,0 +1,43 @@
+Layer Main
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=385
+  Height=90
+  OnTimerInterval=0
+  MaxControlSerial=4
+  LoadModes=0
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\Заголовок.sfg
+    LayerName=Main
+    Left=5
+    Top=5
+    Width=380
+    Height=47
+    Font=Default, 8
+    Color=00000000
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=1
+  End
+  Object MACRO
+    ModuleName=Modules\Macros\Справочники\ОсновныеКнопки.sfg
+    LayerName=Main
+    Left=5
+    Top=65
+    Width=280
+    Height=25
+    Font=Default, 8
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=2
+  End
+End

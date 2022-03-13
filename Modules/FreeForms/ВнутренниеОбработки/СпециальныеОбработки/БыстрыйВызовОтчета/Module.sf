@@ -1,0 +1,284 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+{
+     GCNT_LABEL=0;
+     GCNT_EDITBOX=1;
+     GCNT_BUTTON=2;
+     GCNT_CHECKBOX=3;
+     GCNT_RADIOBUTTON=4;
+     GCNT_COMBOBOX=5;
+     GCNT_LISTBOX=6;
+     GCNT_GROUPBOX=7;
+     GCNT_IMAGE=8;
+     GCNT_PAGECONTROL=9;
+     GCNT_BEVEL=10;
+     GCNT_OLE=11;
+     GCNT_MACRO=12;
+     GCNT_TABLE=13;
+     GCNT_SFTABLE=14;
+     GCNT_DIAGRAM=15;
+     GCNT_TREELIST=16;
+     GCNT_SPLITTER=100;
+}     
+
+
+Function ОбнулитьСписки(Сп,Стр)
+  While Стр>"" Do
+    пИмя:=TearStr(Стр,",");
+    Сп.SetByName(пИмя,List.Create(List.Create(),List.Create()));
+  EndDo;
+EndFunction
+
+
+Function OnOpen()
+  Result:=0;
+  If TypeStr(Param)<>"LIST" Then
+    Exit;
+  EndIf;
+  
+  Тип:=Param.GetByName("ВидОтчета");
+  Obj:=Param.GetByName("Object");
+  If isEmpty(Obj) Then
+    Exit;
+  EndIf;
+  
+  НеМодально:=0;
+  Сп:=List.Create();
+  Сп2:=List.Create(List.Create(Obj),List.Create());
+  НачДата:=DbVar.НачалоПериодаБазы;
+  НачДата:=?(isEmpty(НачДата),'01.01.1980',НачДата);
+
+  Отчет:="";
+  If Тип="Остатки ТМЦ" Then
+    ОбнулитьСписки(Сп,"оЮЛ,оСк,оТГ,оН");
+    Сп.SetByName("НачДата",Date());
+    Сп.SetByName("оК",0);
+    Сп.SetByName("оД",0);
+    Сп.SetByName("оВсе",0);
+    Сп.SetByName("оБезРез",0);
+    Сп.SetByName("оГрп",0);
+    Сп.SetByName("оИнд",0);
+    Сп.SetByName("оВидОтчета",1);
+    Сп.SetByName("оСписокНоменклатуры",0);
+    Сп.SetByName("оТЦ",0);
+    Сп.SetByName("оГруппы","зСк@зН");
+    Сп.SetByName("оПоказатели","Код элемента@Наименование элемента@Единицы и тара@Остатки в базовых единицах@Остатки в основных единицах");
+    Отчет:="FreeForms\УчетныеОтделы\Склад\ОстаткиТМЦ";
+    If Obj.DBName()="тмцНоменклатура" Then
+      Сп.SetByName("оН",Сп2);
+    ElseIf Obj.DBName()="общСклады" Then
+      Сп.SetByName("оСк",Сп2);
+    EndIf;
+  ElseIf Тип="Отчет по затратам" Then
+    ОбнулитьСписки(Сп,"оГЗ,оЦЗ,оСЗ,оОТВ");
+    Сп.SetByName("НачДата",BegOfMonth(Date()));
+    Сп.SetByName("КонДата",Date());
+    Сп.SetByName("оГрп",0);
+    Сп.SetByName("оДок",1);
+    Сп.SetByName("оГруппы","зЦЗ@зСЗ@Документ");
+    Отчет:="FreeForms\УчетныеОтделы\Аналитические\КонсолидированныеОтчеты\ОтчетПоЗатратам";
+    If Obj.DBName()="зтЦентрыЗатрат" Then
+      Сп.SetByName("оЦЗ",Сп2);
+    ElseIf Obj.DBName()="зтСтатьиЗатрат" Then
+      Сп.SetByName("оСЗ",Сп2);
+    EndIf;    
+  ElseIf Тип="Отчет по журналу регистрации событий" Then
+    ОбнулитьСписки(Сп,"оОб,оПлз,оСобытие");
+    Сп.SetByName("НачДата",Date()-60);
+    Сп.SetByName("КонДата",Date());
+    Сп.SetByName("оОписание","");
+    Сп.SetByName("оТипСобытия",0);
+    Сп.SetByName("оГруппы","");
+    Отчет:="FreeForms\ВнутренниеОбработки\ОбработкиПечати\ОтчетПоЖурналуРегистрацииСобытий";
+    If Obj.DBName()="общПользователи" Then
+      Сп.SetByName("оПлз",Сп2);
+    EndIf;    
+  ElseIf Тип="Ведомость по кассе" Then
+    ОбнулитьСписки(Сп,"оЮЛ,оКс");
+    Сп.SetByName("НачДата",Date());
+    Сп.SetByName("КонДата",Date());
+    Сп.SetByName("оГруппы","зКс@Документ");
+    Отчет:="FreeForms\УчетныеОтделы\Касса\ВедомостьПоКассе";
+    If Obj.DBName()="общКассы" Then
+      Сп.SetByName("оКс",Сп2);
+    EndIf;    
+  ElseIf Тип="Ведомость по подотчетникам" Then
+    ОбнулитьСписки(Сп,"оЮЛ,оПд,оН");
+    Сп.SetByName("НачДата",НачДата);
+    Сп.SetByName("КонДата",Date());
+    Сп.SetByName("оГруппы","зПд@Документ");
+    Сп.SetByName("оВО",1);
+    Отчет:="FreeForms\УчетныеОтделы\Касса\ВедомостьПоПодотчетникам";
+    If Obj.DBName()="кнтКонтрагенты" Then
+      Сп.SetByName("оПд",Сп2);
+    EndIf;    
+  ElseIf Тип="Ведомость по ОС" Then
+    ОбнулитьСписки(Сп,"оЮЛ,оПд,оН");
+    Сп.SetByName("НачДата",НачДата);
+    Сп.SetByName("КонДата",Date());
+    Сп.SetByName("оГруппы","зПд@зН");
+    Сп.SetByName("оВО",3);
+    Отчет:="FreeForms\УчетныеОтделы\Касса\ВедомостьПоПодотчетникам";
+    If Obj.DBName()="кнтКонтрагенты" Then
+      Сп.SetByName("оПд",Сп2);
+    EndIf;    
+  ElseIf Тип="Ведомость по остаткам ТМЦ" Then
+    Отчет:="FreeForms\УчетныеОтделы\Склад\ВедомостьПоОстаткамТМЦ";
+    ОбнулитьСписки(Сп,"оЮЛ,оСк,оТГ,оН");
+    Сп.SetByName("оГруппы","зСк@зН@Документ");
+    Сп.SetByName("НачДата",BegOfMonth(Date()));
+    Сп.SetByName("КонДата",BegOfDay(Date()));
+    Сп.SetByName("оТипУчета",1);
+    Сп.SetByName("оПустСР",0);
+    Сп.SetByName("оГрп",0);
+    Сп.SetByName("оУровни",0);
+    //ДобавитьТаблицу(Таб,"оТипУчета",1);
+    If Obj.DBName()="тмцНоменклатура" Then
+      Сп.GetByName("оН").Get(1).Add(Obj);
+    ElseIf Obj.DBName()="общСклады" Then
+      Сп.GetByName("оСк").Get(1).Add(Obj);
+    EndIf;    
+  ElseIf Тип="Анализ продаж" Then
+    ОбнулитьСписки(Сп,"оЮЛ,оУА,оК,оТП,оН,оС,оЗн,оТТТ,оАДГ,оСН,оТЦ,оМ,оФл,оТС");
+    Сп.SetByName("НачДата",BegOfMonth(Date()-120));
+    Сп.SetByName("КонДата",Date());
+    Сп.SetByName("оВидОтчета",1);
+    Сп.SetByName("оВидОтбора",1);
+    Сп.SetByName("оРасш",0);
+    Сп.SetByName("оТПАД",0);
+    Сп.SetByName("оГрп",0);
+    Сп.SetByName("оБезИтого",0);
+    Сп.SetByName("оТУТ",0);
+    Сп.SetByName("оТУА",0);
+    Сп.SetByName("оГруппы","зК@Документ");
+    Сп.SetByName("оГруппыГ","");
+    Сп.SetByName("оПоказатели","Количество единиц@Сумма (рублей)");
+    Сп.SetByName("оПоля","Код текущего элемента@Текущий элемент");
+    Отчет:="FreeForms\УчетныеОтделы\Аналитические\АнализыПродаж\АнализПродаж";
+    If Obj.DBName()="кнтКонтрагенты" Then
+      Сп.SetByName("оК",Сп2);
+    EndIf;
+  ElseIf (Тип="Карточка взаиморасчетов")Or(Тип="Карточка договора") Then
+    ОбнулитьСписки(Сп,"оЮЛ,оУА,оТара");
+    Сп.SetByName("НачДата",'01.01.1980');
+    Сп.SetByName("КонДата",Date());
+    Сп.SetByName("оВключить",1);
+    Сп.SetByName("оТипДолга",1);
+    Сп.SetByName("оТипДокумента",1);
+    Сп.SetByName("оАдр",1);
+    Сп.SetByName("оК",0);
+    Сп.SetByName("оД",0);
+    Отчет:="FreeForms\УчетныеОтделы\Аналитические\Взаиморасчеты\КарточкаВзаиморасчетов";
+    If Obj.DBName()="кнтКонтрагенты" Then
+      If Obj.IsFolder() Then
+        Exit;
+      EndIf;
+      Сп.SetByName("оК",Obj);
+    ElseIf Obj.DBName()="кнтДоговоры" Then
+      Сп.SetByName("оК",Obj.Parent());
+      Сп.SetByName("оД",Obj);
+    EndIf;
+  ElseIf Тип="Ведомость по взаиморасчетам (с тарой)" Then
+    ОбнулитьСписки(Сп,"оЮЛ,оУА,оК,оТП,оН,оД");
+    Сп.SetByName("НачДата",'01.01.1980');
+    Сп.SetByName("КонДата",Date());
+    Сп.SetByName("оВключить",1);
+    Сп.SetByName("оТипДолга",1);
+    Сп.SetByName("оТипДокумента",1);
+    Сп.SetByName("оСтавкаНДС",1);
+    Сп.SetByName("оТипАктива",1);
+    Сп.SetByName("оТипУчета",1);
+    Сп.SetByName("оСумНДС",0);
+    Сп.SetByName("оГруппы","зК@зД@зН");
+    Отчет:="FreeForms\УчетныеОтделы\Аналитические\Взаиморасчеты\ВедомостьПоВзаиморасчетам";
+    If Obj.DBName()="кнтКонтрагенты" Then
+      Сп.SetByName("оК",Сп2);
+    ElseIf Obj.DBName()="кнтДоговоры" Then
+      Сп2:=List.Create(List.Create(Obj.Parent()),List.Create());
+      Сп.SetByName("оК",Сп2);
+    EndIf;
+  ElseIf Тип="Ведомость по взаиморасчетам" Then
+    ОбнулитьСписки(Сп,"оЮЛ,оУА,оК,оД,оТП,оН,оД");
+    Сп.SetByName("НачДата",'01.01.1980');
+    Сп.SetByName("КонДата",Date());
+    Сп.SetByName("оВключить",1);
+    Сп.SetByName("оТипДолга",1);
+    Сп.SetByName("оТипДокумента",1);
+    Сп.SetByName("оСтавкаНДС",1);
+    Сп.SetByName("оТипАктива",1);
+    Сп.SetByName("оТипУчета",2);
+    Сп.SetByName("оСумНДС",0);
+    Сп.SetByName("оГруппы","зК@зД");
+    Отчет:="FreeForms\УчетныеОтделы\Аналитические\Взаиморасчеты\ВедомостьПоВзаиморасчетам";
+    If Obj.DBName()="кнтКонтрагенты" Then
+      Сп.SetByName("оК",Сп2);
+    ElseIf Obj.DBName()="кнтДоговоры" Then
+      Сп2:=List.Create(List.Create(Obj.Parent()),List.Create());
+      Сп.SetByName("оК",Сп2);
+    EndIf;
+  ElseIf Тип="Ведомость по комиссионерам" Then
+    ОбнулитьСписки(Сп,"оЮЛ,оУА,оК,оТП,оН,оД,оАДС");
+    Сп.SetByName("НачДата",BegOfMonth(Date()));
+    Сп.SetByName("КонДата",Date());
+    Сп.SetByName("оТипДолга",2);
+    Сп.SetByName("оГруппы","зД@зАД@зН");
+    Отчет:="FreeForms\УчетныеОтделы\АрендованноеИмущество\ВедомостьПоАрендованномуИмуществу";
+    If Obj.DBName()="кнтКонтрагенты" Then
+      If Obj.IsFolder() Then
+        Сп.SetByName("оГруппы","зК@зД@зАД@зН");
+      EndIf;
+      //If (Obj.ТипАктива>0)And(Obj.ТипАктива<4)And(not Obj.IsFolder()) Then
+      //  Сп.SetByName("оТипДолга",3);
+      //EndIf;
+      Сп.SetByName("оК",Сп2);
+    ElseIf Obj.DBName()="кнтДоговоры" Then
+      //If (Obj.Parent().ТипАктива>0)And(Obj.Parent().ТипАктива<4) Then
+      //  Сп.SetByName("оТипДолга",3);
+      //EndIf;
+      Сп2:=List.Create(List.Create(Obj.Parent()),List.Create());
+      Сп.SetByName("оК",Сп2);
+    ElseIf Obj.DBName()="тмцНоменклатура" Then
+      Сп.SetByName("оГруппы","зН@зК@зД@зАД");
+      Сп.SetByName("оН",Сп2);
+    EndIf;
+  ElseIf Тип="Ведомость по взаиморасчетам (тара)" Then
+    ОбнулитьСписки(Сп,"оЮЛ,оУА,оК,оТП,оН,оД");
+    Сп.SetByName("НачДата",'01.01.1980');
+    Сп.SetByName("КонДата",Date());
+    Сп.SetByName("оВключить",1);
+    Сп.SetByName("оТипДолга",1);
+    Сп.SetByName("оТипДокумента",1);
+    Сп.SetByName("оСтавкаНДС",1);
+    Сп.SetByName("оТипАктива",1);
+    Сп.SetByName("оТипУчета",3);
+    Сп.SetByName("оСумНДС",0);
+    Сп.SetByName("оГруппы","зК@зД@зН");
+    Отчет:="FreeForms\УчетныеОтделы\Аналитические\Взаиморасчеты\ВедомостьПоВзаиморасчетам";
+    If Obj.DBName()="кнтКонтрагенты" Then
+      Сп.SetByName("оК",Сп2);
+    ElseIf Obj.DBName()="кнтДоговоры" Then
+      Сп2:=List.Create(List.Create(Obj.Parent()),List.Create());
+      Сп.SetByName("оК",Сп2);
+    ElseIf Obj.DBName()="тмцНоменклатура" Then
+      Сп.SetByName("оН",Сп2);
+    EndIf;
+  EndIf;
+  
+  If Отчет<>"" Then
+    а:=List.Create();
+    а.SetByName("ПростыеУстановки",Сп);
+    Т:=Table.Create();
+    а.SetByName("Таблица",Т);
+    Param.SetByName("Таблица",Т);
+    а.SetByName("Выполнить",1);
+    If НеМодально=0 Then
+      LoadModule(0,"Modules\"+Отчет,а,0,"Module","Form");
+    Else
+      LoadModule(2,"Modules\"+Отчет,а,0,"Module","Form");
+    EndIf;
+  EndIf;
+    
+EndFunction

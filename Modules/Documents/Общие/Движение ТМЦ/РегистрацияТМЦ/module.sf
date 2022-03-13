@@ -1,0 +1,159 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Var флВидимостьПартий Export;
+Var флТипЦен Export;
+
+Function Видимость()
+  aEl:=Form.Object;
+  флВидимостьПартий:=aEl.Склад.БезПартионногоУчета=0;
+  
+  Фл:=?(aEl.КодОперации=Enum.коРегистрацияТМЦ.СписаниеТМЦ,1,0);
+  Form.УчитыватьВНалоговомУчете.isInvisible:=1-Фл;
+  Form.флСохранятьПустыеПартии.isInvisible:=1-глПользователь.бухБухгалтер;
+  
+  If aEl.ТипПроводки.Selected()<>0 Then
+    Form.оСчет.isInvisible:=1;
+  Else
+    Form.оСчет.isInvisible:=0;
+  EndIf;
+  
+  If Form.оЗатраты.Value=1 Then
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=0;
+  Else
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=1;
+  EndIf;
+  
+  MainTab:=Form.ControlByName("MainTab").Value;
+  MainTab.Column("Партия").isVisible:=Min(флВидимостьПартий,глПользователь.бухБухгалтер);
+  MainTab.Column("Партия").isReadonly:=1-глПользователь.бухБухгалтер;
+EndFunction
+
+Function OnAfterCustomBuhChanged()
+  Видимость();
+EndFunction
+
+
+Function OnOpen()
+  aEl:=Form.Object;
+  If aEl.Status()<0 Then
+    aEl.УчитыватьВНалоговомУчете:=1;
+    If aEl.КодОперации.Selected()=0 Then
+      If not глВыбратьВидОперацииВДокументе(aEl,0) Then
+        Result:=0;
+        Exit;
+      EndIf;
+    EndIf;  
+  EndIf;
+EndFunction
+
+
+Function OnCreateFromObject()
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  ФлБезЗаполнения:=0;
+  
+  If aEl.ДокОснование.DBName()<>"АктПоСкладу" Then
+    if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+      Form.Close(0);
+      Exit;
+    EndIf;
+  Else
+    If aEl.ДокОснование.КодОперации<>Enum.коАктПоСкладу.Инвентаризация Then
+      if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+        Form.Close(0);
+        Exit;
+      EndIf;
+    Else
+      ФлПартии:=1-Min(aEl.ДокОснование.Склад.БезПартионногоУчета,1);
+      if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+        Form.Close(0);
+        Exit;
+      EndIf;
+      aEl.флСохранятьПустыеПартии:=1;
+      aTab:=aEl.LineParts("Номенклатура");
+      aTab.Lock();
+      Try
+        aTab.ClearLines();
+      
+        Т:=Tab.Create();
+        aEl.ДокОснование.LineParts("Номенклатура").CopyTo(Т);
+        Т.Group("Номенклатура,"+?(not ФлПартии,"","Партия,")+"Цена","Количество,КоличествоФактическое");
+        Т.Select();
+        While Т.Next() Do
+          If aEl.КодОперации=Enum.коРегистрацияТМЦ.ОприходованиеТМЦ Then
+            If Т.КоличествоФактическое>Т.Количество Then
+              aTab.NewLine();
+              aTab.Количество:=Т.КоличествоФактическое-Т.Количество;
+            Else
+              Continue;
+            EndIf;
+          Else
+            If Т.КоличествоФактическое<Т.Количество Then
+              aTab.NewLine();
+              aTab.Количество:=Т.Количество-Т.КоличествоФактическое;
+            Else
+              Continue;
+            EndIf;
+          EndIf;
+          aTab.Номенклатура:=Т.Номенклатура;
+          If ФлПартии Then
+            aTab.Партия:=Т.Партия;
+          EndIf;
+          aTab.Цена:=Т.Цена;
+          If флТипЦен<>0 Then
+            aTab.Цена:=глНайтиЦену(aTab.Номенклатура,флТипЦен,aEl.DocDate);
+          EndIf;
+          глПересчитатьСтроку(aEl,aTab,"Код@Количество2@Сумма@СуммаНДС");
+        EndDo;
+      Finally  
+        aTab.Unlock();
+      EndTry;  
+    EndIf;
+  EndIf;
+  aEl.УчитыватьВНалоговомУчете:=1;
+EndFunction
+
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  
+  If aEl.КодОперации=Enum.коРегистрацияТМЦ.ОприходованиеТМЦ Then
+    If not глПроверитьДокументПриходаНаОтрицательныеОстатки(aEl) Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If aEl.ТипПроводки.Selected()<>0 Then
+    If Trim(aEl.СубконтоТипаПроводки)="" Then
+      If not глРедактироватьСубконтоТипаПроводки(aEl,1) Then
+        Exit 0;
+      EndIf;
+    EndIf;
+    aEl.Счет:=0;
+    aEl.Субконто1:=0;
+    aEl.Субконто2:=0;
+    aEl.Субконто3:=0;
+  EndIf;
+  
+  If aEl.ТипПроводки.Selected()=0 Then
+    If not глПроверитьКорректностьЗаполненияСубконто(aEl,2) Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  
+  If Form.оЗатраты.Value=1 Then
+    If (aEl.ЦентрЗатрат.Selected()=0)Or(aEl.СтатьяЗатрат.Selected()=0) Then
+      Box("Не выбраны центр затрат или статья затрат!",Q_STOP);
+      Exit 0;
+    EndIf;
+  Else
+    aEl.ЦентрЗатрат:=0;
+    aEl.СтатьяЗатрат:=0;
+  EndIf;
+  
+  Exit 1;
+EndFunction
+

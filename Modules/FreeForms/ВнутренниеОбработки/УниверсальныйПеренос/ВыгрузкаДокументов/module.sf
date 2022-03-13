@@ -1,0 +1,495 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+var ТабВыгружено Export;
+Var ТВыгрузка Export,ТВыгрузкаСпр Export;
+Var НомерВыгрузки Export;
+Var РезКаталог Export;
+Var аВыгруженоВсего Export;
+Var оДатаДна Export;
+Var спЗанул Export;
+
+Function ОбновитьФорму()
+  оИстория:=Form.оИстория.Value;
+  Form.тДатаДна.isDisabled:=1-оИстория;
+  Form.оДатаДна.isDisabled:=1-оИстория;
+  Form.тДатаПериод.isDisabled:=оИстория;
+  Form.оДатаПериод.isDisabled:=оИстория;
+EndFunction
+
+Function ОбновитьПризнакиФильтров()
+  оДокументы:=Form.оДокументы.Value;
+  оДокументы.Select();
+  While оДокументы.Next() Do
+    тФильтр:=оДокументы.тФильтр;
+    Фл:=0;
+    тФильтр.Select();
+    While тФильтр.Next() Do
+      If тФильтр.Фильтр.Get(1).Size()+тФильтр.Фильтр.Get(2).Size()>0 Then
+        Фл:=1;
+        Break;
+      EndIf;
+    EndDo;
+    оДокументы.флФильтр:=?(Фл,"ДА","");
+  EndDo;
+EndFunction
+
+Function ОбновитьТаблицуРеквизитов()
+  оДокументы:=Form.оДокументы.Value;
+  ОбновитьПризнакиФильтров();
+  
+  оФильтр:=Form.оФильтр.Value;  
+  оФильтр.ClearLines();
+  Ид:="";
+  тФильтр:=0;
+  If оДокументы.SelectedLine>0 Then
+    Ид:=оДокументы.Get(оДокументы.SelectedLine,"Наименование");
+    тФильтр:=оДокументы.Get(оДокументы.SelectedLine,"тФильтр");
+  EndIf;
+  
+  If Ид="" Then
+    Form.оФильтр.isDisabled:=1;
+    Exit;
+  EndIf;
+  Form.оФильтр.isDisabled:=0;
+  
+  тФильтр.CopyTo(оФильтр,,,"Фильтр,пФильтр,Ид,зПерем,зПуть,идПуть,Сорт");
+  //тФильтр.Select();
+  //While тФильтр.Next() Do
+  //  оФильтр.CurLine:=тФильтр.CurLine;
+  //EndDo;
+EndFunction
+
+Function локПослеВыгрузкиЭлемента()
+  аВыгруженоВсего:=аВыгруженоВсего+1;
+  
+  If ТВыгрузкаСпр.Size()>100000 Then
+    Имя:=Trim(РезКаталог)+"Refs_"+Right("0000"+НомерВыгрузки,4)+".txt";
+    If File.DoesFileExist(Имя) Then
+      Raise "Файл "+Имя+" уже существует в папке результата!";
+    EndIf;
+    ТВыгрузкаСпр.Save(Имя,-1,1);
+    НомерВыгрузки:=НомерВыгрузки+1;
+    ТВыгрузкаСпр:=Text.Create(1);
+    ТВыгрузкаСпр.AddString("@REFSV4@");
+  EndIf;  
+EndFunction
+
+Function СохранитьДокументЗануления(спЗанул,аДата)
+  аДок:=Doc.УниверсальныйДокумент;
+  аДок.New();
+  аДок.DocDate:=аДата;
+  аДок.КодОперации:=Enum.коУниверсальныйДокумент.УниверсальныйДокумент;
+  аДок.SetPrefix("DocNum",Trim(DBVar.ПрефиксИБ)+"ЯЯ");
+  аДок.Комментарий:="Зануление перенесенных документов";
+
+  aTab:=аДок.LineParts("Содержание");
+  For i:=1 To спЗанул.Size() Do
+    Ид:=спЗанул.GetName(i);
+    ТЗанулНакопитель:=спЗанул.Get(i);
+    СтрГр:="";
+    СтрАрг:="";
+    For j:=1 To Struct.Stor(Ид).Props.Count() Do
+      Ид2:=Struct.Stor(Ид).Props(j).Name;
+      If Struct.Stor(Ид).Props(j).Asset Then
+        СтрАрг:=СтрАрг+?(СтрАрг<>"",",")+Ид2;
+      ElseIf Struct.Stor(Ид).Props(j).TotalsProp Then
+        СтрГр:=СтрГр+?(СтрГр<>"",",")+Ид2;
+      EndIf;
+    EndDo;
+    If (СтрГр<>"")And(СтрАрг<>"") Then
+      ТЗанулНакопитель.Group(СтрГр,СтрАрг);
+    EndIf;
+    ТЗанулНакопитель.Select();
+    While ТЗанулНакопитель.Next() Do
+      ФлНули:=1;
+      СтрАктивы:="";
+      СтрАккум:="";
+      For j:=1 To Struct.Stor(Ид).Props.Count() Do
+        Ид2:=Struct.Stor(Ид).Props(j).Name;
+        If Struct.Stor(Ид).Props(j).Asset Then
+          aEl:=ТЗанулНакопитель.Get(ТЗанулНакопитель.CurLine,Ид2);
+          If Round(aEl,8)<>0 Then
+            ФлНули:=0;
+          EndIf;
+          AppendStringToBufferedString(СтрАктивы,?(СтрАктивы="","","###")+Ид2+"@"+глЗашифроватьЗначениеУД(aEl));
+        ElseIf Struct.Stor(Ид).Props(j).TotalsProp Then
+          aEl:=ТЗанулНакопитель.Get(ТЗанулНакопитель.CurLine,Ид2);
+          AppendStringToBufferedString(СтрАккум,?(СтрАккум="","","###")+Ид2+"@"+глЗашифроватьЗначениеУД(aEl));
+        EndIf;
+      EndDo;
+      If (not ФлНули)And(СтрАктивы<>"")And(СтрАккум<>"") Then
+        aTab.NewLine();
+        aTab.ИмяНакопителя:=Ид;
+        aTab.ЗнакДвижения:="+";
+        aTab.Аккумуляторы:=СтрАккум;
+        aTab.Активы:=СтрАктивы;
+      EndIf;
+    EndDo;
+  EndDo;
+
+  If aTab.Size()>0 Then
+    If Form.оЗапретДок.Value=1 Then
+      аДок.ФлагОбмена:=9;
+    EndIf;
+    
+    аДок.Save();
+    сп:=List.Create();
+    сп.SetByName("УровеньФорсирования",1);
+    глРаботаетРобот:=1;
+    Try
+      If not аДок.Publish(сп) Then
+        Message("Невозможно обработать документ ("+аДок+")!","!");
+      Else
+        Message("Документ обнуления выгруженных остатков: "+аДок,"I");
+      EndIf;
+    Finally
+      глРаботаетРобот:=0;
+    EndTry;  
+  EndIf;
+  
+  спЗанул.Clear();
+EndFunction
+
+
+//спРеквизиты -- иземенять реквизиты при выгрузке
+Function ВыгрузитьОдинДокумент(ТВыгрузка,аДок)
+  Ид:=аДок.DBName();
+  флИстория:=Form.оИстория.Value;
+  оБезСправочников:=Form.оБезСправочников.Value;
+  оЗанул:=Form.оЗанул.Value;
+  
+  If аДок.Status()<0 Then
+    //Указание на создание новых документов выгружать как обработанный документ
+    ТВыгрузка.AddString("DC:"+Ид+Chr(1)+Chr(1)+FormatDate(аДок.DocDate,"dd.mm.YYYY hh:tt:ss")+Chr(1)+"1"+Chr(1)+"0");
+  Else
+    ТВыгрузка.AddString("DC:"+Ид+Chr(1)+аДок.DocNum+Chr(1)+FormatDate(аДок.DocDate,"dd.mm.YYYY hh:tt:ss")+Chr(1)+?(аДок.Status()>1,1,0)+Chr(1)+(аДок.Status()=1));
+  EndIf;
+  Стр:="P1:";
+  For j:=1 to Struct.Doc(Ид).Props.Count() Do
+    Ид2:=Struct.Doc(Ид).Props(j).Name;
+    If (Uppercase(Ид2)="DOCDATE")or(Uppercase(Ид2)="DOCNUM") Then
+      Continue;
+    EndIf;
+    ФлПериод:=Struct.Doc(Ид).Props(j).Periodical;
+    Стр1:=Ид2+"@"+ФлПериод+"@";
+    If ФлПериод Then
+      //Периодический реквизит
+      aTab:=аДок.LoadPeriodicalValues(Ид2);
+      If (not флИстория)And(aTab.Size()>1) Then
+        aTab.Remove(1,aTab.Size()-1);
+        aTab.Set(1,"_Date",оДатаДна);
+      EndIf;
+      Фл=0;
+      aTab.Select();
+      While aTab.Next() Do
+        If _And(флИстория,aTab._Date<оДатаДна,aTab.CurLine<aTab.Size()) Then
+          Continue;
+        EndIf;
+        if _And(not оБезСправочников,DBTypeStr(aTab._Value)="REF") Then
+          глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(aTab._Value,ТабВыгружено,ТВыгрузкаСпр);
+        EndIf;
+        AppendStringToBufferedString(Стр1,""+?(Фл,Chr(3))+aTab._Date+"@"+глУниверсальнаяВыгрузкаВыгрузитьРеквизит(aTab._Value));
+        Фл=1;
+      EndDo;
+      aTab:=0;
+    Else
+      //Обычный, не периодический реквизит
+      aEl:=аДок.GetValue(Ид2);
+      If _And(not оБезСправочников,DBTypeStr(aEl)="REF") Then
+        глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(aEl,ТабВыгружено,ТВыгрузкаСпр);
+      EndIf;
+      Стр1:=Стр1+глУниверсальнаяВыгрузкаВыгрузитьРеквизит(aEl);
+    EndIf;
+    AppendStringToBufferedString(Стр,Стр1+Chr(1));
+  EndDo;
+  ТВыгрузка.AddString(Стр);
+  //Выгрузка строчных частей
+  
+  For j:=1 To Struct.Doc(Ид).LineParts.Count() Do
+    Ид2:=Struct.Doc(Ид).LineParts(j).Name;
+    bTab:=аДок.LineParts(Ид2);
+    ТВыгрузка.AddString("P2:"+Ид2+Chr(1)+bTab.Size());
+    bTab.Select();
+    While bTab.Next() Do
+      Стр:="P3:";
+      For j2:=1 To Struct.Doc(Ид).LineParts(j).Props.Count() Do
+        Ид3:=Struct.Doc(Ид).LineParts(j).Props(j2).Name;
+        ФлПериод:=Struct.Doc(Ид).LineParts(j).Props(j2).Periodical;
+        Стр1:=Ид3+"@"+ФлПериод+"@";
+        If ФлПериод Then
+          //Периодический реквизит
+          aTab:=аДок.LoadPeriodicalValues(Ид2+"."+bTab.CurLine+"."+Ид3);
+          If (not флИстория)And(aTab.Size()>1) Then
+            aTab.Remove(1,aTab.Size()-1);
+            aTab.Set(1,"_Date",оДатаДна);
+          EndIf;
+          Фл=0;
+          aTab.Select();
+          While aTab.Next() Do
+            If _And(флИстория,aTab._Date<оДатаДна,aTab.CurLine<aTab.Size()) Then
+              Continue;
+            EndIf;
+            if _And(not оБезСправочников,DBTypeStr(aTab._Value)="REF") Then
+              глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(aTab._Value,ТабВыгружено,ТВыгрузкаСпр);
+            EndIf;
+            AppendStringToBufferedString(Стр1,""+?(Фл,Chr(3))+aTab._Date+"@"+глУниверсальнаяВыгрузкаВыгрузитьРеквизит(aTab._Value));
+            Фл=1;
+          EndDo;
+          aTab:=0;
+        Else
+          //Обычный, не периодический реквизит
+          aEl:=bTab.Get(bTab.CurLine,Ид3);
+          If _And(not оБезСправочников,DBTypeStr(aEl)="REF") Then
+            глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(aEl,ТабВыгружено,ТВыгрузкаСпр);
+          EndIf;
+          Стр1:=Стр1+глУниверсальнаяВыгрузкаВыгрузитьРеквизит(aEl);
+        EndIf;
+        AppendStringToBufferedString(Стр,Стр1+Chr(1));
+      EndDo;
+      ТВыгрузка.AddString(Стр);
+    EndDo;
+    bTab:=0;
+  EndDo;//Цикл по строчным частям  
+
+  aList:=List.Create();
+  aList.FromString(аДок.GetUsedStoragesNames,",");
+  For j:=1 To aList.Size() Do
+    Ид:=aList.Get(j);//Stor.<Имя>
+    TearStr(Ид,".");
+    
+    ФлЗанул:=0;
+    ТЗанулНакопитель:=0;
+    If _And(оЗанул,Struct.Stor(Ид).PeriodicalStorage) Then
+      For j2:=1 to Struct.Stor(Ид).Props.Count() Do
+        If Struct.Stor(Ид).Props(j2).TotalsProp Then
+          ФлЗанул:=1;
+          ТЗанулНакопитель:=спЗанул.GetByName(Ид);
+          If isEmpty(ТЗанулНакопитель) Then
+            ТЗанулНакопитель:=аДок.InitStorageTab(Ид);
+            спЗанул.SetByName(Ид,ТЗанулНакопитель);
+          EndIf;
+          Break;
+        EndIf;  
+      EndDo;  
+    EndIf;
+  
+    Стр:="ST:"+Ид;
+    bTab:=аДок.LoadStorage(Ид);
+    bTab.Select();
+    While bTab.Next() Do
+      Стр1:=Chr(1);
+      ФлЗнак:=-1;
+      If bTab.GetColumnIndex("_EXPENSE")>0 Then
+        Стр1:=Chr(1)+?(bTab._EXPENSE=1,"-","+");
+        ФлЗнак:=?(bTab._EXPENSE=1,1,-1);
+      EndIf;
+      If bTab.GetColumnIndex("_DATE")>0 Then
+        Стр1:=Стр1+Chr(2)+bTab._DATE;
+      Else
+        Стр1:=Стр1+Chr(2);
+      EndIf;
+      If ФлЗанул Then
+        ТЗанулНакопитель.NewLine();
+      EndIf;
+      For j2:=1 To Struct.Stor(Ид).Props.Count() Do
+        Ид2:=Struct.Stor(Ид).Props(j2).Name;
+        aEl:=bTab.Get(bTab.CurLine,Ид2);
+        If _And(not оБезСправочников,DBTypeStr(aEl)="REF",not isEmpty(aEl)) Then
+          глУниверсальнаяВыгрузкаВыгрузитьЭлементСправочника(aEl,ТабВыгружено,ТВыгрузкаСпр);
+        EndIf;
+        AppendStringToBufferedString(Стр1,Chr(2)+Ид2+"@"+глУниверсальнаяВыгрузкаВыгрузитьРеквизит(aEl));
+        If ФлЗанул Then
+          If Struct.Stor(Ид).Props(j2).Asset Then
+            ТЗанулНакопитель.Set(ТЗанулНакопитель.CurLine,Ид2,ФлЗнак*aEl);
+          Else
+            ТЗанулНакопитель.Set(ТЗанулНакопитель.CurLine,Ид2,aEl);
+          EndIf;  
+        EndIf;
+      EndDo;
+      AppendStringToBufferedString(Стр,Стр1);
+    EndDo;
+    ТВыгрузка.AddString(Стр);
+  EndDo;
+EndFunction    
+
+
+Function OnExecute()
+  РезКаталог:="Exchange.txt";
+  If SaveFileDialog(РезКаталог,"Выберите каталог для выгрузки:")<>1 Then
+    Exit;
+  EndIf;
+  РезКаталог:=GetPath(РезКаталог);
+  If Trim(РезКаталог)="" Then
+    Box("Необходимо выбрать каталог для выгрузки!",Q_STOP);
+    Exit;
+  EndIf;
+  РезКаталог:=AddBackSlash(РезКаталог);
+  флИстория:=Form.оИстория.Value;
+  If флИстория Then
+    оДатаДна:=Form.оДатаДна.Value;
+    If оДатаДна<='01.01.1981' Then
+      оДатаДна:=Date(0);
+    EndIf;
+  Else
+    оДатаДна:=Form.оДатаПериод.Value;
+  EndIf;
+  
+  //@REFSV4@
+  //RF:<Вид>#1<Удален>#1<Папка>#1<ВидРодитель>|<КодРодитель (полный код)>#1<КодПапки (полный код)>#1<Code>#1<Кодированный Name>#1<Реквизит1>#1<Реквизит2>...
+  //<Реквизит?>:         {<Ид>@<Периодический>@<ЗначениеРек>,#2<ИмяСтрочнойЧасти>}
+  //<ИмяСтрочнойЧасти>:  После каждого имени строчной части следуют атрибуты новой строки, для перехода на следующую строку #2<ИмяСтрочнойЧасти> повторяется
+  //<ЗначениеРек>:       для периодических: <ЗначениеПериод1>#3<ЗначениеПериод2>#3...
+  //                     для обычных: <Значение>
+  //<ЗначениеПериод>:    <ДатаЗначения>@<Значение>
+  //<Значение>:          <ТипАтрибута>.<ЗначениеТипа>
+  //<ТипАтрибута>:       {"STRING" (кодированная),"NUMBER","DATE","ENUM" (далее следует индекс),"REF" (далее следует <ПолныйКод>),"DOC" (далее следует <ВидДок>@<НомерДок>@<ДатаДок>)}
+  //<ПолныйКод>:         <Код>@{+ если папка}<ВидРодитель>|<КодРодитель>@{+ если папка}<ВидРодитель>|<КодРодительРодителя>...  
+  //
+  //@DOCSV4@
+  //DC:<ВидДокумента>#1<Номер документа>#1<Дата документа>#1<Обработан>#1<Удален>
+  //P1:<Реквизит документа 1>#1<Реквизит документа 2>...
+  //<Реквизит документа ?>: <Ид>@<Периодический>@<ЗначениеРек> (см. выше)
+  //P2:<Имя строчной части>#1<Количество строк> (заголовок строчной части)
+  //P3:<Реквизит документа 1>#1<Реквизит документа 2>... (строка строчной части)
+  //P3: ...
+  //P2: ...
+  //ST:<ИмяНакопителя>#1<Движение 1>#1<Движение 2>...
+  //<Движение ?>: <Тип +, - или пусто>#2<Дата движения, если допустимо>#2<Реквизит накопителя 1>#2<Реквизит накопителя 2>...
+  ТВыгрузкаСпр:=Text.Create(1);
+  ТВыгрузкаСпр.AddString("@REFSV4@");
+  ТабВыгружено:=Tab.Create("Ид,Таб");
+  НомерВыгрузки:=0;
+  аВыгруженоВсего:=0;
+  оБезСправочников:=Form.оБезСправочников.Value;
+  
+  НачДата:=BegOfDay(Form.НачДата.Value);
+  КонДата:=BegOfDay(Form.КонДата.Value)+1;
+  оДокументы:=Form.оДокументы.Value;
+  оФл9Пересенные:=Form.оФл9Пересенные.Value;
+  оЗанул:=Form.оЗанул.Value;
+  Form.StatusText("Создание временной таблицы документов и применение фильтров...");
+  аДокументы:=TempDB.Create("зДата:Date,зДок:DB");
+  аДокументы.LoadFrom("Journal.ОбщийЖурнал","@LINK->зДок,DocDate->зДата","DocDate>=НачДата","DocDate<КонДата");
+  оДокументы.Select();
+  While оДокументы.Next() Do
+    If оДокументы.Check(оДокументы.CurLine,"Наименование")=0 Then
+      аДокументы.Remove("IsType(зДок,Doc."+оДокументы.Наименование+")");
+      Continue;
+    EndIf;
+    //Фильтры
+    СтрФильтры:="";
+    спСписок:=оДокументы.спСписок;
+    If спСписок.Get(1).Size()>0 Then
+      СтрФильтры:="(зДок NOT IN спСписок.Get(1))";
+    EndIf;
+    тФильтр:=оДокументы.тФильтр;
+    тФильтр.Select();
+    While тФильтр.Next() Do
+      If тФильтр.Фильтр.Get(1).Size()>0 Then
+        СтрФильтры:=?(СтрФильтры="","",СтрФильтры+"Or")+"(зДок..DOC."+оДокументы.Наименование+"."+тФильтр.Ид+" NOT IN тФильтр.Get("+тФильтр.CurLine+",""Фильтр"").Get(1))";
+      EndIf;
+      If тФильтр.Фильтр.Get(2).Size()>0 Then
+        СтрФильтры:=?(СтрФильтры="","",СтрФильтры+"Or")+"(зДок..DOC."+оДокументы.Наименование+"."+тФильтр.Ид+" IN тФильтр.Get("+тФильтр.CurLine+",""Фильтр"").Get(2))";
+      EndIf;
+    EndDo;
+    If СтрФильтры<>"" Then
+      аДокументы.Remove("IsType(зДок,Doc."+оДокументы.Наименование+")And("+СтрФильтры+")");
+    EndIf;  
+  EndDo;
+  
+  
+  спЗанул:=List.Create();
+  НомерВыгрузкиНак:=0;
+  ТВыгрузка:=Text.Create(1);
+  ТВыгрузка.AddString("@DOCSV4@");
+  флПрошлаяДата:=0;
+  члДокТек:=0;
+  члДокВсего:=0;
+  Message("Во временную таблицу вошло "+аДокументы.Size()+" документов!","I");
+  Message("Начало выгрузки документов...","I");
+  аДокументы.Select("зДата+");  
+  While аДокументы.Next() Do
+    аДок:=аДокументы.зДок;
+    Ид:=аДок.DBName();
+    Form.StatusText(""+аДок);
+    If флПрошлаяДата<>BegOfDay(аДок.DocDate) Then
+      If флПрошлаяДата<>0 Then
+        Message("  Окончание выгрузки "+флПрошлаяДата+", выгружено/всего: "+члДокТек+"/"+члДокВсего,"I");
+        Имя:=Trim(РезКаталог)+"Docs_"+FormatDate(флПрошлаяДата,"YYYYmmdd")+?(НомерВыгрузкиНак>0,"_"+НомерВыгрузкиНак)+".txt";
+        If File.DoesFileExist(Имя) Then
+          Raise "Файл "+Имя+" уже существует в папке результата!";
+        EndIf;
+        ТВыгрузка.Save(Имя,-1,1);
+        члДокТек:=0;
+        If оЗанул Then
+          СохранитьДокументЗануления(спЗанул,флПрошлаяДата);
+        EndIf;
+      EndIf;
+      НомерВыгрузкиНак:=0;
+      флПрошлаяДата:=BegOfDay(аДок.DocDate);
+      ТВыгрузка:=Text.Create(1);
+      ТВыгрузка.AddString("@DOCSV4@");
+    ElseIf ТВыгрузка.Size()>50000 Then
+      Имя:=Trim(РезКаталог)+"Docs_"+FormatDate(флПрошлаяДата,"YYYYmmdd")+?(НомерВыгрузкиНак>0,"_"+НомерВыгрузкиНак)+".txt";
+      If File.DoesFileExist(Имя) Then
+        Raise "Файл "+Имя+" уже существует в папке результата!";
+      EndIf;
+      ТВыгрузка.Save(Имя,-1,1);
+      НомерВыгрузкиНак:=НомерВыгрузкиНак+1;
+      ТВыгрузка:=Text.Create(1);
+      ТВыгрузка.AddString("@DOCSV4@");
+    EndIf;
+    
+    ВыгрузитьОдинДокумент(ТВыгрузка,аДок);
+    If оФл9Пересенные Then
+      Фл:=0;
+      бДок:=аДок.Copy();
+      For i2:=1 To 5 Do
+        аПольз:="";аМаш:="";аВремя:="";
+        If бДок.Lock(аПольз,аМаш,аВремя) Then
+          Фл:=1;
+          Break;
+        EndIf;  
+        Message("Невозможно заблокировать документ "+бДок+", так как в данный момент с ним работает пользователь "+аПольз+" на "+аМаш+" в "+аВремя+"!","!");
+        Sleep(500);
+      EndDo;
+      If Фл Then
+        Try  
+          бДок.Reload();
+          бДок.ФлагОбмена:=9;
+          бДок.Save();
+        Finally
+          бДок.Unlock();
+        EndTry;  
+      Else
+        Message("Запрет изменения не установлен на документ "+бДок+"! Установите его вручную!","!");
+      EndIf;
+    EndIf;
+    члДокТек:=члДокТек+1;
+    члДокВсего:=члДокВсего+1;
+  EndDo;
+  
+  If флПрошлаяДата<>0 Then
+    Message("  Окончание выгрузки "+флПрошлаяДата+", выгружено/всего: "+члДокТек+"/"+члДокВсего,"I");
+    Имя:=Trim(РезКаталог)+"Docs_"+FormatDate(флПрошлаяДата,"YYYYmmdd")+?(НомерВыгрузкиНак>0,"_"+НомерВыгрузкиНак)+".txt";
+    If File.DoesFileExist(Имя) Then
+      Raise "Файл "+Имя+" уже существует в папке результата!";
+    EndIf;
+    ТВыгрузка.Save(Имя,-1,1);
+    If оЗанул Then
+      СохранитьДокументЗануления(спЗанул,флПрошлаяДата);
+    EndIf;
+  EndIf;
+  
+  If ТВыгрузкаСпр.Size()>1 Then
+    Имя:=Trim(РезКаталог)+"Refs_"+Right("0000"+НомерВыгрузки,4)+".txt";
+    If File.DoesFileExist(Имя) Then
+      Raise "Файл "+Имя+" уже существует в папке результата!";
+    EndIf;
+    ТВыгрузкаСпр.Save(Имя,-1,1);
+  EndIf;  
+  
+  Message("Выгрузка завершена успешно!","I");
+EndFunction

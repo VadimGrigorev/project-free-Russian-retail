@@ -1,0 +1,198 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function Выполнить()
+  Уст:=Ini.Create();
+  Уст.AddFromFile("Modules\FreeForms\ВнутренниеОбработки\Установки\РасписаниеОчисткиСправочников.ini",1);
+  
+  For iLoop:=1 To Уст.ComponentsInBranch("") Do
+    Путь:=Уст.GetComponentByNumberName("",iLoop);
+    If not Уст.IsBranch(Путь) Then
+      Continue;
+    EndIf;
+    
+    База:=Уст.GetData(Путь+"\Base","---");
+    If Trim(DBVar.ПрефиксИБ)<>База Then
+      Continue;
+    EndIf;
+
+    ИмяСпр:=Уст.GetData(Путь+"\Ref","");
+    Период:=Number(Уст.GetData(Путь+"\Period","6"));
+    НачДата:=BegOfDay(Date());
+    For i:=1 To Период Do
+      НачДата:=BegOfMonth(НачДата)-1;
+    EndDo;
+    НачДата:=BegOfMonth(НачДата);
+    КонДата:=BegOfDay(Date());
+    
+    //Тип 0 -- полностью закрытый контрагент
+    //Тип 1 -- только отсутствуют продажи
+    Тип:=Number(Уст.GetData(Путь+"\Type","0"));
+    Сп:=List.Create();
+    СтрКод:=Trim(Уст.GetData(Путь+"\CodesFrom",""));
+
+    While СтрКод<>"" Do
+      Код:=TearStr(СтрКод,",");
+      аЭл:=DB("Ref."+ИмяСпр);
+      If not аЭл.Find("Code",Код) Then
+        Continue;
+      EndIf;
+      Сп.Add(аЭл);
+    EndDo;
+    If Сп.Size()=0 Then
+      Continue;
+    EndIf;
+
+    СтрКод:=Trim(Уст.GetData(Путь+"\MoveTo",""));
+    ЭлВ:=DB("Ref."+ИмяСпр);
+    If not ЭлВ.Find("Code",СтрКод) Then
+      Continue;
+    EndIf;
+    
+    If ИмяСпр="кнтКонтрагенты" Then
+      ТЗ:="зК:=Ref.кнтКонтрагенты;
+      |зПапка:=Ref.кнтКонтрагенты.@IsFolder;
+      |Condition(зПапка=0);
+      |Condition(зК IN Сп);
+      |Group зК;";
+      З:=Query.Create();
+      З.Execute(ТЗ,2);
+      
+      If DBVar.НачалоПериодаБазы>НачДата Then
+        Message(Путь+" пропущен, так как база слишком свежая...","I");
+        Continue;
+      EndIf;
+      ТЗ:="Period From НачДата to КонДата;
+      |зН:=Storage.ДвижениеТМЦ.Номенклатура;
+      |зК:=Storage.ДвижениеТМЦ.Договор.@Parent;
+      |Condition(зК IN Сп);
+      |зМрТип:=Storage.ДвижениеТМЦ.ТипЗаписи;
+      |зМрТУ:=Storage.ДвижениеТМЦ.ТипУчета;
+      |зК0:=Storage.ДвижениеТМЦ.Количество;зКл:=SUM(зК0);
+      |зС0:=Storage.ДвижениеТМЦ.Сумма;зСм:=SUM(зС0);
+      |Group зК,зМрТип,зМрТУ,зН;";
+      З2:=Query.Create();
+      З2.Execute(ТЗ,2);
+      
+      СпК:=List.Create();
+      While З.Next(1) Do
+        З2.First();
+        If З2.ResultTable.LocateAndGoto("зК",З.зК)>0 then
+          Continue;
+        EndIf;
+        СпК.Add(З.зК);
+      EndDo;
+      
+      
+      If Тип=0 Then
+        //1. Взаиморасчеты
+        НДата:=BegOfMonth(КонДата);
+        ТЗ:="Period From НДата to КонДата;
+        |зТара:=Storage.Взаиморасчеты.Тара;
+        |зДог:=Storage.Взаиморасчеты.Договор;
+        |зК:=Storage.Взаиморасчеты.Договор.@Parent;
+        |Condition(зК IN Сп);
+        |зВД:=Storage.Взаиморасчеты.ВидДолга;
+        |зКл:=EndTotals(Количество);
+        |зСм:=EndTotals(Сумма);
+        |Group зК,зДог,зТара,зВД;";
+        З:=Query.Create();
+        З.Execute(ТЗ,2);
+        While З.Next(1) Do
+          i:=СпК.Find(З.зК);
+          If i>0 Then
+            СпК.Remove(i);
+          EndIf;
+        EndDo;
+        If СпК.Size()=0 Then
+          Continue;
+        EndIf;
+        
+        //Комиссионные ТМЦ
+        ТЗ:="Period From НДата to КонДата;
+        |зДог:=Storage.КомиссионныеТМЦ.Договор;
+        |зК:=Storage.КомиссионныеТМЦ.Договор.@Parent;
+        |Condition(зК IN Сп);
+        |зН:=Storage.КомиссионныеТМЦ.Номенклатура;
+        |зМг:=Storage.КомиссионныеТМЦ.Магазин;
+        |зКл:=EndTotals(Количество);
+        |зСм:=EndTotals(Сумма);
+        |Group зК,зДог,зН,зМг;";
+        З:=Query.Create();
+        З.Execute(ТЗ,2);
+        While З.Next(1) Do
+          i:=СпК.Find(З.зК);
+          If i>0 Then
+            СпК.Remove(i);
+          EndIf;
+        EndDo;
+        If СпК.Size()=0 Then
+          Continue;
+        EndIf;
+        
+        //Подотчетные операции
+        ТЗ:="Period From НДата to КонДата;
+        |зК:=Storage.ПодотчетныеОперации.ПодотчетноеЛицо;
+        |Condition(зК IN Сп);
+        |зЮЛ:=Storage.ПодотчетныеОперации.ЮрЛицо;
+        |зТО:=Storage.ПодотчетныеОперации.ТипОперации;
+        |зСм:=EndTotals(Сумма);
+        |Group зК,зЮЛ,зТО;";
+        З:=Query.Create();
+        З.Execute(ТЗ,2);
+        While З.Next(1) Do
+          i:=СпК.Find(З.зК);
+          If i>0 Then
+            СпК.Remove(i);
+          EndIf;
+        EndDo;
+        If СпК.Size()=0 Then
+          Continue;
+        EndIf;
+        
+        //Доверенности
+        НДата:='01.01.1981';
+        КДата:=BegOfDay(Date());
+        оВид:=Enum.ВидыГашений.НеВозвращен;
+        оКО:=Enum.коДоверенность.НаДеньги;
+        ТЗ:="зСтатус:=Doc.Доверенность.@Status;Condition(зСтатус<>1);зДата:=BegOfDay(Doc.Доверенность.DocDate);Condition((зДата>=НДата)And(зДата<=КДата));
+        |зВид:=Doc.Доверенность.ВидГашения;Condition(зВид=оВид);Документ:=Doc.Доверенность;
+        |зКО:=Doc.Доверенность.КодОперации;Condition(зКО=оКО);зК:=Doc.Доверенность.ДоверенноеЛицо;Condition(зК IN Сп);Group зК,Документ;";
+        З:=Query.Create();
+        З.Execute(ТЗ,2);
+        While З.Next(1) Do
+          i:=СпК.Find(З.зК);
+          If i>0 Then
+            СпК.Remove(i);
+          EndIf;
+        EndDo;
+        If СпК.Size()=0 Then
+          Continue;
+        EndIf;
+      EndIf;
+      
+     
+      For i:=1 To СпК.Size() Do
+        зК:=СпК.Get(i).Copy();
+        Message("Перемещение "+зК+" ("+зК.Code+") в папку "+ЭлВ+" ("+ЭлВ.Code+")"," ");
+        зК.Folder(ЭлВ);
+        глЗаписать(зК);
+      EndDo;
+    ElseIf ИмяСпр="тмцНоменклатура" Then
+      Message(ИмяСпр+" пока не поддерживается!","!");
+    EndIf;
+  EndDo;  
+EndFunction
+
+
+Function OnOpen()
+  Result:=0;
+  If isEmpty(Param) Then
+    Exit;
+  EndIf;
+
+  Выполнить();
+EndFunction
+

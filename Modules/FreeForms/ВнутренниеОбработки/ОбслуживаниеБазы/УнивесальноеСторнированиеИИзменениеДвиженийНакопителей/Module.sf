@@ -1,0 +1,230 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+var спНакопители Export;
+
+Function Доступность()
+  ФлВид:=Max(Form.оВид.Value.SelectedLine,1);
+  If ФлВид=1 Then
+    Form.тГ1.IsDisabled:=1;
+    Form.оИзменять.IsDisabled:=1;
+  Else
+    Form.тГ1.IsDisabled:=0;
+    Form.оИзменять.IsDisabled:=0;
+  EndIf;
+EndFunction
+
+Function ОбновитьТаблицы()
+  оРесурсы:=Form.оРесурсы.Value;
+  оРесурсы.Clear();
+  
+  оФильтр:=Form.оФильтр.Value;
+  оФильтр.ClearLines();
+  оИзменять:=Form.оИзменять.Value;
+  оИзменять.ClearLines();
+  
+  оТип:=Form.оТип.Value;
+  If isEmpty(оТип) Then
+    Доступность();
+    Exit;
+  EndIf;
+  
+  For i:=1 to Struct.Stor(оТип).Props.Count() Do
+    If Struct.Stor(оТип).Props(i).Asset Then
+      оРесурсы.Add(Struct.Stor(оТип).Props(i).Name,Struct.Stor(оТип).Props(i).Caption);
+      оРесурсы.Check(оРесурсы.Size(),1);
+      Continue;
+    EndIf;
+    Ид:=Struct.Stor(оТип).Props(i).Name;
+    Вид:=Struct.Stor(оТип).Props(i).DataType;
+    Тип:=Вид;
+    Тип:=TearStr(Тип,".");
+    оФильтр.AddLine("Фильтр,пФильтр,Ид,зПерем,зПуть,идПуть,Сорт",List.Create(List.Create(),List.Create()),"",Ид,Ид,Ид,Вид,""+Struct.Stor(оТип).Props(i).TotalsProp+"@"+Тип+"@"+Ид);
+    If Struct.Stor(оТип).Props(i).TotalsProp Then
+      оФильтр.BackgroundColor(оФильтр.CurLine,0,MixColors(_CLR_WINDOW,_CLR_RED,10));
+      оИзменять.AddLine("пЗначение,Ид,зПерем,зПуть,идПуть,Сорт",GetNothing(),Ид,Ид,Ид,Вид,""+Struct.Stor(оТип).Props(i).TotalsProp+"@"+Тип+"@"+Ид);
+    EndIf;  
+  EndDo;  
+  оФильтр.Sort("Сорт+");
+  оИзменять.Sort("Сорт+");
+  Доступность();
+EndFunction
+
+
+Function Группировка(З,Уровень,спГруппы,aTab)
+  If Уровень<=спГруппы.Size() Then
+    While З.Next(Уровень) Do
+      Группировка(З,Уровень+1,спГруппы,aTab);
+    EndDo;
+    Exit;
+  EndIf;
+  оРесурсы:=Form.оРесурсы.Value;
+  оИзменять:=Form.оИзменять.Value;
+  оТип:=Form.оТип.Value;
+  ФлВид:=Max(Form.оВид.Value.SelectedLine,1);
+  
+  //Проверка целесообразности добавления строки
+  Фл:=0;
+  For i:=1 To оРесурсы.Size() Do
+    If оРесурсы.Check(i)=0 Then
+      Continue;
+    EndIf;
+    Имя:=оРесурсы.Get(i);
+    зПер:="@зСумма_"+Имя;
+    зСумма:=З.EndTotals(зПер);
+    If Round(зСумма,8)<>0 Then
+      Фл:=1;
+      Break;
+    EndIf;
+  EndDo;
+  If not Фл Then
+    Exit;
+  EndIf;
+  
+  //<Ид1>@<Значение1>###<Ид2>...
+  aTab.NewLine();
+  aTab.ИмяНакопителя:=Form.оТип.Value;
+  aTab.ЗнакДвижения:="-";
+  
+  СтрАккум:="";
+  СтрАккум2:="";
+  For j:=1 to Struct.Stor(оТип).Properties.Count() Do
+    If Struct.Stor(оТип).Properties(j).TotalsProp Then
+      Имя:=Struct.Stor(оТип).Properties(j).Name;
+      зПер:="@зПерем_"+Имя;
+      Знач:=З.Get(зПер);
+      if not isEmpty(Знач) Then
+        СтрАккум:=СтрАккум+?(СтрАккум<>"","###")+Имя+"@"+глЗашифроватьЗначениеУД(Знач);
+      EndIf;
+      If ФлВид=2 Then
+        If оИзменять.FindAndGoto(Имя,,"Ид")>0 Then
+          If оИзменять.Check(оИзменять.CurLine,"Галка")=1 Then
+            Знач:=оИзменять.пЗначение;
+          EndIf;
+        EndIf;
+        if not isEmpty(Знач) Then
+          СтрАккум2:=СтрАккум2+?(СтрАккум2<>"","###")+Имя+"@"+глЗашифроватьЗначениеУД(Знач);
+        EndIf;
+      EndIf;
+    EndIf;
+  EndDo;
+  aTab.Аккумуляторы:=СтрАккум;
+  aTab.Реквизиты:="";
+  
+  СтрАктивы:="";
+  For i:=1 To оРесурсы.Size() Do
+    If оРесурсы.Check(i)=0 Then
+      Continue;
+    EndIf;
+    Имя:=оРесурсы.Get(i);
+    зПер:="@зСумма_"+Имя;
+    зСумма:=З.EndTotals(зПер);
+    If Round(зСумма,8)<>0 Then
+      СтрАктивы:=СтрАктивы+?(СтрАктивы<>"","###")+Имя+"@"+глЗашифроватьЗначениеУД(зСумма);
+    EndIf;
+  EndDo;
+  aTab.Активы:=СтрАктивы;
+  
+  If ФлВид=2 Then
+    aTab.NewLine();
+    aTab.ИмяНакопителя:=Form.оТип.Value;
+    aTab.ЗнакДвижения:="+";
+    aTab.Аккумуляторы:=СтрАккум2;
+    aTab.Реквизиты:="";
+    aTab.Активы:=СтрАктивы;
+  EndIf;
+EndFunction
+
+
+
+Function OnExecute(СпУстановки)
+  КонДата:=Form.КонДата.Value;
+  оФильтр:=Form.оФильтр.Value;
+  оРесурсы:=Form.оРесурсы.Value;
+  оТип:=Form.оТип.Value;
+  If isEmpty(оТип) Then
+    Exit;
+  EndIf;
+  
+  Фл:=0;
+  For i:=1 To оРесурсы.Size() Do
+    If оРесурсы.Check(i)>0 Then
+      Фл:=1;
+      Break;
+    EndIf;
+  EndDo;
+  if not Фл Then
+    Box("Необходимо выбрать по крайней мере один ресурс для сторнирования!",Q_STOP);
+    Exit;
+  EndIf;
+  ТЗ:="Period From КонДата to КонДата;";
+
+  ФлПервый:=1;
+  оФильтр.Select();
+  While оФильтр.Next() Do
+    If (оФильтр.Фильтр.Get(1).Size()=0)And(оФильтр.Фильтр.Get(2).Size()=0)And(not ФлПервый) Then
+      Continue;
+    EndIf;
+    ФлПервый:=0;
+    Тип0:=оФильтр.идПуть;
+    ВидТипа:=оФильтр.идПуть;
+    Тип:=TearStr(ВидТипа,".");
+    
+    зПер:="@зПерем_"+оФильтр.зПерем;
+    ТЗ:=ТЗ+зПер+":=Stor."+оТип+"."+оФильтр.зПуть+";"+_NEWLINE;
+    If оФильтр.Фильтр.Get(1).Size()>0 Then
+      ТЗ:=ТЗ+"Condition("+зПер+" IN оФильтр.Get("+оФильтр.CurLine+",""Фильтр"").Get(1));"+_NEWLINE;
+    EndIf;
+    If оФильтр.Фильтр.Get(2).Size()>0 Then
+      ТЗ:=ТЗ+"Condition("+зПер+" NOT IN оФильтр.Get("+оФильтр.CurLine+",""Фильтр"").Get(2));"+_NEWLINE;
+    EndIf;
+  EndDo;
+  For i:=1 To оРесурсы.Size() Do
+    If оРесурсы.Check(i)=0 Then
+      Continue;
+    EndIf;
+    ТЗ:=ТЗ+"@зСумма_"+оРесурсы.Get(i)+":=EndTotals("+оРесурсы.Get(i)+");"+_NEWLINE;
+  EndDo;
+  спГруппы:=List.Create();
+  For j:=1 to Struct.Stor(оТип).Properties.Count() Do
+    If Struct.Stor(оТип).Properties(j).TotalsProp Then
+      зПер:="@зПерем_"+Struct.Stor(оТип).Properties(j).Name;
+      if pos(зПер+":=Stor.",ТЗ)=0 Then
+        ТЗ:=ТЗ+зПер+":=Stor."+оТип+"."+Struct.Stor(оТип).Properties(j).Name+";"+_NEWLINE;
+      EndIf;
+      ТЗ:=ТЗ+"Group "+зПер+";"+_NEWLINE;
+      спГруппы.Add(зПер);
+    EndIf;
+  EndDo;
+      
+  З:=Query.Create();
+  З.Execute(ТЗ,2);
+  
+  аДок:=Doc.УниверсальныйДокумент;
+  аДок.New();
+  аДок.ФлагОбмена:=?(Form.оЗапретДок.Value=1,9,0);
+  аДок.SetPrefix("DocNum",Trim(DBVar.ПрефиксИБ));
+  аДок.КодОперации:=Enum.коУниверсальныйДокумент.УниверсальныйДокумент;
+  аДок.DocDate:=BegOfDay(Form.оДокДата.Value);
+  глЗаполнитьШапку(аДок);
+  аДок.Комментарий:="Сторнирование движений накопителя: "+оТип;
+  aTab:=аДок.LineParts("Содержание");
+  Группировка(З,1,спГруппы,aTab);
+  
+  If aTab.Size()=0 Then
+    Message("Документ не создан, так как в запрос не вошло ни одной строки с ненулевыми ресурсами!","I");
+    Exit;
+  EndIf;
+  If Not глЗаписать(аДок,1,1) Then
+    Message("Невозможно сохранить новый документ за дату "+КонДата+"!","!");
+    Exit;
+  EndIf;
+  If not глОбработать(аДок,1,1) Then
+    Message("Невозможно обработать документ "+аДок+"!","!");
+    Exit;
+  EndIf;
+  Message("Документ "+аДок+" создан и обработан успешно!","I");
+EndFunction
+  

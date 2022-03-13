@@ -1,0 +1,106 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var НачДата Export;
+Var КонДата Export;
+Var флПропуститьЦиклРедактирования Export;
+Var флБезусловноеОбновление Export;
+Var флПрочийЖурнал Export;
+Var СписокЭлементов Export;
+
+Function СоздатьТекущийПКО(Пар1=0,Пар2=0)
+  //Dummy cover
+EndFunction
+
+Function ОбновитьДоверенность(ВидГашения=0)
+  //Dummy cover
+EndFunction
+
+Function ПолучитьПолнуюТаблицуЖурнала(НДата=0,КДата=0)
+  //Dummy cover
+EndFunction
+
+Function Видимость(ОбновитьФильтр=0)
+  aEl:=Form.Object;
+  If aEl.ВидГашения<>Enum.ВидыГашений.НеВозвращен Then
+    Form.пСтатус.Caption:="Погашен"+?(aEl.ВидГашения=Enum.ВидыГашений.ДеньгиПоступили,"",", пустой документ");
+    Form.пСтатус.FontColor:=_CLR_WINDOWTEXT;
+    //Form.пСтатус.FontStyle:=0;
+  Else  
+    Form.пСтатус.Caption:="Не погашен";
+    Form.пСтатус.FontColor:=_CLR_RED;
+    //Form.пСтатус.FontStyle:=1;
+  EndIf;
+  
+  If (aEl.КодОперации=Enum.коДоверенность.НаТМЦ)Or(aEl.КодОперации=Enum.коДоверенность.Произвольная) Then
+    Фл:=aEl.КодОперации=Enum.коДоверенность.НаТМЦ;
+    Form.MainTab.Value.Column("КодНоменклатуры").isVisible:=Фл;
+    Form.MainTab.Value.Column("Номенклатура").isVisible:=Фл;
+    Form.MainTab.Value.Column("Единицы").isVisible:=Фл;
+    Form.MainTab.Value.Column("Содержание").isVisible:=1-Фл;
+    
+    Стр:=?(aEl.БанковскийСчет.Selected()=0,"","№ р/с: "+aEl.БанковскийСчет.НомерСчета);
+    If Form.пБанковскийСчет.Caption<>Стр Then
+      Form.пБанковскийСчет.Caption:=Стр;
+    EndIf;  
+  EndIf;
+EndFunction
+
+Function ИмяФормыПоКодуОперации()
+  aEl:=Form.Object;
+  Result:="Form";
+  If (aEl.КодОперации=Enum.коДоверенность.НаТМЦ)Or(aEl.КодОперации=Enum.коДоверенность.Произвольная) Then
+    Result:="FormTab";
+  EndIf;
+EndFunction
+
+Function OnOpen(FormName)
+  aEl:=Form.Object;
+  FormName:=ИмяФормыПоКодуОперации();
+  
+  If aEl.Selected()<0 Then
+    If aEl.КодОперации.Selected()=0 Then
+      aEl.КодОперации:=Enum.коДоверенность.НаДеньги;
+    EndIf;
+    If aEl.ВидГашения.Selected()=0 Then
+      aEl.ВидГашения:=Enum.ВидыГашений.НеВозвращен;
+    EndIf;  
+    aEl.ДатаДействия:=BegOfDay(aEl.DocDate+10);
+  EndIf;
+EndFunction
+
+Function OnCreateFromObject()
+  //Ввод на основании
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  If not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+    Form.Close(0);
+    Exit;
+  EndIf;
+EndFunction
+
+Function OnAfterChangeOperationCode()
+  пИмя:=ИмяФормыПоКодуОперации();
+  If Uppercase(пИмя)<>Uppercase(RemoveExt(GetFileName(Form.GetFormFileName()))) then
+    Form.SwitchToForm(пИмя);
+  EndIf;
+  Видимость();
+EndFunction
+
+Function OnAfterCustomBuhChanged()
+  Видимость();
+EndFunction
+
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  
+  If aEl.ЮрЛицо.Selected()=0 Then
+    Box("Выберите управленческую юр. лицо!",Q_STOP);
+    Exit 0;
+  EndIf;  
+  
+  Exit 1;
+EndFunction
+

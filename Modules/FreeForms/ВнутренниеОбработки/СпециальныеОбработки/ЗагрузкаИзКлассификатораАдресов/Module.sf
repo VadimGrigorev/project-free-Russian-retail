@@ -1,0 +1,414 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var оТУлиц Export;
+Var оТГородов Export;
+Var Чл Export;  //Изменнных
+Var Чл2 Export; //Новых
+Var ТЭл Export;
+Var СтрРегион Export;
+
+Function ЗагрузитьСправочник(Имя,Уровни=0,Владельцы=0)
+  Message("Обрабатывается справочник "+Имя+"...");
+  аЭл:=DB("Ref."+Имя);
+  Тб:=Tab.Create("Эл,Имя,Уровень,КодБазы");
+  Чл0:=0;
+  аЭл.Select();
+  While аЭл.Next() Do
+    Чл0:=Чл0+1;
+    If Чл0%100=0 Then
+      Form.StatusText(Чл0);
+    EndIf;
+    If (Уровни=0)And(аЭл.IsFolder()) Then
+      Continue;
+    EndIf;
+    
+    Тб.AddLine("Эл",аЭл.Copy());
+    Тб.Уровень:=0;
+    If Уровни=1 Then
+      Тб.Уровень:=?(not аЭл.IsFolder(),3,?(аЭл.Folder().Selected()=0,1,2));
+    EndIf;
+    Тб.Имя:=Trim(LowerCase(аЭл.Name))+?(Уровни=0,"","@"+Тб.Уровень)+?(Владельцы=0,"","@"+аЭл.Parent().Code);
+    Тб.КодБазы:=аЭл.КодБазы+?(Уровни=0,"","@"+Тб.Уровень)+?(Владельцы=0,"","@"+аЭл.Parent().Code);
+  EndDo;
+  Exit Тб;
+EndFunction 
+
+Function НужноОбновить(аЭл,База)
+  If Trim(аЭл.Индекс)<>Trim(База.INDEX) Then
+    Exit 1;
+  EndIf;
+  If Form.оИмена.Value=1 Then
+    If Left(Trim(аЭл.Name),50)<>Left(Trim(База.NAME),50) Then
+      Exit 1;
+    EndIf;
+  EndIf;
+  
+  If аЭл.DBName()="адУлицы" Then
+    ТУ:=оТУлиц.GetByName(Trim(LowerCase(База.SOCR)));
+    If IsEmpty(ТУ) Then
+      ТУ:=оТУлиц.GetByName("0");
+    EndIf;
+    If ТУ<>аЭл.ТипУлицы Then
+      Exit 1;
+    EndIf;
+  ElseIf аЭл.DBName()="адГорода" Then
+    ТНП:=оТГородов.GetByName(Trim(LowerCase(База.SOCR)));
+    If IsEmpty(ТНП) Then
+      ТНП:=оТГородов.GetByName("0");
+    EndIf;
+    If ТНП<>аЭл.ТипНаселенногоПункта Then
+      Exit 1;
+    EndIf;
+  EndIf;
+  Exit 0;
+EndFunction
+
+
+Function ЗаполнитьОсновное(аЭл,База)
+  аЭл.Индекс:=Trim(База.INDEX);
+  If аЭл.DBName()="адУлицы" Then
+    ТУ:=оТУлиц.GetByName(Trim(LowerCase(База.SOCR)));
+    If IsEmpty(ТУ) Then
+      ТУ:=оТУлиц.GetByName("0");
+    EndIf;
+    аЭл.ТипУлицы:=ТУ;
+  ElseIf аЭл.DBName()="адГорода" Then
+    ТНП:=оТГородов.GetByName(Trim(LowerCase(База.SOCR)));
+    If IsEmpty(ТНП) Then
+      ТНП:=оТГородов.GetByName("0");
+    EndIf;
+    аЭл.ТипНаселенногоПункта:=ТНП;
+  ElseIf аЭл.DBName()="адАдминистративныеДеления" Then
+    аЭл.ТипДеления:=Trim(База.SOCR);
+  EndIf;
+  If Form.оИмена.Value=1 Then
+    аЭл.Name:=Trim(База.NAME);
+  EndIf;
+EndFunction
+
+Function ЗагрузитьЭлемент(База,ИмяСпр,Тб,Уровень=0,Папка=0,Родитель=0,Владелец=0,СоздаватьЭлемент=0) Forward
+
+Function ЕслиСоздаватьЭлемент(База,ИмяСпр,аЭл,Тб,СоздаватьЭлемент,Владелец)
+  If (СоздаватьЭлемент=1)And(аЭл.IsFolder()) Then
+    аЭл2:=ЗагрузитьЭлемент(База,ИмяСпр,Тб,3,0,аЭл,Владелец,0);
+    ТЭл.AddLine("Эл,КодБазы",аЭл2,аЭл2.КодБазы);
+  EndIf;
+EndFunction
+
+Function ЗагрузитьЭлемент(База,ИмяСпр,Тб,Уровень=0,Папка=0,Родитель=0,Владелец=0,СоздаватьЭлемент=0)
+  флДлинаКода:=Struct.Ref(ИмяСпр).Props("КодБазы").DataType;
+  tearStr(флДлинаКода,"STRING.");
+  флДлинаКода:=Number(флДлинаКода);
+  
+  Код:=LowerCase(Left(База.CODE,флДлинаКода))+?(Уровень=0,"","@"+Уровень)+?(Владелец=0,"","@"+Владелец.Code);
+  Имя:=LowerCase(Trim(База.NAME))+?(Уровень=0,"","@"+Уровень)+?(Владелец=0,"","@"+Владелец.Code);
+  ИмяИКод:=LowerCase(Trim(База.NAME))+"@"+LowerCase(Left(База.CODE,флДлинаКода))+?(Уровень=0,"","@"+Уровень)+?(Владелец=0,"","@"+Владелец.Code);
+  
+  While 1 Do
+    If Тб=0 Then
+      //Только для улиц
+      ТУ:=оТУлиц.GetByName(Trim(LowerCase(База.SOCR)));
+      If IsEmpty(ТУ) Then
+        ТУ:=оТУлиц.GetByName("0");
+      EndIf;
+      Фл:=1;
+      аЭл:=DB("Ref."+ИмяСпр);
+      If not аЭл.Find("@Parent,КодБазы,Name,ТипУлицы",Владелец,Left(Код,флДлинаКода),Trim(База.NAME),ТУ) Then
+        If not аЭл.Find("@Parent,Name,ТипУлицы",Владелец,Trim(База.NAME),ТУ) Then
+          Фл:=0;
+        EndIf;
+      EndIf;
+      If Фл Then
+        If НужноОбновить(аЭл,База) Then
+          ЗаполнитьОсновное(аЭл,База);
+          глЗаписать(аЭл);
+          Чл:=Чл+1;
+        EndIf;
+        ЕслиСоздаватьЭлемент(База,ИмяСпр,аЭл,Тб,СоздаватьЭлемент,Владелец);
+        Break;
+      EndIf;
+    Else
+      If Тб.FindAndGoto(Код,,"КодБазы")>0 Then
+        аЭл:=Тб.Эл;
+        If НужноОбновить(аЭл,База) Then
+          ЗаполнитьОсновное(аЭл,База);
+          глЗаписать(аЭл);
+          Чл:=Чл+1;
+        EndIf;
+        ЕслиСоздаватьЭлемент(База,ИмяСпр,аЭл,Тб,СоздаватьЭлемент,Владелец);
+        Break;
+      EndIf;
+    EndIf;
+      
+    аЭл:=DB("Ref."+ИмяСпр);
+    If Папка=0 Then
+      аЭл.New();
+      If Владелец<>0 Then
+        аЭл.Parent(Владелец);
+      EndIf;
+      If Родитель<>0 Then
+        If not Родитель.IsFolder() Then
+          If Родитель.Folder().Selected()<>0 Then
+            аЭл.Folder(Родитель.Folder());
+          EndIf;
+        Else
+          аЭл.Folder(Родитель);
+        EndIf;
+      EndIf;
+    Else
+      аЭл.New(1);
+      If Владелец<>0 Then
+        аЭл.Parent(Владелец);
+      EndIf;
+      If Родитель<>0 Then
+        аЭл.Folder(Родитель);
+      EndIf;
+    EndIf;
+    
+    аЭл.Name:=Trim(База.NAME);
+    аЭл.КодБазы:=Left(База.CODE,флДлинаКода);
+    ЗаполнитьОсновное(аЭл,База);
+    глЗаписать(аЭл);
+    ЕслиСоздаватьЭлемент(База,ИмяСпр,аЭл,Тб,СоздаватьЭлемент,Владелец);
+    Чл2:=Чл2+1;
+    Break;
+  EndDo;
+  
+  Exit аЭл;
+EndFunction
+
+Function OnExecute()
+  оГорода:=Form.оГорода.Value;
+  If Trim(оГорода)="" Then
+    Box("Не указан путь к файлу KLADR.DBF",Q_STOP);
+    Exit;
+  EndIf;
+  СтрРегион:=Trim(Form.оРегион.Value);
+  TearStr(СтрРегион,":");
+  СтрРегион:=Trim(СтрРегион);
+  оПапка:=Form.оПапка.Value;
+  If оПапка.Selected()<>0 Then
+    If Trim(оПапка.КодБазы)="" Then
+      Box("Элементы введенные вручную нельзя использовать как ограничители при загрузке индентификатора!",Q_STOP);
+      Form.оПапка.Value:="";
+      Exit;
+    EndIf;
+    СтрРегион:=Left(Trim(оПапка.КодБазы),2);
+    //Нулей:=0;
+    //For i:=1 To Length(СтрРегион) Do
+    //  If Mid(СтрРегион,Length(СтрРегион)-i+1,1)="0" Then
+    //    Нулей:=Нулей+1;
+    //  Else
+    //    Break;
+    //  EndIf;
+    //EndDo;
+    //СтрРегион:=Left(СтрРегион,Length(СтрРегион)-Нулей);
+    пРегион:="";  
+  EndIf;
+  If СтрРегион<>"" Then
+    Message("Ограничение загрузки: "+СтрРегион);
+  EndIf;
+  
+  База:=Dbf.Create();
+  База.Open(оГорода);
+  База.CodePage:=?(Form.о866.Value=1,866,1251);
+
+  Message("Загружается справочник адАдминистративныеДеления...");
+  ТЭл:=Tab.Create("Эл,КодБазы");
+  ТВл:=Tab.Create("Эл,КодБазы");
+  
+  Тб:=ЗагрузитьСправочник("адАдминистративныеДеления");
+  флДлинаКода:=Struct.Ref("адАдминистративныеДеления").Props("КодБазы").DataType;
+  tearStr(флДлинаКода,"STRING.");
+  флДлинаКода:=Number(флДлинаКода);
+  Чл:=0;
+  Чл0:=0;
+  Чл2:=0;
+  База.First();
+  База.Select();
+  While База.Next() Do
+    Чл0:=Чл0+1;
+    If Чл0%100=0 Then
+      Form.StatusText(Чл0);
+    EndIf;
+    Код:=Left(База.CODE,флДлинаКода);
+    If Number(Mid(Код,3))<>0 Then
+      Continue;
+    EndIf;
+    аЭл:=ЗагрузитьЭлемент(База,"адАдминистративныеДеления",Тб);
+    Тб.AddLine("Эл,Имя,Уровень,КодБазы",аЭл,Trim(LowerCase(аЭл.Name)),0,аЭл.КодБазы);//Новый KLADR содердит ошибки на этом уровне
+    ТВл.AddLine("Эл,КодБазы",аЭл,аЭл.КодБазы);
+  EndDo;
+  Message("Добавлено элементов: "+Чл2);
+  Message("Изменено элементов: "+Чл);
+  
+  
+  
+  If Form.оТолькоУлицы.Value=0 Then 
+    Message("Загружается справочник адГорода...");
+    
+    //Папки первого уровня
+    Тб:=ЗагрузитьСправочник("адГорода",1,1);
+    ТРод:=Tab.Create("Эл,КодБазы");
+    Message("  Загружаются административные районы...");
+    Чл:=0;
+    Чл0:=0;
+    Чл2:=0;
+    База.First();
+    База.Select();
+    While База.Next() Do
+      Чл0:=Чл0+1;
+      If Чл0%100=0 Then
+        Form.StatusText(Чл0);
+      EndIf;
+      Код:=LowerCase(Trim(База.CODE));
+      If СтрРегион<>"" Then
+        If Left(Код,Length(СтрРегион))<>СтрРегион Then
+          Continue;
+        EndIf;
+      EndIf;
+      If Number(Mid(Код,3))=0 Then
+        Continue;
+      EndIf;
+      If Number(Mid(Код,6))<>0 Then
+        Continue;
+      EndIf;
+      
+      If ТВл.FindAndGoto(Left(Код,2)+"000000000",,"КодБазы")>0 Then
+        Вл:=ТВл.Эл;
+        аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,1,1,,Вл);
+        ТРод.AddLine("Эл,КодБазы",аЭл,аЭл.КодБазы);
+      EndIf;
+    EndDo;
+    
+    ТРод2:=Tab.Create("Эл,КодБазы");
+    Message("  Загружаются подразделения второго уровня...");
+    Чл0:=0;
+    База.First();
+    База.Select();
+    While База.Next() Do
+      Чл0:=Чл0+1;
+      If Чл0%100=0 Then
+        Form.StatusText(Чл0);
+      EndIf;
+      Код:=LowerCase(Trim(База.CODE));
+      If СтрРегион<>"" Then
+        If Left(Код,Length(СтрРегион))<>СтрРегион Then
+          Continue;
+        EndIf;
+      EndIf;
+      If Number(Mid(Код,6))=0 Then
+        Continue;
+      EndIf;
+      If Number(Mid(Код,9))<>0 Then
+        Continue;
+      EndIf;
+      If ТВл.FindAndGoto(Left(Код,2)+"000000000",,"КодБазы")>0 Then
+        Вл:=ТВл.Эл;
+        ТемпРод:=Ref.адГорода;
+        If ТРод.FindAndGoto(Left(Код,5)+"000000",,"КодБазы")>0 Then
+          Род:=ТРод.Эл;
+          аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,2,1,Род,Вл,1);
+        ElseIf ТемпРод.Find("@Parent,@IsFolder,КодБазы",Вл,1,Left(Код,11)) Then
+          аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,3,0,ТемпРод,Вл,0);
+        Else
+          аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,2,1,0,Вл,1);
+        EndIf;
+        ТРод2.AddLine("Эл,КодБазы",аЭл,аЭл.КодБазы);
+      EndIf;
+    EndDo;
+  
+    If Form.оСпец.Value=1 Then
+      ТРод:=0;
+      ТРод2:=0;
+      ТВл:=0;
+      База.Close();
+      Message("Добавлено элементов: "+Чл2);
+      Message("Изменено элементов: "+Чл);
+      Message("Работа окончена!");
+      Exit;
+    EndIf;
+  
+    Message("  Загружаются города...");
+    Чл0:=0;
+    База.First();
+    База.Select();
+    While База.Next() Do
+      Чл0:=Чл0+1;
+      If Чл0%100=0 Then
+        Form.StatusText(Чл0);
+      EndIf;
+      Код:=LowerCase(Trim(База.CODE));
+      If СтрРегион<>"" Then
+        If Left(Код,Length(СтрРегион))<>СтрРегион Then
+          Continue;
+        EndIf;
+      EndIf;
+      If Number(Mid(Код,9))=0 Then
+        Continue;
+      EndIf;
+      If ТВл.FindAndGoto(Left(Код,2)+"000000000",,"КодБазы")>0 Then
+        Вл:=ТВл.Эл;
+        ФлОк:=0;
+        If ТРод2.FindAndGoto(Left(Код,8)+"000",,"КодБазы")=0 Then
+          If ТРод.FindAndGoto(Left(Код,5)+"000000",,"КодБазы")>0 Then
+            ФлОк:=1;
+            Род:=ТРод.Эл;
+          EndIf;
+        Else
+          ФлОк:=1;
+          Род:=ТРод2.Эл;
+        EndIf;
+        If ФлОк Then
+          ЗагрузитьЭлемент(База,"адГорода",Тб,3,0,Род,Вл);
+        EndIf;
+      EndIf;
+    EndDo;
+    ТРод:=0;
+    ТРод2:=0;
+    ТВл:=0;
+    База.Close();
+    Message("Добавлено элементов: "+Чл2);
+    Message("Изменено элементов: "+Чл);
+  EndIf;
+  
+  оУлицы:=Form.оУлицы.Value;
+  If Trim(оУлицы)="" Then
+    Box("Не указан путь к файлу STREET.DBF",Q_STOP);
+    Exit;
+  EndIf;
+  
+  Message("Загружается справочник адУлицы...");
+  База:=Dbf.Create();
+  База.Open(оУлицы);
+  База.CodePage:=?(Form.о866.Value=1,866,1251);
+  
+  Чл:=0;
+  Чл0:=0;
+  Чл2:=0;
+  База.First();
+  База.Select();
+  While База.Next() Do
+    Чл0:=Чл0+1;
+    If Чл0%100=0 Then
+      Form.StatusText(Чл0);
+    EndIf;
+    Код:=LowerCase(Trim(База.CODE));
+    If СтрРегион<>"" Then
+      If Left(Код,Length(СтрРегион))<>СтрРегион Then
+        Continue;
+      EndIf;
+    EndIf;
+    аЭлГ:=Ref.адГорода;
+    If аЭлГ.Find("@IsFolder,КодБазы",0,Left(Код,11)) Then
+      ЗагрузитьЭлемент(База,"адУлицы",0,0,0,0,аЭлГ);
+    EndIf;
+  EndDo;
+  База.Close();
+  Message("Добавлено элементов: "+Чл2);
+  Message("Изменено элементов: "+Чл);
+  
+  Message("Работа окончена!");
+EndFUnction

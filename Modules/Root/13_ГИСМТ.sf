@@ -1,0 +1,288 @@
+//Глобальные (root) модули загружаются при старте системы. Загрузка начинается с модуля "module" и продолжается в алфавитном порядке.
+//Переменные и функции, объявленные с постфиксом export, будут доступны в любых других модулях в любых потоках системы.
+//Модуль может содержать специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+//Список драйвера подписи содержит:
+//"МодульДрайвера" -- скомпилированый модуль драйвера (для обращения к функциям драйвера)
+//"ПутьДрайвера" -- путь к драйверу
+//"Магазин" -- магазин драйвера
+Var глДрайверПодписи Export;
+
+Function глЗагрузитьДрайверПодписи(Магазин,ФлФорсироватьБезСертификата=0) Export;
+
+  Function _СкопироватьФайлВоВременнуюПапку(ЛокальныйФайл,ByRef Результат="")
+    Результат:=Addbackslash(GetTempDirectory())+GetFileName(ЛокальныйФайл);
+    If Not File.DoesFileExist(ЛокальныйФайл) Then
+      Message("Необходимый файл "+ЛокальныйФайл+" не существует!","!");
+      Exit 0;
+    EndIf;
+    If File.DoesFileExist(Результат) Then
+      If File.GetFileSize(ЛокальныйФайл)=File.GetFileSize(Результат) Then
+        Exit 1;
+      EndIf;
+    EndIf;
+    If not File.CopyFile(ЛокальныйФайл,Результат,1) Then
+      Message("Невозможно скопировать файл "+ЛокальныйФайл+" в "+Результат+"!","!");
+      Exit 0;
+    EndIf;
+    Exit 1;
+  EndFunction
+        
+
+  спДрайвер:=List.Create();
+  Try
+    If IsEmpty(Магазин.ПутьДрайвераПодписи) Then
+      //Message("Драйвер подписи ГИС МТ: Не выбран тип драйвера для подписи!","!");
+      Exit спДрайвер;
+    ElseIf (IsEmpty(Магазин.ПутьБиблиотекиSSL))And(not ФлФорсироватьБезСертификата) Then
+      Message("Драйвер подписи ГИС МТ: Не выбран путь к библиотекам SSL!","!");
+      Exit спДрайвер;
+    ElseIf (IsEmpty(Магазин.СертификатПодписи))And(not ФлФорсироватьБезСертификата) Then
+      Message("Драйвер подписи ГИС МТ: Не выбран сертификат драйвера подписи!","!");
+      Exit спДрайвер;
+    EndIf;
+    
+    спДрайвер["ДопУстановки"]:=Магазин.НастройкиДрайвераПодписи;
+    спДрайвер["ПутьДрайвера"]:=Магазин.ПутьДрайвераПодписи;
+    спДрайвер["Магазин"]:=Магазин;
+      
+    //Загрузка текста драйвера
+    Путь:=AddBackSlash(Магазин.ПутьДрайвераПодписи)+"Драйвер";
+    If File.DoesFileExist(Путь+".sfc") Then
+      aBuf:=Buffer.Create();
+      aBuf.LoadFromFile(Путь+".sfc");
+      аМодуль:=LoadFunctionFromBuffer(aBuf);
+      спДрайвер["МодульДрайвера"]:=аМодуль;
+    ElseIf File.DoesFileExist(Путь+".sf") Then
+      Стр:=FileToString(Путь+".sf",0);
+      аМодуль:=Compile(Стр,1);
+      спДрайвер["МодульДрайвера"]:=аМодуль;
+    Else
+      Raise "Не найден модуль драйвера!";
+    EndIf;
+  
+    //Инициализация
+    Стр:=Trim(ExecuteFunction("DriverInit",спДрайвер["МодульДрайвера"],спДрайвер));
+    If Стр<>"" Then
+      Raise Стр;
+    EndIf;
+
+    //Подключение
+    Стр:=Trim(ExecuteFunction("DriverConnect",спДрайвер["МодульДрайвера"],спДрайвер));
+    If Стр<>"" Then
+      Raise Стр;
+    EndIf;
+          
+    //Загрузка сертификата
+    If Магазин.СертификатПодписи<>"" Then
+      спДрайвер["Идентификатор"]:=Магазин.СертификатПодписи;
+      Стр:=Trim(ExecuteFunction("SetCertificate",спДрайвер["МодульДрайвера"],спДрайвер));
+      If Стр<>"" Then
+        Raise Стр;
+      EndIf;
+    EndIf;
+
+    //libssl-3.dll
+    //libcrypto-3.dll
+    If Магазин.ПутьБиблиотекиSSL<>"" Then
+      If (Pos("\\",Стр)=0)And(Pos(":",Стр)=0) Then
+        //Кодпирование библиотек OpenSSL во временные папки, если файлы на сервере
+        Стр:="";
+        If not _СкопироватьФайлВоВременнуюПапку(Магазин.ПутьБиблиотекиSSL,Стр) Then
+          Exit List.Create();
+        EndIf;
+        If not _СкопироватьФайлВоВременнуюПапку(Replace(Lowercase(Магазин.ПутьБиблиотекиSSL),"libssl","libcrypto")) Then
+          Exit List.Create();
+        EndIf;
+      Else
+        Стр:=Магазин.ПутьБиблиотекиSSL;
+      EndIf;
+      спДрайвер["Библиотека"]:=Стр;
+    EndIf;
+  Except
+    Message("Ошибка при инициализации драйвера подписи магазина "+Магазин+": "+PopError(),"!");
+    спДрайвер:=List.Create();
+  EndTry;
+  
+  Exit спДрайвер;
+EndFunction;
+
+Function глУдалитьДрайверПодписи(СпДрайвер) Export;
+  Try
+    If not IsEmpty(СпДрайвер["МодульДрайвера"]) Then
+      ExecuteFunction("DriverDisconnect",СпДрайвер["МодульДрайвера"],СпДрайвер);
+      ExecuteFunction("DriverDeinit",СпДрайвер["МодульДрайвера"],СпДрайвер);
+    EndIf;
+  Except
+  EndTry;
+  СпДрайвер.Clear();
+EndFunction
+
+Function ВыполнитьОбменССерверомГИСМТ(Ссылка,ByRef Стр,спДрайверПодписи,ФлТипСервера,ФлОсобый=0)
+  If pos("//",Ссылка)>0 Then
+    TearStr(Ссылка,"//");
+  EndIf;  
+  Сервер:=IPConnection.HTTPPunycodeEncode(TearStr(Ссылка,"/"));
+  Try
+    aTCP:=0;
+    For i:=1 To 5 Do
+      Прокси:=Trim(спДрайверПодписи["Прокси"]);
+      If Прокси<>"" Then
+        //<ProxyType>@<ProxyIP>@<User>@<Password>
+        aTCP:=IPConnection.Create();
+        ПроксиТип:=TearStr(Прокси,"@");
+        ПроксиАдр:=TearStr(Прокси,"@");
+        ПроксиПольз:=TearStr(Прокси,"@");
+        aTCP.UseProxy(ПроксиАдр,ПроксиТип,ПроксиПольз,Прокси);
+        aTCP.Connect(Сервер);
+      Else
+        aTCP:=IPConnection.Connect(Сервер);
+      EndIf;
+      if aTCP.IsConnected Then
+        Break;
+      EndIf;
+    EndDo;
+    If _Or(isEmpty(aTCP),not aTCP.isConnected()) Then
+      Стр:="Невозможно соединиться с сервером "+Сервер+"!";
+      Exit 0;
+    EndIf;
+    aTCP.InitEncryption("OpenSSL",спДрайверПодписи["Библиотека"]);
+
+    If Стр<>"" Then
+      aTCP.HTTPSetOperation("POST /"+Ссылка+" HTTP/1.1");
+    Else
+      aTCP.HTTPSetOperation("GET /"+Ссылка+" HTTP/1.1");
+    EndIf;
+    aTCP.HTTPSetHeaderField("Host",Сервер);
+    aTCP.HTTPSetHeaderField("Accept","application/json");
+    aTCP.HTTPSetHeaderField("Connection","Close");
+    If not ФлОсобый Then
+      aTCP.HTTPSetHeaderField("Authorization","Bearer "+спДрайверПодписи["Токен"+ФлТипСервера]);
+    EndIf;
+    
+    If Стр<>"" Then
+      Стр:=UnicodeToUTF8(Стр);
+      aTCP.HTTPSetHeaderField("Content-Type","application/json; charset=UTF-8");
+      aTCP.HTTPSetHeaderField("Content-Length",Length(Стр));
+      aTCP.HTTPSetBody(Стр);
+    EndIf;
+    If aTCP.HTTPSendAndReceive Then
+      aTCP.HTTPDecodeChunked();
+      Стр:=aTCP.HTTPHeaderAndBodyAsString;
+    Else
+      Стр:="Ошибка при отправке пакета!";
+      Exit 0;
+    EndIf;
+    Стр:=UTF8ToUnicode(Стр);
+    //If pos(";charset=utf-8",Стр)>0 Then
+    //  Стр:=UTF8ToUnicode(Стр);
+    //ElseIf pos(";charset=UTF-8",Стр)>0 Then
+    //  Стр:=UTF8ToUnicode(Стр);
+    //EndIf;
+    Стр1:=aTCP.HTTPGetOperation();
+    TearStr(Стр1," ");
+    Стр1:=TearStr(Стр1," ");
+    If Стр1<>"200" Then
+      Стр:="Ошибка сервера!"+_NEWLINE+Стр;
+      Exit 0;
+    EndIf;
+  Except
+    Стр:="Ошибка: "+PopError();
+    Exit 0;
+  EndTry;  
+  Exit 1;
+EndFunction
+
+Function ПодписатьТекстГИСМТ(спДрайверПодписи,ByRef Текст)
+  спДрайверПодписи["Сообщение"]:=EncodeString(UnicodeToUTF8(Текст),"base64");
+  Текст:=Trim(ExecuteFunction("SignMessage",спДрайверПодписи["МодульДрайвера"],спДрайверПодписи));
+  If Текст<>"" Then
+    Exit 0;
+  EndIf;
+  Текст:=спДрайверПодписи["Сообщение"];
+  Exit 1;
+EndFunction
+
+//ФлТипСервера: 0 -- ГИС МТ
+//              1 -- ЭДО Лайт (ГИС МТ)
+//              2 -- ЭДО Лайт (МДЛП)
+Function ОбновитьТокенГИСМТ(спДрайверПодписи,ФлТипСервера)
+  If ФлТипСервера=0 Then
+    Сервер:="markirovka.crpt.ru:443";
+    СтрСсылка1:="/api/v3/facade/auth/key";
+    СтрСсылка2:="/api/v3/facade/auth";
+  ElseIf ФлТипСервера=1 Then
+    Сервер:="elk.edo.crpt.tech:443";
+    СтрСсылка1:="/api/v1/session";
+    СтрСсылка2:="/api/v1/session";
+  ElseIf ФлТипСервера=2 Then
+    Сервер:="mdlp.edo.crpt.tech:443";
+    СтрСсылка1:="/api/v1/session";
+    СтрСсылка2:="/api/v1/session";
+  Else
+    Exit "Неизвестный тип сервера";
+  EndIf;
+  
+  Стр:="";
+  If not ВыполнитьОбменССерверомГИСМТ(Сервер+СтрСсылка1,Стр,спДрайверПодписи,ФлТипСервера,1) Then
+    Exit Стр;
+  EndIf;
+  //{"uuid":"baed86cb-9d85-4d6a-9f12-a06f8bd8f7d2","data":"PQQBDQLLBTSORVFIJSTXLCXOTJLUHF"}
+  Стр2:=Стр;
+  TearStr(Стр2,"""uuid"":");
+  TearStr(Стр2,"""");
+  Парам:=TearStr(Стр2,"""");
+  TearStr(Стр,"""data"":");
+  TearStr(Стр,"""");
+  Текст:=TearStr(Стр,"""");
+  If (Length(Текст)=0)Or(Length(Парам)=0) Then
+    Exit "(1) Неизвестный ответ при получении пароля обмена!";
+  EndIf;
+  If not ПодписатьТекстГИСМТ(спДрайверПодписи,Текст) Then
+    Exit Текст;
+  EndIf;
+  аДата:=Date();
+  Стр:="{""uuid"":"""+Парам+""",""data"":"""+UnicodeToUTF8(EncodeString(Текст,"JSON"))+"""}";
+  If not ВыполнитьОбменССерверомГИСМТ(Сервер+СтрСсылка2,Стр,спДрайверПодписи,ФлТипСервера,1) Then
+    Exit Стр;
+  EndIf;
+  //{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwcm9kdWN0X2dyb3VwX2luZm8iOlt7Im5h..."}
+  TearStr(Стр,"""token"":");
+  TearStr(Стр,"""");
+  Стр:=TearStr(Стр,"""");
+  If Стр="" Then
+    Exit "(2) Неизвестный положительный ответ сервера при получении пароля обмена!";
+  EndIf;
+  спДрайверПодписи["Токен"+ФлТипСервера]:=Стр;
+  спДрайверПодписи["ДатаТокена"+ФлТипСервера]:=аДата;
+  
+  Exit "";
+EndFunction
+
+Function ВыполнитьЗапросГИСМТ(спДрайверПодписи,Ссылка,ByRef СтрЗапрос,ФлТипСервера) Export
+  //Обновление токена
+  If _Or(IsEmpty(спДрайверПодписи["Токен"+ФлТипСервера]),IsEmpty(спДрайверПодписи["ДатаТокена"+ФлТипСервера]),GetPeriodMs(спДрайверПодписи["ДатаТокена"+ФлТипСервера])>18000000) Then //5 часов
+    Result:=ОбновитьТокенГИСМТ(спДрайверПодписи,ФлТипСервера);
+    If Not IsEmpty(Result) Then
+      Exit;
+    EndIf;
+  EndIf;
+  
+  Сервер:="markirovka.crpt.ru:443";
+  //Сервер:="ismp.crpt.ru:443";
+  
+  If not ВыполнитьОбменССерверомГИСМТ(Сервер+Ссылка,СтрЗапрос,спДрайверПодписи,ФлТипСервера) Then
+    Exit СтрЗапрос;
+  EndIf;
+EndFunction
+
+//Функция вызывается при старте системы после инициализации GUI.
+Function OnSystemStart()
+  //Загрузка драйверов текущего пользователя
+  If ProgramMode()=1 Then
+    глДрайверПодписи:=глЗагрузитьДрайверПодписи(глМагазинДрайверов);
+  EndIf;  
+EndFunction
+
+глДрайверПодписи:=List.Create();
