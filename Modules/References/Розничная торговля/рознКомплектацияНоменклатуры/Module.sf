@@ -1,0 +1,42 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function ПриПодбореНоменклатуры(Номенклатура,стрТаблица)
+  If isEmpty(Номенклатура) Then
+    Exit;
+  EndIf;
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts(стрТаблица);
+  If not aTab.FindAndGoto(Номенклатура,,"Номенклатура") Then
+    aTab.AddLine("Номенклатура,Количество",Номенклатура,0);
+  EndIf;
+  aTab.Количество:=aTab.Количество+1;
+  If стрТаблица="ВходящаяНоменклатура" Then
+    Form.ТабВходящая.InvokeEvent("OnInitLine","IndexFrom,IndexTo",aTab.CurLine,aTab.CurLine);
+  Else
+    Form.ТабИсходящая.InvokeEvent("OnInitLine","IndexFrom,IndexTo",aTab.CurLine,aTab.CurLine);
+  EndIf;
+EndFunction
+
+Function Видимость()
+  Form.ТабИсходящая.IsDisabled:=1-Form.ФлИсходящая.Value;
+EndFunction
+
+Function OnBeforeElementSave()
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("ИсходящаяНоменклатура");
+  bTab:=aEl.LineParts("ВходящаяНоменклатура");
+  If Form.ФлИсходящая.Value=0 Then
+    If aTab.Size()>0 Then
+      aTab.ClearLines();
+    EndIf;
+  EndIf;
+  If bTab.Size()=0 Then
+    Box("В комплекте необходимо указать входящую номенклатуру!",Q_STOP);
+    Exit 0;
+  EndIf;
+  
+  Exit 1;
+EndFunction

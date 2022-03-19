@@ -19,6 +19,8 @@ Function Пересчитать()
     aTab:=Д.LineParts("Номенклатура");
   ElseIf not isEmpty(Struct.Doc(Вид).LineParts("Содержание")) Then
     aTab:=Д.LineParts("Содержание");
+  ElseIf not isEmpty(Struct.Doc(Вид).LineParts("ВходящаяНоменклатура")) Then
+    aTab:=Д.LineParts("ВходящаяНоменклатура");
   EndIf;
   Logs.Write("Пересчитаны цены в документе "+Д,Д,"USER",0);
   

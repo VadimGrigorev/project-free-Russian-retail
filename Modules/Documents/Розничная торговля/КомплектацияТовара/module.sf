@@ -1,0 +1,198 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+Function Видимость()
+  aEl:=Form.Object;
+  If Left(aEl.УникальныйИдентификатор3,1)="=" Then
+    Form.кнЕГАИС.FontColor:=_CLR_WINDOWTEXT;
+    Form.кнЕГАИС.FontStyle:=0;
+    Form.кнЕГАИС.Glyph:=1;
+  ElseIf aEl.УникальныйИдентификатор2<>"" Then
+    Form.кнЕГАИС.FontColor:=_CLR_HIGHLIGHT;
+    Form.кнЕГАИС.FontStyle:=1;
+    Form.кнЕГАИС.Glyph:=75;
+  Else
+    Form.кнЕГАИС.FontColor:=_CLR_RED;
+    Form.кнЕГАИС.FontStyle:=1;
+    Form.кнЕГАИС.Glyph:=75;
+  EndIf;  
+  флВидимостьПартий:=aEl.Склад.БезПартионногоУчета=0;
+  
+  If Form.оЗатраты.Value=1 Then
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=0;
+  Else
+    Form.оЗакладки.Pages.Page("Затраты").isInvisible:=1;
+  EndIf;
+  
+  MainTab:=Form.ВходящаяНоменклатура.Value;
+  MainTab.Column("Партия").isVisible:=Min(флВидимостьПартий,глПользователь.бухБухгалтер);
+  MainTab.Column("Партия").isReadonly:=1-глПользователь.бухБухгалтер;
+  
+  MainTab:=Form.ИсходящаяНоменклатура.Value;
+  MainTab.Column("Партия").isVisible:=Min(флВидимостьПартий,глПользователь.бухБухгалтер);
+  MainTab.Column("Партия").isReadonly:=1-глПользователь.бухБухгалтер;
+EndFunction
+
+Function OnCreateFromObject()
+  //Ввод на основании
+  aEl:=Form.Object;
+  aEl.ДокОснование:=aEl.FounderObject();
+  ФлБезЗаполнения:=0;
+  If aEl.ДокОснование.DBName()="ПоступлениеТМЦ" Then
+    aEl.Магазин:=aEl.ДокОснование.Магазин;
+    aEl.ЮрЛицо:=aEl.ДокОснование.ЮрЛицо;
+    If not глВыбратьВидОперацииВДокументе(aEl,0) Then
+      Form.Close(0);
+      Exit;
+    EndIf;
+  
+    aTab:=Tab.Create("Партия,Количество");
+    bTab:=aEl.ДокОснование.LineParts("Номенклатура");
+    bTab.Select();
+    While bTab.Next() Do
+      If _Or(bTab.Номенклатура.флАлкогольнаяПродукция=0,bTab.Партия.Selected()=0,bTab.Партия.флМарочныйУчет=1) Then
+        Continue;
+      EndIf;
+      aTab.AddLine("Партия,Количество",bTab.Партия,bTab.Количество);
+    EndDo;
+    
+    If aEl.КодОперации=Enum.коРегистр2ЕГАИС.ПеремещениеНаРегистр2 Then
+      aList:=aEl.ДокОснование.LoadLinkedDocuments(1);
+      For i:=1 To aList.Size() Do 
+        bEl:=aList.Get(i);
+        If _Or(bEl.DBName()<>"Регистр2ЕГАИС",bEl.Status()=1,bEl.КодОперации<>Enum.коРегистр2ЕГАИС.ПеремещениеНаРегистр2) Then
+          If _Or(bEl.DBName()<>"ВозвратПоставщику",bEl.Status()<2) Then
+            Continue;
+          EndIf;
+        EndIf;
+        bTab:=bEl.LineParts("Номенклатура");
+        bTab.Select();
+        While bTab.Next() Do
+          If _Or(bTab.Номенклатура.флАлкогольнаяПродукция=0,bTab.Партия.Selected()=0,bTab.Партия.флМарочныйУчет=1) Then
+            Continue;
+          EndIf;
+          aTab.AddLine("Партия,Количество",bTab.Партия,-bTab.Количество);
+        EndDo;
+      EndDo;
+    EndIf;
+    
+    bTab:=aEl.LineParts("Номенклатура");
+    bTab.Lock();
+    try
+      aTab.Group("Партия","Количество");
+      aTab.Select();
+      While aTab.Next() Do
+        If Round(aTab.Количество,6)>0 Then
+          bTab.AddLine("Номенклатура,Партия,Количество",aTab.Партия.Parent(),aTab.Партия,aTab.Количество);
+        EndIf;
+      EndDo;
+    Finally
+      aTab.Unlock();
+    EndTry;
+    If aTab.Size()=0 Then
+      Box("Нет строк с немарочной алкогольной продукцией, либо все строки уже были перемещены в других документах!",Q_INFORMATION);
+    EndIf;
+    ФлБезЗаполнения:=1;
+  EndIf;
+  If not ФлБезЗаполнения Then
+    if not глЗаполнениеПоДокументуОснованию(aEl,1,0) Then
+      Form.Close(0);
+      Exit;
+    EndIf;
+  EndIf;
+EndFunction
+
+
+Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПарам)
+  aEl:=Form.Object;
+  
+  If aEl.Магазин.Selected()=0 Then
+    Box("Необходимо выбрать магазин, прежде чем записывать или обрабатывать документ!",Q_STOP);
+    Exit 0;
+  EndIf;  
+    
+  Фл:=1;
+  aTab:=aEl.LineParts("ВходящаяНоменклатура");
+  If aTab.Size()=0 Then
+    Message("Необходимо добавить по крайней мере одну позицию входящей номенклатуры!","!");
+    Фл:=0;
+  EndIf;
+  aTab.Select();
+  While aTab.Next() Do
+    If aTab.Номенклатура.Selected()=0 Then
+      Message("Для таблицы входящей номенклатуры в строке "+aTab.CurLine+" не выбрана номенклатура!","!");
+      Фл:=0;
+    EndIf;
+    If aTab.Количество<=0 Then
+      Message("Для таблицы входящей номенклатуры в строке "+aTab.CurLine+" не выбрано количество!","!");
+      Фл:=0;
+    EndIf;
+  EndDo;
+  aTab:=aEl.LineParts("ИсходящаяНоменклатура");
+  If aTab.Size()=0 Then
+    Message("Необходимо добавить по крайней мере одну позицию исходящей номенклатуры!","!");
+    Фл:=0;
+  EndIf;  
+  aTab.Select();
+  While aTab.Next() Do
+    If aTab.Номенклатура.Selected()=0 Then
+      Message("Для таблицы исходящей номенклатуры в строке "+aTab.CurLine+" не выбрана номенклатура!","!");
+      Фл:=0;
+    EndIf;
+    If aTab.Количество<=0 Then
+      Message("Для таблицы исходящей номенклатуры в строке "+aTab.CurLine+" не выбрано количество!","!");
+      Фл:=0;
+    EndIf;
+  EndDo;
+  If not Фл Then
+    Exit 0;
+  EndIf;
+
+  Exit 1;
+EndFunction
+
+Function ЗаполнитьСтроки(ФлФорсировать=0)
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("ВходящаяНоменклатура");
+  bTab:=aEl.LineParts("ИсходящаяНоменклатура");
+  If aTab.Size()+bTab.Size()>0 Then
+    If not ФлФорсировать Then
+      Exit;
+    EndIf;
+    If AskQuestion("Все позиции в таблицах документа будут удалены перед заполнением. Вы уверены?",Q_QUESTION+Q_YESNO)<>R_YES Then
+      Exit;
+    EndIf;
+  EndIf;
+  aTab2:=aEl.СпособКомплектации.LineParts("ВходящаяНоменклатура");
+  bTab2:=aEl.СпособКомплектации.LineParts("ИсходящаяНоменклатура");
+  If bTab2.Size()=0 Then
+    bTab2:=bTab2.Copy();
+    bTab2.AddLine("Номенклатура,Количество",aEl.КомплектуемыйТовар,1);
+  EndIf;
+  
+  Form.ВходящаяНоменклатура.Lock();
+  Try
+    aTab.ClearLines();
+    aTab2.Select();
+    While aTab2.Next() Do
+      aTab.AddLine("Номенклатура,Количество",aTab2.Номенклатура,aTab2.Количество);
+    EndDo;
+  Finally
+    Form.ВходящаяНоменклатура.Unlock();
+  EndTry;
+  Form.ИсходящаяНоменклатура.Lock();
+  Try
+    bTab.ClearLines();
+    bTab2.Select();
+    While bTab2.Next() Do
+      bTab.AddLine("Номенклатура,Количество",bTab2.Номенклатура,bTab2.Количество);
+    EndDo;
+  Finally
+    Form.ИсходящаяНоменклатура.Unlock();
+  EndTry;
+  Form.ВходящаяНоменклатура.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,Form.ВходящаяНоменклатура.Value.Size());
+  Form.ИсходящаяНоменклатура.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,Form.ИсходящаяНоменклатура.Value.Size());
+EndFunction
+

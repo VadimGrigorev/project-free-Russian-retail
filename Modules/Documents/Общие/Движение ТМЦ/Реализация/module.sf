@@ -109,12 +109,6 @@ Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПара
         Message("У номенклатуры "+aTab.Номенклатура+" ("+aTab.Номенклатура.Code+") указано отрицательное количество!","!");
         Фл:=0;
       EndIf;
-      If aTab.Количество=0 Then
-        If aTab.КолПеретарить=0 Then
-          Message("У номенклатуры "+aTab.Номенклатура+" ("+aTab.Номенклатура.Code+") не указано количество!","!");
-          Фл:=0;
-        EndIf;
-      EndIf;
       If aTab.Номенклатура.Selected()=0 Then
         Message("В строке "+aTab.CurLine+" не выбрана номенклатура!","!");
         Фл:=0;

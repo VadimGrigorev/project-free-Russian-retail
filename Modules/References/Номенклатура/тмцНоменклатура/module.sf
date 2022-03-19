@@ -239,6 +239,19 @@ Function ПоКнопкеPLUКоды(aEl)
   глОткрытьФормуСправочника("тмцPLUКоды",,,aEl);
 EndFunction
 
+Function ПоКнопкеКомплекты(aEl)
+  If IsEmpty(aEl) Then
+    Exit;
+  EndIf;
+  If aEl.Selected()<0 Then
+    MsgBox("Сначала сохраните элемент!");
+  EndIf;
+  If aEl.IsFolder() Then
+    Exit;
+  EndIf;
+  глОткрытьФормуСправочника("рознКомплектацияНоменклатуры",,,aEl);
+EndFunction
+
 Function ПоКнопкеПартииТМЦ(aEl)
   If IsEmpty(aEl) Then
     Exit;
