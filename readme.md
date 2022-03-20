@@ -225,6 +225,6 @@ EndDo;
 
 # Some brief English explanation to all the text above
 
-This repository contains a free source project written for [SunFlurry](http://sfsys.ru) environment. The project can be used for Russian retail (as both POS and office software) as a free alternative to a number of commercial systems. Although you can write any kind of project in SunFlurry, unfortunately we do not have a full English documentation at the moment. You are welcome however to [download](http://sfsys.ru/download/sf_retail_x86_1.1_install.exe) and play with it, if you so desire.
+This repository contains a free source project written for [SunFlurry](http://sfsys.ru) environment. The project can be used for Russian retail (as both POS and office software) as a free alternative to a number of commercial systems. Although you can write any kind of project in SunFlurry, unfortunately we do not have a full English documentation at the moment. You are welcome however to download and play with it, if you so desire.
 
 
