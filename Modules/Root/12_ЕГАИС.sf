@@ -619,14 +619,13 @@ Function глВыгрузитьСписаниеМарокВЕГАИС(оМага
     ТШк:=Tab.Create("Номенклатура,Штрихкод");
     ТабМарки.Select();
     While ТабМарки.Next() Do
-      зН:=ObjC.Get(ТабМарки.Партия).Parent();
-      If ТШк.FindAndGoto(зН,,"Номенклатура",1)=0 Then
-        ТШк.AddLineSorted("Номенклатура","Номенклатура,Штрихкод",зН,глПолучитьШтрихкод(зН,1,,1));
-      EndIf;
-      пШК:=?(IsEmpty(ТШк.Штрихкод),""," ean="""+ТШк.Штрихкод+"""");
-      пОбъем:=?(зН.ОбъемЛитров=0,""," volume="""+FormatNumber(зН.ОбъемЛитров,0,"",4)+"""");
-      
       If ФлНомерВерсии<>3 Then
+        зН:=ObjC.Get(ТабМарки.Партия).Parent();
+        пОбъем:=?(зН.ОбъемЛитров=0,""," volume="""+FormatNumber(зН.ОбъемЛитров,0,"",4)+"""");
+        If ТШк.FindAndGoto(зН,,"Номенклатура",1)=0 Then
+          ТШк.AddLineSorted("Номенклатура","Номенклатура,Штрихкод",зН,глПолучитьШтрихкод(зН,1,,1));
+        EndIf;
+        пШК:=?(IsEmpty(ТШк.Штрихкод),""," ean="""+ТШк.Штрихкод+"""");
         AppendStringToBufferedString(Стр,"<Bottle price="""+FormatNumber(?(ФлВозврат=0,ТабМарки.Цена,-ТабМарки.Цена),0,"",2)+""" barcode="""+EncodeXMLString(ТабМарки.Марка)+""""+пОбъем+пШК+" />");
       Else
         AppendStringToBufferedString(Стр,"<ck:Bottle><ck:Barcode>"+EncodeXMLString(ТабМарки.Марка)+"</ck:Barcode><ck:EAN>0000000000000</ck:EAN><ck:Price>"+FormatNumber(ТабМарки.Цена,0,"",2)+"</ck:Price></ck:Bottle>");
