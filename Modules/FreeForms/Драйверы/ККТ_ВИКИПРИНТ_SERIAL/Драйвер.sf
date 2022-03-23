@@ -72,14 +72,26 @@ Function ExecuteCommand(спНастройки,iCmd,iStr="",ФлВнутренн
       Break;
     EndIf;
   EndDo;
-  //CRC
-  If not aKernel32.ReadFile(aHandle,Buf,2,b,0) Then
-    Raise "ExecuteCommand: Ошибка чтения из ККМ (2): "+TranslateError(aKernel32,aKernel32.GetLastError);
+  аДлина:=2;//CRC
+  While аДлина>0 Do
+    //CRC
+    If not aKernel32.ReadFile(aHandle,Buf,аДлина,b,0) Then
+      Raise "ExecuteCommand: Ошибка чтения из ККМ (2): "+TranslateError(aKernel32,aKernel32.GetLastError);
+    EndIf;
+    If b=0 Then
+      Raise "ExecuteCommand: Ошибка чтения из ККМ -- таймаут (2)";
+    EndIf;
+    AppendStringToBufferedString(Стр,Buf.GetString(0,b));
+    аДлина:=аДлина-b;
+  EndDo;
+  //Отладка
+  //Message(Replace(Replace(Replace(Стр,Chr($1C),"|"),Chr(2),"<$02>"),Chr(3),"<$03>"));
+  
+  //Иногда касса отдает в начале пакета мусор, состоящий из нескольких байтов $5 (проверка связи, пакеты были отосланы за время простоя), нужно отцепить этот мусор перед обработкой
+  If Pos(Chr(2),Стр)>1 Then
+    TearStr(Стр,Chr(2));
+    Стр:=Chr(2)+Стр;
   EndIf;
-  If b<2 Then
-    Raise "ExecuteCommand: Ошибка чтения из ККМ -- таймаут (2)";
-  EndIf;
-  AppendStringToBufferedString(Стр,Buf.GetString(0,2));
   If _Or(Стр[1]<>Chr(2),Стр[2]<>аПакет,Mid(Стр,3,2)<>аКоманда) Then
     Raise "ExecuteCommand: Получен неверный пакет из ККМ! Произведите соединение с ККМ заново!";
   EndIf;
@@ -273,7 +285,7 @@ Function DriverConnect(спНастройки)
       rCOMMTIMEOUTS.ReadIntervalTimeout:=MAXDWORD;
       rCOMMTIMEOUTS.ReadTotalTimeoutMultiplier:=MAXDWORD;
       rCOMMTIMEOUTS.ReadTotalTimeoutConstant:=спНастройки["_Timeout"];
-      rCOMMTIMEOUTS.WriteTotalTimeoutMultiplier:=0;
+      rCOMMTIMEOUTS.WriteTotalTimeoutMultiplier:=0;//спНастройки["_Timeout"];
       rCOMMTIMEOUTS.WriteTotalTimeoutConstant:=спНастройки["_Timeout"];
       If not aKernel32.SetCommTimeouts(aHandle,rCOMMTIMEOUTS) Then
         Exit "Ошибка настройки COM-порта (3): "+TranslateError(aKernel32,aKernel32.GetLastError);

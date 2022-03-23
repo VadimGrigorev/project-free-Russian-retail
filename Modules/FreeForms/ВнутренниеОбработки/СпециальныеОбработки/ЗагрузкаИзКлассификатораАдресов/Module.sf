@@ -249,10 +249,156 @@ Function OnExecute()
   If Form.оТолькоУлицы.Value=0 Then 
     Message("Загружается справочник адГорода...");
     
-    //Папки первого уровня
-    Тб:=ЗагрузитьСправочник("адГорода",1,1);
-    ТРод:=Tab.Create("Эл,КодБазы");
-    Message("  Загружаются административные районы...");
+    ФлОк:=0;
+    BeginTransaction();
+    Try
+      //Папки первого уровня
+      Тб:=ЗагрузитьСправочник("адГорода",1,1);
+      ТРод:=Tab.Create("Эл,КодБазы");
+      Message("  Загружаются административные районы...");
+      Чл:=0;
+      Чл0:=0;
+      Чл2:=0;
+      База.First();
+      База.Select();
+      While База.Next() Do
+        Чл0:=Чл0+1;
+        If Чл0%100=0 Then
+          Form.StatusText(Чл0);
+        EndIf;
+        Код:=LowerCase(Trim(База.CODE));
+        If СтрРегион<>"" Then
+          If Left(Код,Length(СтрРегион))<>СтрРегион Then
+            Continue;
+          EndIf;
+        EndIf;
+        If Number(Mid(Код,3))=0 Then
+          Continue;
+        EndIf;
+        If Number(Mid(Код,6))<>0 Then
+          Continue;
+        EndIf;
+        
+        If ТВл.FindAndGoto(Left(Код,2)+"000000000",,"КодБазы")>0 Then
+          Вл:=ТВл.Эл;
+          аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,1,1,,Вл);
+          ТРод.AddLine("Эл,КодБазы",аЭл,аЭл.КодБазы);
+        EndIf;
+      EndDo;
+      
+      ТРод2:=Tab.Create("Эл,КодБазы");
+      Message("  Загружаются подразделения второго уровня...");
+      Чл0:=0;
+      База.First();
+      База.Select();
+      While База.Next() Do
+        Чл0:=Чл0+1;
+        If Чл0%100=0 Then
+          Form.StatusText(Чл0);
+        EndIf;
+        Код:=LowerCase(Trim(База.CODE));
+        If СтрРегион<>"" Then
+          If Left(Код,Length(СтрРегион))<>СтрРегион Then
+            Continue;
+          EndIf;
+        EndIf;
+        If Number(Mid(Код,6))=0 Then
+          Continue;
+        EndIf;
+        If Number(Mid(Код,9))<>0 Then
+          Continue;
+        EndIf;
+        If ТВл.FindAndGoto(Left(Код,2)+"000000000",,"КодБазы")>0 Then
+          Вл:=ТВл.Эл;
+          ТемпРод:=Ref.адГорода;
+          If ТРод.FindAndGoto(Left(Код,5)+"000000",,"КодБазы")>0 Then
+            Род:=ТРод.Эл;
+            аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,2,1,Род,Вл,1);
+          ElseIf ТемпРод.Find("@Parent,@IsFolder,КодБазы",Вл,1,Left(Код,11)) Then
+            аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,3,0,ТемпРод,Вл,0);
+          Else
+            аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,2,1,0,Вл,1);
+          EndIf;
+          ТРод2.AddLine("Эл,КодБазы",аЭл,аЭл.КодБазы);
+        EndIf;
+      EndDo;
+    
+      If Form.оСпец.Value=1 Then
+        ТРод:=0;
+        ТРод2:=0;
+        ТВл:=0;
+        База.Close();
+        Message("Добавлено элементов: "+Чл2);
+        Message("Изменено элементов: "+Чл);
+        Message("Работа окончена!");
+        Exit;
+      EndIf;
+    
+      Message("  Загружаются города...");
+      Чл0:=0;
+      База.First();
+      База.Select();
+      While База.Next() Do
+        Чл0:=Чл0+1;
+        If Чл0%100=0 Then
+          Form.StatusText(Чл0);
+        EndIf;
+        Код:=LowerCase(Trim(База.CODE));
+        If СтрРегион<>"" Then
+          If Left(Код,Length(СтрРегион))<>СтрРегион Then
+            Continue;
+          EndIf;
+        EndIf;
+        If Number(Mid(Код,9))=0 Then
+          Continue;
+        EndIf;
+        If ТВл.FindAndGoto(Left(Код,2)+"000000000",,"КодБазы")>0 Then
+          Вл:=ТВл.Эл;
+          ФлОк:=0;
+          If ТРод2.FindAndGoto(Left(Код,8)+"000",,"КодБазы")=0 Then
+            If ТРод.FindAndGoto(Left(Код,5)+"000000",,"КодБазы")>0 Then
+              ФлОк:=1;
+              Род:=ТРод.Эл;
+            EndIf;
+          Else
+            ФлОк:=1;
+            Род:=ТРод2.Эл;
+          EndIf;
+          If ФлОк Then
+            ЗагрузитьЭлемент(База,"адГорода",Тб,3,0,Род,Вл);
+          EndIf;
+        EndIf;
+      EndDo;
+      ТРод:=0;
+      ТРод2:=0;
+      ТВл:=0;
+      База.Close();
+      Message("Добавлено элементов: "+Чл2);
+      Message("Изменено элементов: "+Чл);
+      ФлОк:=1;
+    Finally
+      If ФлОк Then
+        CommitTransaction();
+      Else
+        RollbackTransaction();
+      EndIf;
+    EndTry
+  EndIf;
+  
+  оУлицы:=Form.оУлицы.Value;
+  If Trim(оУлицы)="" Then
+    Box("Не указан путь к файлу STREET.DBF",Q_STOP);
+    Exit;
+  EndIf;
+  
+  Message("Загружается справочник адУлицы...");
+  База:=Dbf.Create();
+  База.Open(оУлицы);
+  База.CodePage:=?(Form.о866.Value=1,866,1251);
+  
+  ФлОк:=0;
+  BeginTransaction();
+  Try
     Чл:=0;
     Чл0:=0;
     Чл2:=0;
@@ -269,146 +415,22 @@ Function OnExecute()
           Continue;
         EndIf;
       EndIf;
-      If Number(Mid(Код,3))=0 Then
-        Continue;
-      EndIf;
-      If Number(Mid(Код,6))<>0 Then
-        Continue;
-      EndIf;
-      
-      If ТВл.FindAndGoto(Left(Код,2)+"000000000",,"КодБазы")>0 Then
-        Вл:=ТВл.Эл;
-        аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,1,1,,Вл);
-        ТРод.AddLine("Эл,КодБазы",аЭл,аЭл.КодБазы);
+      аЭлГ:=Ref.адГорода;
+      If аЭлГ.Find("@IsFolder,КодБазы",0,Left(Код,11)) Then
+        ЗагрузитьЭлемент(База,"адУлицы",0,0,0,0,аЭлГ);
       EndIf;
     EndDo;
-    
-    ТРод2:=Tab.Create("Эл,КодБазы");
-    Message("  Загружаются подразделения второго уровня...");
-    Чл0:=0;
-    База.First();
-    База.Select();
-    While База.Next() Do
-      Чл0:=Чл0+1;
-      If Чл0%100=0 Then
-        Form.StatusText(Чл0);
-      EndIf;
-      Код:=LowerCase(Trim(База.CODE));
-      If СтрРегион<>"" Then
-        If Left(Код,Length(СтрРегион))<>СтрРегион Then
-          Continue;
-        EndIf;
-      EndIf;
-      If Number(Mid(Код,6))=0 Then
-        Continue;
-      EndIf;
-      If Number(Mid(Код,9))<>0 Then
-        Continue;
-      EndIf;
-      If ТВл.FindAndGoto(Left(Код,2)+"000000000",,"КодБазы")>0 Then
-        Вл:=ТВл.Эл;
-        ТемпРод:=Ref.адГорода;
-        If ТРод.FindAndGoto(Left(Код,5)+"000000",,"КодБазы")>0 Then
-          Род:=ТРод.Эл;
-          аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,2,1,Род,Вл,1);
-        ElseIf ТемпРод.Find("@Parent,@IsFolder,КодБазы",Вл,1,Left(Код,11)) Then
-          аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,3,0,ТемпРод,Вл,0);
-        Else
-          аЭл:=ЗагрузитьЭлемент(База,"адГорода",Тб,2,1,0,Вл,1);
-        EndIf;
-        ТРод2.AddLine("Эл,КодБазы",аЭл,аЭл.КодБазы);
-      EndIf;
-    EndDo;
-  
-    If Form.оСпец.Value=1 Then
-      ТРод:=0;
-      ТРод2:=0;
-      ТВл:=0;
-      База.Close();
-      Message("Добавлено элементов: "+Чл2);
-      Message("Изменено элементов: "+Чл);
-      Message("Работа окончена!");
-      Exit;
-    EndIf;
-  
-    Message("  Загружаются города...");
-    Чл0:=0;
-    База.First();
-    База.Select();
-    While База.Next() Do
-      Чл0:=Чл0+1;
-      If Чл0%100=0 Then
-        Form.StatusText(Чл0);
-      EndIf;
-      Код:=LowerCase(Trim(База.CODE));
-      If СтрРегион<>"" Then
-        If Left(Код,Length(СтрРегион))<>СтрРегион Then
-          Continue;
-        EndIf;
-      EndIf;
-      If Number(Mid(Код,9))=0 Then
-        Continue;
-      EndIf;
-      If ТВл.FindAndGoto(Left(Код,2)+"000000000",,"КодБазы")>0 Then
-        Вл:=ТВл.Эл;
-        ФлОк:=0;
-        If ТРод2.FindAndGoto(Left(Код,8)+"000",,"КодБазы")=0 Then
-          If ТРод.FindAndGoto(Left(Код,5)+"000000",,"КодБазы")>0 Then
-            ФлОк:=1;
-            Род:=ТРод.Эл;
-          EndIf;
-        Else
-          ФлОк:=1;
-          Род:=ТРод2.Эл;
-        EndIf;
-        If ФлОк Then
-          ЗагрузитьЭлемент(База,"адГорода",Тб,3,0,Род,Вл);
-        EndIf;
-      EndIf;
-    EndDo;
-    ТРод:=0;
-    ТРод2:=0;
-    ТВл:=0;
     База.Close();
     Message("Добавлено элементов: "+Чл2);
     Message("Изменено элементов: "+Чл);
-  EndIf;
-  
-  оУлицы:=Form.оУлицы.Value;
-  If Trim(оУлицы)="" Then
-    Box("Не указан путь к файлу STREET.DBF",Q_STOP);
-    Exit;
-  EndIf;
-  
-  Message("Загружается справочник адУлицы...");
-  База:=Dbf.Create();
-  База.Open(оУлицы);
-  База.CodePage:=?(Form.о866.Value=1,866,1251);
-  
-  Чл:=0;
-  Чл0:=0;
-  Чл2:=0;
-  База.First();
-  База.Select();
-  While База.Next() Do
-    Чл0:=Чл0+1;
-    If Чл0%100=0 Then
-      Form.StatusText(Чл0);
+    ФлОк:=1;
+  Finally
+    If ФлОк Then
+      CommitTransaction();
+    Else
+      RollbackTransaction();
     EndIf;
-    Код:=LowerCase(Trim(База.CODE));
-    If СтрРегион<>"" Then
-      If Left(Код,Length(СтрРегион))<>СтрРегион Then
-        Continue;
-      EndIf;
-    EndIf;
-    аЭлГ:=Ref.адГорода;
-    If аЭлГ.Find("@IsFolder,КодБазы",0,Left(Код,11)) Then
-      ЗагрузитьЭлемент(База,"адУлицы",0,0,0,0,аЭлГ);
-    EndIf;
-  EndDo;
-  База.Close();
-  Message("Добавлено элементов: "+Чл2);
-  Message("Изменено элементов: "+Чл);
+  EndTry
   
   Message("Работа окончена!");
 EndFUnction
