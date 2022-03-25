@@ -76,6 +76,7 @@ Function DriverConnect(спНастройки)
     If аДрайвер.open()<>0 Then
       Exit "Ошибка открытия ККМ "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
     EndIf;
+    спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0"));
     спНастройки["Соединено"]:=1;
   Except
     Exit PopError()+_NEWLINE+"(2) Драйвер не установлен или в нерабочем состоянии!";
@@ -399,15 +400,21 @@ Function PrintReceipt(спНастройки)
     аТип:=Eval("аДрайвер."+спТип.Get(аТип0));
     
     аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_RECEIPT_TYPE,аТип);
-    аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY,0);
+    
+    ФлПочта:=0;
+    If Trim(спНастройки["ПочтаИлиТелефонКлиента"])<>"" Then
+      //"client@mail.ru" или "+79161234567"
+      аДрайвер.setParam(1008,Trim(спНастройки["ПочтаИлиТелефонКлиента"]));
+      ФлПочта:=1;
+    EndIf;
+    
+    аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY,Min(ФлПочта,спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]));
     If not ФлРозничныйПокупатель Then
-      //Заполняем: 1227, 1228, 1008 (?)
+      //Заполняем: 1227, 1228
       зК:=спНастройки["Контрагент"];
       стрИНН:=Trim(зК.ИНН);
       стрИНН:=TearStr(стрИНН,"/");
       
-      //аДрайвер.setParam(1008,"client@mail.ru");  
-      //аДрайвер.setParam(1008,"+79161234567");
       аДрайвер.setParam(1227,зК.ПолнНаименование);
       аДрайвер.setParam(1228,стрИНН);
     EndIf;

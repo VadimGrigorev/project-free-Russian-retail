@@ -582,16 +582,22 @@ Function PrintReceipt(спНастройки)
       EndDo;
     EndIf;
     
+    If Trim(спНастройки["ПочтаИлиТелефонКлиента"])<>"" Then
+      //"client@mail.ru" или "+79161234567"
+      аДрайвер.CustomerEmail:=Trim(спНастройки["ПочтаИлиТелефонКлиента"]);
+      If аДрайвер.FNSendCustomerEmail()<>0 Then
+        Raise "FNSendCustomerEmail: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+    EndIf;
+    
     ФлРозничныйПокупатель:=Number(спНастройки["ФлРозничныйПокупатель"]);
-    //Заполняем: 1227, 1228, 1008 
+    //Заполняем: 1227, 1228
     If not ФлРозничныйПокупатель Then
       зК:=спНастройки["Контрагент"];
       стрИНН:=Trim(зК.ИНН);
       стрИНН:=TearStr(стрИНН,"/");
       
-      //1008: "client@mail.ru"
-      //1008: "+79161234567"
-      аДрайвер.TagNumber:=1256;//Информация о покупателе
+      аДрайвер.TagNumber:=1256;//Информация о покупателе (включает теги: 1227,1228,1243,1244,1245,1246,1254)
       If аДрайвер.FNBeginSTLVTag()<>0 Then
         Raise "FNBeginSTLVTag: "+аДрайвер.ResultCodeDescription;
       EndIf;

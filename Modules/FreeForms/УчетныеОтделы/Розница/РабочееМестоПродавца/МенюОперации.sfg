@@ -9,18 +9,18 @@ Object FORM
   Width=275
   Height=200
   OnOpen
-    @@>@e_0xq@R4e1@vg@f%eht^_T=Y@i_4@mY@3@M_gnT@|}@#H@d@O_T@?2_B_._-@E_3_Z+_l@C@%_(_U
-    @@Cmzxz@*_T@b_Z@s_V@A@x@$@;ss@A@{@Wo@S@x_^&_Kl_d@*@m@)_c9@T\@T@;@wk|@?@T@*@k@n_d@
-    @'@vV_,_%@J_D_C@>@E_!_*@I_0_,T_?#_W@:M@J_._3_M_6@zL1Am@P@=nN_G_(@G_Q!_lSD;@DJ0_+@
-    @wIsV_G_^9_-@A@h@7_b@S@h'@K%_$I_\@V@~@$C_0_3S_._7@yE@z_h_J!QI@tax@W@18}@-@8G@h_Qx
-    @b_N@BG_S@8@O_e@~@"@y_1)_%_/_3:@9{6@,*_X@z9@,F@D_Ul@DF$@>@R6_J@of*_(G:_B\fp$@RSp
-    @_,_44_2@|$O@=_a_i@\7_[_,_[;_O@Il_B@~[$_6_6_+_M9_aw_f_:_Q$_h@?E_KR_&@+_XT@tS@1@
-    @,@>&_JET@0_k_1_7&_X@Y@A/@r@E@T@;@s@N@j@M_&@}T>_m@}@)/:(_M@Kp_+G_G\@B_i@*u@(@="_G
-    @_K_e@t_Y@L@)@^@]@A_B^@j_._;@v_Rr_k@=_c_7@X@^S_d@u@*@|_6,~'@S9@{_"_&_:_#y_]-_fO@]
-    @_S@f}%y@U:c_I_4_3@u@D@6:@&x_%_'@7@U_c?S@s}@/_G_+_>_V_U_b>_N_S_7@.@A_X(@D@8|_&_?_
-    @/_1_%@Z@o_f,_P_:1@1_e@n_->_Vnq@vOH@\#I_Zp_)@5_D@4_;@h4@u@-Z@HIv@jY@9@*@e_+T@L_Z@
-    @1_:_'@p@>_R@y_d@7@N\@Y_Yd@Fm@g@o@)_d@h9^_Jt_!_%Y@2gb_fG_Z_>@vw_O_c2]@.@F_!_f_J|
-    @x_f@E@k_Y_e@?^0@F@P@K@F_A@F_6_P(@PD_Iz
+    @@>@e_0xq@1_Gd1@f_.@e+@L3+K[@}\_1_;_D_^_1@s@L_)@2o@7@cB_2P@na@Nf@A)_P@lFK_P_S_S_8
+    @_>_h@tZ@nO@/@R|@/@=@,@<_J_GY@|_Vlk@,@8@L_]q_)_N<_3@w-@:@q2j@vrg@f_VSz@X'T_=f_&@y
+    @@];@)_If_X?@gA_Y@5@'@7@y_bW_2\}_6_LRT_fT@u@8_/(v_L@f1_6@<_:@&[@G@F@O@O~@h_6U@y_W
+    @_3oq_C^@M@y_H@-=E_1@Vaf@S_HE_f@N~O@Wf_P@a@&@,_D@H_D_g_J"QE@t@#@eB_>X@{r_P~_)_3@b
+    @@C_-_e~P_P1_[<_$_P:$_T3D@-_3@#@n@h_0@y@N@(@a@H@:@nG_8_U$_U_,@dQ_\z6@Q_UO_3@y_="@
+    @(@0|@S@'#r2@7Dz@i_M@4_l@.@j_0(_\_&_,_#F@Yy_Yr_9_,_^_5@9Z_,_j-_l,_g@O@A_J_5@=_7_Z
+    @9]_:@0_7@]@c:@$@U_e@G@S;_*S@9?_&@i@g@D@s@%@'@f_T@jc_.@)~@b@U_*S@N@Sa_KCE@6m_C@A
+    @@5@hN+_X_9@'_i_a@AW@~@6@u_=@"_:@Q>_F_e_A@sA_A@Fw_8=@?:_O@OI}@v_^@S@]?E_h@u_Y_R?_
+    @"w_'#@E@J6_]_9_7_'LI@SA@5@*@*_BP_#_bRn@f_KZ_2_a?U@s@$@._._>_T_U_b)_]w@,Va_d_(b:
+    @@u@3@0@(@)}mw_jW_^@p@O@~_iv_N/@~@n@k_B7@Zl@U@U]@^_i6_GO_V@9@Q_c%>@>LG@0Ui_12N@)_
+    @T_)_b_'_2@B@S@-+@18@=@qG_U'_bY_P@/\@o_m@P_,_B@Q@{_Q@Z@'<_^_,s@7_"_C_%H_=8@u@i_k_
+    @E_-I@)u_N_i@b_!@%_S@z_O_m3S_m@s_m@Y_47_i_J_%_M@5z_M".@P_Z@1
   End
   OnTimerInterval=0
   MaxControlSerial=17
@@ -130,9 +130,9 @@ Object FORM
     Hint=
     Name=3A043D0412044B0445043E043404
     ControlSerial=6
-    Caption=170430043A0440044B0442044C0420003E0431044004300431043E0442043A044304
+    Caption=12044B04390442043804
     HotKey=
-    Picture=0
+    Picture=17
     OnClick
       @@>@e@#@V],_-d1@K@p@an_\Qll@+d_a@I@.l_'h45h@C_b@(C@(C;$_h_m_,_$@O@T=_&_._8_9@D_H'
       @)@y_24W?_#_M@I]=-2@8_,@[@Mo_9}l@T@Af(,@/_/.Mq4@A_5@U@;_l_k@X@e|_9x_[v@,-_$_O~_)G

@@ -348,6 +348,7 @@ Function DriverConnect(спНастройки)
     If аДрайвер.libfptr_open(aHandle)<>0 Then
       Exit "Ошибка открытия ККМ "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
     EndIf;
+    спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0"));
     спНастройки["Соединено"]:=1;
   Except
     Exit PopError()+_NEWLINE+"(2) Драйвер не установлен или в нерабочем состоянии!";
@@ -728,15 +729,21 @@ Function PrintReceipt(спНастройки)
     аТип:=спПеременные[спТип.Get(аТип0)];
     
     аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_RECEIPT_TYPE"],аТип);
-    аДрайвер.libfptr_set_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"],0);
+    
+    ФлПочта:=0;
+    If Trim(спНастройки["ПочтаИлиТелефонКлиента"])<>"" Then
+      //"client@mail.ru" или "+79161234567"
+      аДрайвер.libfptr_set_param_str(aHandle,1008,Trim(спНастройки["ПочтаИлиТелефонКлиента"]));
+      ФлПочта:=1;
+    EndIf;
+    
+    аДрайвер.libfptr_set_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"],Min(ФлПочта,спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]));
     If not ФлРозничныйПокупатель Then
-      //Заполняем: 1227, 1228, 1008 (?)
+      //Заполняем: 1227, 1228
       зК:=спНастройки["Контрагент"];
       стрИНН:=Trim(зК.ИНН);
       стрИНН:=TearStr(стрИНН,"/");
       
-      //аДрайвер.setParam(1008,"client@mail.ru");  
-      //аДрайвер.setParam(1008,"+79161234567");
       аДрайвер.libfptr_set_param_str(aHandle,1227,зК.ПолнНаименование);
       аДрайвер.libfptr_set_param_str(aHandle,1228,стрИНН);
     EndIf;
