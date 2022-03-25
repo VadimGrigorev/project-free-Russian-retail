@@ -1626,7 +1626,7 @@ Function глВыполнениеВыгрузокЕГАИС(Счетчик) Expo
     aEl:=Ref.рознМагазины;
     aEl.Select("~(@Status=0)And(@IsFolder=0)And(КодТочкиЕГАИС<>"""")");
     While aEl.Next() Do
-      If aEl.АдресЕГАИС<>"" Then
+      If _And(aEl.АдресЕГАИС<>"",aEl.флНеСоздаватьСписанияСРегистра2=0) Then
         If not ПринятиеКвитанцийЕГАИС(aEl) Then
           Exit;
         EndIf;
@@ -1639,7 +1639,7 @@ Function глВыполнениеВыгрузокЕГАИС(Счетчик) Expo
     аДата2:=AddMinute(аДата2,-15);//Только документы ранее 15 минут
     aList:=List.Create(Enum.коРегистр2ЕГАИС.СписаниеСРегистра2,Enum.коРегистр2ЕГАИС.ПересортНаРегистре2);
     aEl:=Doc.Регистр2ЕГАИС;
-    aEl.SelectEx(3,,"~(DocDate>аДата)And((DocDate<аДата2))And(КодОперации IN aList)And(@Status>1)And(УникальныйИдентификатор2="""")And(Left(УникальныйИдентификатор3,1)="""")");
+    aEl.SelectEx(3,,"~(DocDate>аДата)And(Магазин.флНеСоздаватьСписанияСРегистра2<>1)And((DocDate<аДата2))And(КодОперации IN aList)And(@Status>1)And(УникальныйИдентификатор2="""")And(Left(УникальныйИдентификатор3,1)="""")");
     While aEl.Next() Do
       bEl:=aEl.Copy();
       If bEl.Lock() Then
