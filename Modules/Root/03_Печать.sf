@@ -28,7 +28,6 @@ Function глПолучитьИзМодуля(Имя) Export
 EndFunction
 
 
-
 Function глНайтиЧислоСсылокВТаблице(Т) Export;
   СпБыло:=List.Create();
   Result:=0;
