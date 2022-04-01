@@ -116,7 +116,7 @@ Function Загрузить()
     If З.ResultTable.LocateAndGoto("зВид,зЛокЭл",аТип,аЛокЭл)=0 Then
       Continue;
     EndIf;
-    З.LinearLevelPos:=3;    
+    З.LinearLevelPos:=2;
     Фл:=0;
     Фл2:=0;
     While З.Next(3) Do

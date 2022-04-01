@@ -287,7 +287,16 @@ Function глВыгрузитьДокументПеремещенияВЕГАИ�
 
   Фл:=0;
   If ФлКомплектация Then
-    aTab:=зДок.LineParts("ВходящаяНоменклатура");
+    aTab:=зДок.LoadStorage("ОстаткиТМЦ");
+    aNum:=0;
+    While aNum<aTab.Size() Do
+      aNum:=aNum+1;
+      aTab.CurLine:=aNum;
+      If aTab._Expense=0 Then
+        aTab.Remove(aNum);
+        aNum:=aNum-1;
+      EndIf;
+    EndDo;
   Else
     aTab:=зДок.LineParts("Номенклатура");
   EndIf;

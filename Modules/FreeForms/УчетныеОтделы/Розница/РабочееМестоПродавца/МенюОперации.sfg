@@ -7,7 +7,7 @@ Object FORM
   FormFlags=0
   Caption=1E043F043504400430044604380438042000410420001A041A041C04
   Width=275
-  Height=200
+  Height=235
   OnOpen
     @@>@e_0xq@1_Gd1@f_.@e+@L3+K[@}\_1_;_D_^_1@s@L_)@2o@7@cB_2P@na@Nf@A)_P@lFK_P_S_S_8
     @_>_h@tZ@nO@/@R|@/@=@,@<_J_GY@|_Vlk@,@8@L_]q_)_N<_3@w-@:@q2j@vrg@f_VSz@X'T_=f_&@y
@@ -23,7 +23,7 @@ Object FORM
     @E_-I@)u_N_i@b_!@%_S@z_O_m3S_m@s_m@Y_47_i_J_%_M@5z_M".@P_Z@1
   End
   OnTimerInterval=0
-  MaxControlSerial=17
+  MaxControlSerial=18
   LoadModes=0
   Object BUTTON
     LayerName=4D00610069006E00
@@ -143,7 +143,7 @@ Object FORM
   Object BUTTON
     LayerName=4D00610069006E00
     Left=10
-    Top=170
+    Top=205
     Width=120
     Height=30
     Font=440065006600610075006C0074002C0020003800
@@ -288,5 +288,28 @@ Object FORM
     Caption=1E043F0435044004300446043804380420003D04300434042000470435043A043E043C043A00
     HAlign=1
     VAlign=1
+  End
+  Object BUTTON
+    LayerName=4D00610069006E00
+    Left=10
+    Top=170
+    Width=120
+    Height=30
+    Font=440065006600610075006C0074002C0020003800
+    Color=FF000014
+    AnchorType=9
+    Flags=2056
+    Hint=
+    Name=3A043D04120441043A0440044B044204380435042204300440044B04
+    ControlSerial=17
+    Caption=120441043A0440044B0442044C04200030043B043A042E0020004204300440044304
+    HotKey=
+    Picture=0
+    OnClick
+      @@>@e@#@V_(+_-d1@K@p@an_\6F|K@.3@L_>@W@>@Pmt1_]@p8,2,_<9_;_e(_S@kX@8_X/Y]_e@7<B_+
+      @/0@[_#_O@QU@4_\_;g_3@e2O8@eU@\~@;g0_$@:_/W,q._i_5/@;_l_k@H@e@z@e@r_Ji@S:@8_6@\@C
+      @k_3h@S@mS@Z@,_d_]v_c@T=_.@b_5@Qw_5@P@c@S(M_-h_Q_T_*_&E_#@%@+@(@[_b_<j,@B@e_\xyZ@
+      @i@R@U_^@)_<+@<@7h-@R2-@YH_$h@v@*&_*_E_&_1,8_"W_h_K_g<|@QC@'
+    End
   End
 End
