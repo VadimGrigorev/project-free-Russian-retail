@@ -309,6 +309,11 @@ Function PrintReceipt(спНастройки)
     Except
       ФФД10:=1;
     EndTry;
+    аТип0:=спНастройки["ТипЧека"];
+    If (аТип0<>10)And(аТип0<>13)And(ФФД12) Then
+      аДрайвер.cancelMarkingCodeValidation();
+      аДрайвер.clearMarkingCodeValidationResult();
+    EndIf;
     
     //Единица измерения (2108)
     //0 -- шт    (796)
@@ -395,7 +400,6 @@ Function PrintReceipt(спНастройки)
       "LIBFPTR_RT_SELL","LIBFPTR_RT_SELL","LIBFPTR_RT_SELL","LIBFPTR_RT_SELL");
     спНДС:=List.Create(аДрайвер.LIBFPTR_TAX_NO,аДрайвер.LIBFPTR_TAX_VAT0,аДрайвер.LIBFPTR_TAX_VAT10,аДрайвер.LIBFPTR_TAX_VAT18,аДрайвер.LIBFPTR_TAX_VAT20);
     
-    аТип0:=спНастройки["ТипЧека"];
     ФлРозничныйПокупатель:=Number(спНастройки["ФлРозничныйПокупатель"]);
     аТип:=Eval("аДрайвер."+спТип.Get(аТип0));
     
@@ -420,223 +424,219 @@ Function PrintReceipt(спНастройки)
     EndIf;
     
     аДрайвер.openReceipt;
-    ФлОтменитьЧек:=1;
-    ТабИСМП:=спНастройки["ТабИСМП"];
-    
-    //Проверка кодов марок ГИС МТ
-    спНастройки["ТабОшибкиПроверкиМарок"]:=0;
-    If (аТип0<>10)And(аТип0<>13)And(ФФД12) Then
-      ТабОшибкиПроверкиМарок:=Tab.Create("Марка,Причина");
-      спНастройки["ТабОшибкиПроверкиМарок"]:=ТабОшибкиПроверкиМарок;
-      ФлВозврат:=(аТип0=2)Or(аТип0=5);
-      аДрайвер.cancelMarkingCodeValidation();
-      аДрайвер.clearMarkingCodeValidationResult();
+    Try
+      ФлОтменитьЧек:=1;
+      ТабИСМП:=спНастройки["ТабИСМП"];
       
-      ТабИСМП.Select();
-      While ТабИСМП.Next() Do
-        ТабИСМП.Марка:=EncodeString(ТабИСМП.Марка,"JSON");
-        ТабИСМП.Поле1:=?(ФлВозврат,аДрайвер.LIBFPTR_MES_PIECE_RETURN,аДрайвер.LIBFPTR_MES_PIECE_SOLD);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_TYPE,аДрайвер.LIBFPTR_MCT12_AUTO);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE,ТабИСМП.Марка);
-        //1 -Штучный товар, подлежащий обязательной маркировке средством идентификации, реализован
-        //2 -Мерный товар, подлежащий обязательной маркировке средством идентификации, в стадии реализации
-        //3 -Штучный товар, подлежащий обязательной маркировке средством идентификации, возвращен
-        //4 -Часть товара, подлежащего обязательной маркировке средством идентификации, возвращена
-        //255 -Статус товара, подлежащего обязательной маркировке средством идентификации, не изменился
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_STATUS,ТабИСМП.Поле1);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_PROCESSING_MODE,0);                   //"Режим", всегда равен нулю
-        //1023: для марок упаковки при продаже единицы может записываться как "1/x", где x -- количество в упаковке
-        //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY,"1/2");
-        If аДрайвер.beginMarkingCodeValidation()<>0 Then
-          Exit "beginMarkingCodeValidation. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
-        EndIf;
+      //Проверка кодов марок ГИС МТ
+      спНастройки["ТабОшибкиПроверкиМарок"]:=0;
+      If (аТип0<>10)And(аТип0<>13)And(ФФД12) Then
+        ТабОшибкиПроверкиМарок:=Tab.Create("Марка,Причина");
+        спНастройки["ТабОшибкиПроверкиМарок"]:=ТабОшибкиПроверкиМарок;
+        ФлВозврат:=(аТип0=2)Or(аТип0=5);
         
-        ФлРезультат:=0;
-        аДата:=Date();
-        While 1 Do
-          If аДрайвер.getMarkingCodeValidationStatus()<>0 Then
-            Exit "getMarkingCodeValidationStatus. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
-          Endif;
-          If аДрайвер.getParamBool(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_VALIDATION_READY) Then
-            ФлРезультат:=аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_RESULT);
-            Break;
+        ТабИСМП.Select();
+        While ТабИСМП.Next() Do
+          ТабИСМП.Поле1:=?(ФлВозврат,аДрайвер.LIBFPTR_MES_PIECE_RETURN,аДрайвер.LIBFPTR_MES_PIECE_SOLD);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_TYPE,аДрайвер.LIBFPTR_MCT12_AUTO);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE,ТабИСМП.Марка);
+          //1 -Штучный товар, подлежащий обязательной маркировке средством идентификации, реализован
+          //2 -Мерный товар, подлежащий обязательной маркировке средством идентификации, в стадии реализации
+          //3 -Штучный товар, подлежащий обязательной маркировке средством идентификации, возвращен
+          //4 -Часть товара, подлежащего обязательной маркировке средством идентификации, возвращена
+          //255 -Статус товара, подлежащего обязательной маркировке средством идентификации, не изменился
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_STATUS,ТабИСМП.Поле1);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_PROCESSING_MODE,0);                   //"Режим", всегда равен нулю
+          //1023: для марок упаковки при продаже единицы может записываться как "1/x", где x -- количество в упаковке
+          //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY,"1/2");
+          If аДрайвер.beginMarkingCodeValidation()<>0 Then
+            Exit "beginMarkingCodeValidation. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
           EndIf;
-          If GetPeriodMs(аДата)>5000 Then //5 с. максимум
-            аДрайвер.cancelMarkingCodeValidation();
-            //Exit "getMarkingCodeValidationStatus не возвращает успех длительное время, внутренняя ошибка!";
-            Break;
+          
+          ФлРезультат:=0;
+          аДата:=Date();
+          While 1 Do
+            If аДрайвер.getMarkingCodeValidationStatus()<>0 Then
+              Exit "getMarkingCodeValidationStatus. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
+            Endif;
+            If аДрайвер.getParamBool(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_VALIDATION_READY) Then
+              ФлРезультат:=аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_RESULT);
+              Break;
+            EndIf;
+            If GetPeriodMs(аДата)>7000 Then //7 с. максимум (Атол отменяет по таймаут менее чем через 6 секунд)
+              аДрайвер.cancelMarkingCodeValidation();
+              Exit "getMarkingCodeValidationStatus не возвращает готовность длительное время!";
+            EndIf;
+            Sleep(100);
+          EndDo;
+          //биты 2106 (LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_RESULT):
+          //бит 0: был проверен
+          //бит 1: проверка успешна
+          //бит 2: проверка ОИСМ выполнена
+          //бит 3: планируемый статус (реализация или возврат) корректен, иначе -- нет
+          //бит 4: 0 -- онлайн режим ККТ, 1 -- автономно
+          аДрайвер.acceptMarkingCode;
+          ТабИСМП.Поле2:=ФлРезультат;
+          If ((ФлРезультат And 1<>0)And(ФлРезультат And 2=0))Or((ФлРезультат And 4<>0)And(ФлРезультат And 8=0)) Then
+            Стр:=аДрайвер.getParamString(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_ERROR_DESCRIPTION);
+            Стр:=?(Стр<>"",Стр,?(ФлВозврат,"Марка не списана, нельзя возвращать","Марка списана, нельзя продавать"));
+            ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,?((ФлРезультат And 1<>0)And(ФлРезультат And 2=0),"Код марки недостоверен ("+ФлРезультат+")",Стр));
           EndIf;
-          Sleep(10);
         EndDo;
-        //биты 2106 (LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_RESULT):
-        //бит 0: был проверен
-        //бит 1: проверка успешна
-        //бит 2: проверка ОИСМ выполнена
-        //бит 3: планируемый статус (реализация или возврат) корректен, иначе -- нет
-        //бит 4: 0 -- онлайн режим ККТ, 1 -- автономно
-        аДрайвер.acceptMarkingCode;
-        ТабИСМП.Поле2:=ФлРезультат;
-        If ((ФлРезультат And 1<>0)And(ФлРезультат And 2=0))Or((ФлРезультат And 4<>0)And(ФлРезультат And 8=0)) Then
-          Стр:=аДрайвер.getParamString(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_ERROR_DESCRIPTION);
-          Стр:=?(Стр<>"",Стр,?(ФлВозврат,"Марка не списана, нельзя возвращать","Марка списана, нельзя продавать"));
-          ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,?((ФлРезультат And 1<>0)And(ФлРезультат And 2=0),"Код марки недостоверен",Стр));
-        EndIf;
-      EndDo;
-    EndIf;
-  
-    //Позиции
-    ФлНДС:=спНастройки["ЮрЛицо"].УчитыватьНДС<>0;
-    См:=0;
-    If (аТип0=10)Or(аТип0=13) Then
-      См:=спНастройки["Сумма"];
-      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_NAME,?(аТип0=10,"Аванс за товары","Закрытие кредита за товары"));
-      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PRICE,Round(См,2));
-      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_QUANTITY,1);
-      If ФлНДС Then
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,аДрайвер.LIBFPTR_TAX_VAT20);
-      Else
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,аДрайвер.LIBFPTR_TAX_NO);
       EndIf;
-      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,Round(См,2));
-      аДрайвер.setParam(1214,?(аТип0=13,7,4));
-      аДрайвер.setParam(1212,10);
-      If аДрайвер.registration()<0 Then
-        Exit "Невозможно зарегистрировать товар. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
-      EndIf;
-    Else
-      aTab:=спНастройки["Таблица"];
-      aTab.Select();
-      While aTab.Next() Do
-        If (not aTab.Номенклатура.флПодлежитПрослеживаемости)Or(ФФД10) Then
-          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_NAME,aTab.Номенклатура.Name);
-          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PRICE,Round(aTab.Сумма/aTab.Количество,2));
-          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_QUANTITY,aTab.Количество);
-          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),аДрайвер.LIBFPTR_TAX_NO));
-          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,aTab.Сумма);
-          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_PIECE,?(aTab.Номенклатура.флВесовойТовар,0,1));
-          аДрайвер.setParam(1212,1);              //См. выше (1212) предмет расчета: товар
-          аДрайвер.setParam(1214,?(аТип0=12,5,4));//4 -- полная оплата
-          If аДрайвер.registration()<0 Then
-            Exit "Невозможно зарегистрировать товар. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
-          EndIf;
+    
+      //Позиции
+      ФлНДС:=спНастройки["ЮрЛицо"].УчитыватьНДС<>0;
+      См:=0;
+      If (аТип0=10)Or(аТип0=13) Then
+        См:=спНастройки["Сумма"];
+        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_NAME,?(аТип0=10,"Аванс за товары","Закрытие кредита за товары"));
+        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PRICE,Round(См,2));
+        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_QUANTITY,1);
+        If ФлНДС Then
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,аДрайвер.LIBFPTR_TAX_VAT20);
         Else
-          //Для марочного ГИС МТ товара необходимо передавать каждую марку
-          зЦ:=Round(aTab.Сумма/aTab.Количество,2);
-          зК:=aTab.Количество;
-          While зК>0 Do
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,аДрайвер.LIBFPTR_TAX_NO);
+        EndIf;
+        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,Round(См,2));
+        аДрайвер.setParam(1214,?(аТип0=13,7,4));
+        аДрайвер.setParam(1212,10);
+        If аДрайвер.registration()<0 Then
+          Exit "Невозможно зарегистрировать товар. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
+        EndIf;
+      Else
+        aTab:=спНастройки["Таблица"];
+        aTab.Select();
+        While aTab.Next() Do
+          If (not aTab.Номенклатура.флПодлежитПрослеживаемости)Or(ФФД10) Then
             аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_NAME,aTab.Номенклатура.Name);
-            аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PRICE,зЦ);
-            аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_QUANTITY,1);
+            аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PRICE,Round(aTab.Сумма/aTab.Количество,2));
+            аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_QUANTITY,aTab.Количество);
             аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),аДрайвер.LIBFPTR_TAX_NO));
-            аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,зЦ);
-            аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_PIECE,1);
-            If ФФД11 Then
-              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MEASUREMENT_UNIT,аДрайвер.LIBFPTR_IU_PIECE);
-            EndIf;
-            //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY,"1/2");
+            аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,aTab.Сумма);
+            аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_PIECE,?(aTab.Номенклатура.флВесовойТовар,0,1));
+            аДрайвер.setParam(1212,1);              //См. выше (1212) предмет расчета: товар
             аДрайвер.setParam(1214,?(аТип0=12,5,4));//4 -- полная оплата
-            If not ТабИСМП.FindAndGoto(aTab.Номенклатура,,"Номенклатура",1) Then
-              Exit "Не все марки заданы для позиции "+aTab.Номенклатура+", внутренняя ошибка!";
-            EndIf;
-            If ФФД12 Then
-              аДрайвер.setParam(1212,33);//Марочный товар
-              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE,ТабИСМП.Марка);
-              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_STATUS,ТабИСМП.Поле1);
-              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_TYPE,аДрайвер.LIBFPTR_MCT12_AUTO);            
-              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_RESULT,ТабИСМП.Поле2);
-              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_PROCESSING_MODE,0);
-            ElseIf ФФД11 Then
-              аДрайвер.setParam(1212,2);//"Подакцизный товар"
-              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_TYPE,аДрайвер.LIBFPTR_MCT_OTHER);
-              aList:=List.Create();
-              Стр:=Ansi(ТабИСМП.Марка);
-              For i:=1 To Length(Стр) Do
-                aList.Add(Asc(Стр[i]));
-              EndDo;
-              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE,OLEVariant(aList,_OLE_VT_ARRAY+_OLE_VT_UI1));
-            Else
-              аДрайвер.setParam(1212,2);//"Подакцизный товар"
-              aList:=List.Create($44,$4D);//GS1 Data Matrix (DM)
-              Стр:=Ansi(ТабИСМП.Марка);
-              For i:=1 To Length(Стр) Do
-                aList.Add(Asc(Стр[i]));
-              EndDo;
-              аДрайвер.setParam(1162,OLEVariant(aList,_OLE_VT_ARRAY+_OLE_VT_UI1));
-            EndIf;
-            зК:=зК-1;
-            ТабИСМП.Remove(ТабИСМП.CurLine);
             If аДрайвер.registration()<0 Then
               Exit "Невозможно зарегистрировать товар. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
             EndIf;
-          EndDo;
+          Else
+            //Для марочного ГИС МТ товара необходимо передавать каждую марку
+            зЦ:=Round(aTab.Сумма/aTab.Количество,2);
+            зК:=aTab.Количество;
+            While зК>0 Do
+              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_NAME,aTab.Номенклатура.Name);
+              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PRICE,зЦ);
+              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_QUANTITY,1);
+              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),аДрайвер.LIBFPTR_TAX_NO));
+              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,зЦ);
+              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_PIECE,1);
+              If ФФД11 Then
+                аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MEASUREMENT_UNIT,аДрайвер.LIBFPTR_IU_PIECE);
+              EndIf;
+              //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY,"1/2");
+              аДрайвер.setParam(1214,?(аТип0=12,5,4));//4 -- полная оплата
+              If not ТабИСМП.FindAndGoto(aTab.Номенклатура,,"Номенклатура",1) Then
+                Exit "Не все марки заданы для позиции "+aTab.Номенклатура+", внутренняя ошибка!";
+              EndIf;
+              If ФФД12 Then
+                аДрайвер.setParam(1212,33);//Марочный товар
+                //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_TYPE,аДрайвер.LIBFPTR_MCT12_AUTO);            
+                аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE,ТабИСМП.Марка);
+                аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_STATUS,ТабИСМП.Поле1);
+                аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_RESULT,ТабИСМП.Поле2);
+                аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_PROCESSING_MODE,0);
+              ElseIf ФФД11 Then
+                аДрайвер.setParam(1212,2);//"Подакцизный товар"
+                аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_TYPE,аДрайвер.LIBFPTR_MCT_OTHER);
+                aList:=List.Create();
+                Стр:=Ansi(ТабИСМП.Марка);
+                For i:=1 To Length(Стр) Do
+                  aList.Add(Asc(Стр[i]));
+                EndDo;
+                аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE,OLEVariant(aList,_OLE_VT_ARRAY+_OLE_VT_UI1));
+              Else
+                аДрайвер.setParam(1212,2);//"Подакцизный товар"
+                aList:=List.Create($44,$4D);//GS1 Data Matrix (DM)
+                Стр:=Ansi(ТабИСМП.Марка);
+                For i:=1 To Length(Стр) Do
+                  aList.Add(Asc(Стр[i]));
+                EndDo;
+                аДрайвер.setParam(1162,OLEVariant(aList,_OLE_VT_ARRAY+_OLE_VT_UI1));
+              EndIf;
+              зК:=зК-1;
+              ТабИСМП.Remove(ТабИСМП.CurLine);
+              If аДрайвер.registration()<0 Then
+                Exit "Невозможно зарегистрировать товар. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
+              EndIf;
+            EndDo;
+          EndIf;
+          См:=См+aTab.Сумма;
+        EndDo;
+      EndIf;
+      If Round(спНастройки["Сумма"],2)<>Round(См,2) Then
+        Exit "Неверная сумма строк "+См+", не совпадает с суммой документа "+спНастройки["Сумма"];
+      EndIf;
+      
+      //Оплата
+      //LIBFPTR_PT_CASH, LIBFPTR_PT_ELECTRONICALLY, LIBFPTR_PT_PREPAID, LIBFPTR_PT_CREDIT, LIBFPTR_PT_OTHER...
+      ЭлектроннаяСумма:=Number(спНастройки["ЭлектроннаяСумма"]);
+      ДругаяБезналичнаяСумма:=Number(спНастройки["ДругаяБезналичнаяСумма"]);
+      СуммаЗакрытияАванса:=Number(спНастройки["СуммаЗакрытияАванса"]);
+      If Round(ЭлектроннаяСумма,2)+Round(ДругаяБезналичнаяСумма,2)>Round(См,2) Then
+        Exit "Безналичные суммы оплаты "+ЭлектроннаяСумма+" больше суммы документа "+спНастройки["Сумма"];
+      EndIf;
+      If (аТип0=10)or(аТип0=12) Then
+        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,?(аТип0=10,аДрайвер.LIBFPTR_PT_PREPAID,аДрайвер.LIBFPTR_PT_CREDIT));
+        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(См,2));
+        аДрайвер.payment;        
+      ElseIf (аТип0=11)And(СуммаЗакрытияАванса>0) Then
+        If Round(СуммаЗакрытияАванса,2)>Round(См,2) Then
+          Exit "Сумма закрытия аванса "+СуммаЗакрытияАванса+" больше суммы документа "+спНастройки["Сумма"];
         EndIf;
-        См:=См+aTab.Сумма;
-      EndDo;
-    EndIf;
-    If Round(спНастройки["Сумма"],2)<>Round(См,2) Then
-      Exit "Неверная сумма строк "+См+", не совпадает с суммой документа "+спНастройки["Сумма"];
-    EndIf;
+        См:=СуммаЗакрытияАванса;//Round(См-СуммаЗакрытияАванса,2);
+        //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_CREDIT);
+        //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(СуммаЗакрытияАванса,2));
+        //аДрайвер.payment;
+        If (См>0)And(ЭлектроннаяСумма>0) Then
+          ЭлектроннаяСумма:=Min(ЭлектроннаяСумма,См);
+          См:=Round(См-ЭлектроннаяСумма,2);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_ELECTRONICALLY);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(ЭлектроннаяСумма,2));
+          аДрайвер.payment;  
+        EndIf;
+        If (См>0)And(ДругаяБезналичнаяСумма>0) Then
+          ДругаяБезналичнаяСумма:=Min(ДругаяБезналичнаяСумма,См);
+          См:=Round(См-ДругаяБезналичнаяСумма,2);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_OTHER);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(ДругаяБезналичнаяСумма,2));
+          аДрайвер.payment;  
+        EndIf;
+        If См>0 Then
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_CASH);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(См,2));
+          аДрайвер.payment;  
+        EndIf;  
+      Else
+        If ЭлектроннаяСумма>0 Then
+          См:=Round(См-ЭлектроннаяСумма,2);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_ELECTRONICALLY);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(ЭлектроннаяСумма,2));
+          аДрайвер.payment;  
+        EndIf;
+        If ДругаяБезналичнаяСумма>0 Then
+          См:=Round(См-ДругаяБезналичнаяСумма,2);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_OTHER);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(ДругаяБезналичнаяСумма,2));
+          аДрайвер.payment;  
+        EndIf;
+        If См>0 Then
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_CASH);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(См,2));
+          аДрайвер.payment;  
+        EndIf;  
+      EndIf;
     
-    //Оплата
-    //LIBFPTR_PT_CASH, LIBFPTR_PT_ELECTRONICALLY, LIBFPTR_PT_PREPAID, LIBFPTR_PT_CREDIT, LIBFPTR_PT_OTHER...
-    ЭлектроннаяСумма:=Number(спНастройки["ЭлектроннаяСумма"]);
-    ДругаяБезналичнаяСумма:=Number(спНастройки["ДругаяБезналичнаяСумма"]);
-    СуммаЗакрытияАванса:=Number(спНастройки["СуммаЗакрытияАванса"]);
-    If Round(ЭлектроннаяСумма,2)+Round(ДругаяБезналичнаяСумма,2)>Round(См,2) Then
-      Exit "Безналичные суммы оплаты "+ЭлектроннаяСумма+" больше суммы документа "+спНастройки["Сумма"];
-    EndIf;
-    If (аТип0=10)or(аТип0=12) Then
-      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,?(аТип0=10,аДрайвер.LIBFPTR_PT_PREPAID,аДрайвер.LIBFPTR_PT_CREDIT));
-      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(См,2));
-      аДрайвер.payment;        
-    ElseIf (аТип0=11)And(СуммаЗакрытияАванса>0) Then
-      If Round(СуммаЗакрытияАванса,2)>Round(См,2) Then
-        Exit "Сумма закрытия аванса "+СуммаЗакрытияАванса+" больше суммы документа "+спНастройки["Сумма"];
-      EndIf;
-      См:=СуммаЗакрытияАванса;//Round(См-СуммаЗакрытияАванса,2);
-      //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_CREDIT);
-      //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(СуммаЗакрытияАванса,2));
-      //аДрайвер.payment;
-      If (См>0)And(ЭлектроннаяСумма>0) Then
-        ЭлектроннаяСумма:=Min(ЭлектроннаяСумма,См);
-        См:=Round(См-ЭлектроннаяСумма,2);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_ELECTRONICALLY);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(ЭлектроннаяСумма,2));
-        аДрайвер.payment;  
-      EndIf;
-      If (См>0)And(ДругаяБезналичнаяСумма>0) Then
-        ДругаяБезналичнаяСумма:=Min(ДругаяБезналичнаяСумма,См);
-        См:=Round(См-ДругаяБезналичнаяСумма,2);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_OTHER);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(ДругаяБезналичнаяСумма,2));
-        аДрайвер.payment;  
-      EndIf;
-      If См>0 Then
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_CASH);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(См,2));
-        аДрайвер.payment;  
-      EndIf;  
-    Else
-      If ЭлектроннаяСумма>0 Then
-        См:=Round(См-ЭлектроннаяСумма,2);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_ELECTRONICALLY);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(ЭлектроннаяСумма,2));
-        аДрайвер.payment;  
-      EndIf;
-      If ДругаяБезналичнаяСумма>0 Then
-        См:=Round(См-ДругаяБезналичнаяСумма,2);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_OTHER);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(ДругаяБезналичнаяСумма,2));
-        аДрайвер.payment;  
-      EndIf;
-      If См>0 Then
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_TYPE,аДрайвер.LIBFPTR_PT_CASH);
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PAYMENT_SUM,Round(См,2));
-        аДрайвер.payment;  
-      EndIf;  
-    EndIf;
-    
-    Try
       //Закрытие чека
       аДрайвер.closeReceipt;
       While аДрайвер.checkDocumentClosed()<>0 Do
