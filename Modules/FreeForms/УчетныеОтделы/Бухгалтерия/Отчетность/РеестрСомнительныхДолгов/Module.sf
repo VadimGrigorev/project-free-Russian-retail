@@ -222,7 +222,6 @@ Function РасшифровкаСПросрочкой()
   |зД:=Storage.Взаиморасчеты.Договор;
   |зК:=Storage.Взаиморасчеты.Договор.@Parent;
   |зДД:=Storage.Взаиморасчеты.ДатаЗадолженности;
-  |зВД:=Storage.Взаиморасчеты.ВидДолга;
   |зСмНО:=BegTotals(Сумма);
   |зСмП:=Income(Сумма);
   |зСмР:=Expense(Сумма);"+
@@ -230,7 +229,7 @@ Function РасшифровкаСПросрочкой()
   ?(оК.Get(1).Size()+оК.Get(2).Size()>0,"Condition(зК IN оК.Get(1));Condition(зК NOT IN оК.Get(2));")+
   ?(оД.Get(1).Size()+оД.Get(2).Size()>0,"Condition(зД IN оД.Get(1));Condition(зД NOT IN оД.Get(2));")+
   "Документ:=Storage.Взаиморасчеты.@LINK;
-  |Group зВД,зК,Документ;";
+  |Group зК,Документ;";
   З:=Query.Create();
   З.Execute(ТЗ,2,,"зК,Документ");
 
@@ -244,68 +243,58 @@ Function РасшифровкаСПросрочкой()
   Дл0:=0;
   Пр0:=0;
   While З.Next(1) Do
+    Дл:=З.BegTotals("зСмНО")+З.Compute("зСмП")-З.Compute("зСмР");
+    Пр:=З.BegTotals("зСмНО");
+    If Дл<=0 Then
+      Continue;
+    EndIf;
+    ТТ:=Tab.Create("См,Дата");
+    If Пр>0 Then
+      ТТ.AddLine("См,Дата",Пр,ДНач-1);
+    EndIf;
+    ТО:=-Min(0,З.BegTotals("зСмНО"));//Оплаты
     While З.Next(2) Do
-      Дл:=З.BegTotals("зСмНО")+З.Compute("зСмП")-З.Compute("зСмР");
-      Пр:=З.BegTotals("зСмНО");
-      пДатаДог:="";
-      ТТ:=Tab.Create("См,Д");
-      ТО:=0;
-      While З.Next(3) Do
-        зСмП:=З.Compute("зСмП");
-        зСмР:=З.Compute("зСмР");
-        Пр:=Пр+?(З.зДД<=ДКон,зСмП-зСмР,0);
-        См:=зСмП-зСмР;
+      зСмП:=З.Compute("зСмП");
+      зСмР:=З.Compute("зСмР");
+      Пр:=Пр+?(З.зДД<=ДКон,зСмП-зСмР,0);
+      См:=зСмП-зСмР;
+      If См>0 Then
+        См0:=Min(ТО,См);
+        ТО:=Round(ТО-См0,2);
+        См:=Round(См-См0,2);
         If См>0 Then
-          If ТО>0 Then
-            If ТО>См Then
-              ТО:=Round(ТО-См,2);
-              См:=0;
-            Else
-              См:=Round(См-ТО,2);
-              ТО:=0;
-            EndIf;
-          EndIf;
-          If См>0 Then
-            зДок:=З.Документ;
-            ТТ.AddLine("См,Д",См,?(isEmpty(зДок),ДНач-1,зДок.Copy().DocDate));
-          EndIf;
-        ElseIf См<0 Then
-          См:=-См;
-          While ТТ.Size()>0 Do
-            ТТ.CurLine:=1;
-            См0:=Min(ТТ.См,См);
-            ТТ.См:=Round(ТТ.См-См0,2);
-            См:=Round(См-См0,2);
-            If ТТ.См=0 Then
-              ТТ.Remove(1);
-            EndIf;
-            If См=0 Then
-              Break;
-            EndIf;
-          EndDo;
-          ТО:=ТО+См;
+          ТТ.AddLine("См,Дата",См,?(isEmpty(З.Документ),ДНач-1,BegOfDay(З.Документ.Copy().DocDate)));
         EndIf;
-      EndDo;
-      
-      If ТТ.Size()>0 Then
-        пДатаДог:=Trim(ТТ.Get(1,"Д"));
+      ElseIf См<0 Then
+        См:=-См;
+        While ТТ.Size()>0 Do
+          ТТ.CurLine:=1;
+          См0:=Min(ТТ.См,См);
+          ТТ.См:=Round(ТТ.См-См0,2);
+          См:=Round(См-См0,2);
+          If ТТ.См=0 Then
+            ТТ.Remove(1);
+          EndIf;
+          If См=0 Then
+            Break;
+          EndIf;
+        EndDo;
+        ТО:=ТО+См;
       EndIf;
-      
-      Пр:=Max(Min(Пр,Дл),0);
-      If Round(Дл,2)<=0 Then
-        Continue;
-      EndIf;
-      пН:=пН+1;
-      Дл0:=Дл0+Дл;
-      Пр0:=Пр0+Пр;
-      пИНН:=З.зК.ИНН;
-      пИмя:=Trim(З.зК.ПолнНаименование);
-      пК:=З.зК;
-      пСм:=глФРМ(Дл);
-      пПр:=глФРМ(Пр);
-      Form.StatusText(Т.Height());
-      Т.CopyByX("v2",1);
     EndDo;
+    
+    пДатаДог:=?(ТТ.Size()>0,ТТ.Get(1,"Дата"),"");
+    Пр:=Max(Min(Пр,Дл),0);
+    пН:=пН+1;
+    Дл0:=Дл0+Дл;
+    Пр0:=Пр0+Пр;
+    пИНН:=З.зК.ИНН;
+    пИмя:=Trim(З.зК.ПолнНаименование);
+    пК:=З.зК;
+    пСм:=глФРМ(Дл);
+    пПр:=глФРМ(Пр);
+    Form.StatusText(Т.Height());
+    Т.CopyByX("v2",1);
   EndDo;
   пСм:=глФРМ(Дл0);
   пПр:=глФРМ(Пр0);
@@ -317,21 +306,52 @@ Function РасшифровкаСПросрочкой()
   пН:=0;
   Дл0:=0;
   While З.Next(1) Do
+    Дл:=З.BegTotals("зСмНО")+З.Compute("зСмП")-З.Compute("зСмР");
+    If Дл>=0 Then
+      Continue;
+    EndIf;
+    ТТ:=Tab.Create("См,Дата");
+    If З.BegTotals("зСмНО")<0 Then
+      ТТ.AddLine("См,Дата",З.BegTotals("зСмНО"),ДНач-1);
+    EndIf;
+    ТО:=Max(0,З.BegTotals("зСмНО"));//Оплаты
     While З.Next(2) Do
-      Дл:=З.Compute("зСмП")-З.Compute("зСмР");
-      пДатаДог:="";
-      If Дл>=0 Then
-        Continue;
+      зСмП:=З.Compute("зСмП");
+      зСмР:=З.Compute("зСмР");
+      См:=зСмП-зСмР;
+      If См<0 Then
+        См:=-См;
+        См0:=Min(ТО,См);
+        ТО:=Round(ТО-См0,2);
+        См:=Round(См-См0,2);
+        If См>0 Then
+          ТТ.AddLine("См,Дата",См,?(isEmpty(З.Документ),ДНач-1,BegOfDay(З.Документ.Copy().DocDate)));
+        EndIf;
+      ElseIf См>0 Then
+        While ТТ.Size()>0 Do
+          ТТ.CurLine:=1;
+          См0:=Min(ТТ.См,См);
+          ТТ.См:=Round(ТТ.См-См0,2);
+          См:=Round(См-См0,2);
+          If ТТ.См=0 Then
+            ТТ.Remove(1);
+          EndIf;
+          If См=0 Then
+            Break;
+          EndIf;
+        EndDo;
+        ТО:=ТО+См;
       EndIf;
-      пН:=пН+1;
-      Дл0:=Дл0-Дл;
-      пИНН:=З.зК.ИНН;
-      пИмя:=Trim(З.зК.ПолнНаименование);
-      пК:=З.зК;
-      пСм:=глФРМ(-Дл);
-      Form.StatusText(Т.Height());
-      Т.CopyByX("v5",1);
     EndDo;
+    пДатаДог:=?(ТТ.Size()>0,ТТ.Get(1,"Дата"),"");
+    пН:=пН+1;
+    Дл0:=Дл0-Дл;
+    пИНН:=З.зК.ИНН;
+    пИмя:=Trim(З.зК.ПолнНаименование);
+    пК:=З.зК;
+    пСм:=глФРМ(-Дл);
+    Form.StatusText(Т.Height());
+    Т.CopyByX("v5",1);
   EndDo;
   пСм:=глФРМ(Дл0);
   Т.CopyByX("v6",1);
