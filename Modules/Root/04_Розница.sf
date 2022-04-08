@@ -39,6 +39,9 @@ Function глЗагрузитьДрайверы(Реинициализация=0
     aTab:=аРМ.LineParts("Оборудование");
     aTab.Select();
     While aTab.Next() Do
+      If aTab.Оборудование.DBName()<>"рознОборудованиеМагазинов" Then
+        Continue;
+      EndIf;
       If (спДрайверы.Find(aTab.Оборудование)=0)And(УдалитьДрайвер<>aTab.Оборудование) Then
         Try
           Путь:=aTab.Оборудование.Путь;
@@ -198,6 +201,78 @@ Function глЗагрузитьДрайверы(Реинициализация=0
     UnlockObject(глДрайверы);
   EndTry;
 EndFunction;
+
+
+//Используется для подчиненных магазинов, возвращает 0, если какие-либо из драйверов не были инициализированы
+//Не загружает драйверы сканеров
+//Отдает пустую строку, если ошибок нет, иначе описание ошибки
+Function глЗагрузитьДрайверыДругогоМагазина(РабочееМесто,ByRef спДрайверы) Export;
+  Result:="";
+  спДрайверы:=List.Create();
+  аРМ:=РабочееМесто.Copy();
+  aTab:=аРМ.LineParts("Оборудование");
+  aTab.Select();
+  While aTab.Next() Do
+    If aTab.Оборудование.DBName()<>"рознОборудованиеМагазинов" Then
+      Continue;
+    EndIf;
+    Try
+      aEl:=aTab.Оборудование;
+      Путь:=aEl.Путь;
+      Ини:=Ini.Create();
+      Ини.AddFromFile(AddBackSlash(Путь)+"Оборудование.ini");
+      If Number(Ини.GetData("СканерКлавиатура","0"))=1 Then
+        Continue;
+      EndIf;
+      If Ини.GetData("Оборудование","")=Enum.GetCaption("рознТипыОборудования.СканерыШтрикодов") Then
+        Continue;
+      EndIf;
+      
+      спНастройки:=List.Create();
+      спНастройки["ДопУстановки"]:=aEl.Настройки;
+      спНастройки["ПутьДрайвера"]:=aEl.Путь;
+      спНастройки["Оборудование"]:=aEl;
+      спНастройки["ТипОборудования"]:=Ини.GetData("Оборудование","");
+      
+      //Загрузка текста драйвера
+      Путь:=AddBackSlash(Путь)+"Драйвер";
+      If File.DoesFileExist(Путь+".sfc") Then
+        aBuf:=Buffer.Create();
+        aBuf.LoadFromFile(Путь+".sfc");
+        аМодуль:=LoadFunctionFromBuffer(aBuf);
+        спНастройки["МодульДрайвера"]:=аМодуль;
+      ElseIf File.DoesFileExist(Путь+".sf") Then
+        Стр:=FileToString(Путь+".sf",0);
+        аМодуль:=Compile(Стр,1);
+        спНастройки["МодульДрайвера"]:=аМодуль;
+      Else
+        Raise "Отсутствует модуль драйвера!";
+      EndIf;
+        
+      //Инициализация
+      Стр:=Trim(ExecuteFunction("DriverInit",спНастройки["МодульДрайвера"],спНастройки));
+      If Стр<>"" Then
+        Raise Стр;
+      EndIf;
+        
+      спДрайверы.Add(спНастройки);
+    Except
+      Exit "Ошибка при инициализации оборудования "+aEl+": "+PopError();
+    EndTry;
+  EndDo;
+EndFunction;
+
+Function глВыгрузитьДрайверыДругогоМагазина(спДрайверы) Export;
+  For i:=1 To спДрайверы.Size() Do
+    спНастройки:=спДрайверы[i];
+    aEl:=спНастройки["Оборудование"];
+    Try
+      ExecuteFunction("DriverDisconnect",спНастройки["МодульДрайвера"],спНастройки);
+      ExecuteFunction("DriverDeinit",спНастройки["МодульДрайвера"],спНастройки);
+    Except
+    EndTry;
+  EndDo;
+EndFunction
 
 Function глНайтиТМЦПоШтрихКоду(Штрихкод,ByRef Эл,флТихо=1) Export
   Эл:=0;
