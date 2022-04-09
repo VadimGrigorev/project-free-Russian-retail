@@ -255,6 +255,7 @@ Function OnExecute()
       EndIf;
     
       Message("  Загружаются города...");
+      ПоследнийЗагруженныйКод:="";
       Чл0:=0;
       База.First();
       База.Select();
@@ -267,6 +268,12 @@ Function OnExecute()
           CommitTransaction();
           BeginTransaction();
         EndIf;
+        ТекущийКод:=Left(База.CODE,Length(База.CODE)-2);
+        If ПоследнийЗагруженныйКод=ТекущийКод Then//Две последние цифры -- мусор
+          Continue;
+        EndIf;
+        ПоследнийЗагруженныйКод:=ТекущийКод;
+        
         Код:=LowerCase(Trim(База.CODE));
         If СтрРегион<>"" Then
           If Left(Код,Length(СтрРегион))<>СтрРегион Then
@@ -329,6 +336,7 @@ Function OnExecute()
   Try
     ЧлИзмененных:=0;
     ЧлДобавленных:=0;
+    ПоследнийЗагруженныйКод:="";
     Чл0:=0;
     База.First();
     База.Select();
@@ -362,7 +370,12 @@ Function OnExecute()
       аЭлГ:=Ref.адГорода;
       If аЭлГ.Find("@IsFolder,КодБазы",0,Left(Код,11)) Then
         Имя:=Left(Trim(База.NAME),50);
-        КодБазы:=Left(Right(База.CODE,флДлинаКода+2),флДлинаКода);//Две последних цифры -- мусор
+        ТекущийКод:=Left(База.CODE,Length(База.CODE)-2);
+        If ПоследнийЗагруженныйКод=ТекущийКод Then//Две последние цифры -- мусор
+          Continue;
+        EndIf;
+        ПоследнийЗагруженныйКод:=ТекущийКод;
+        КодБазы:=Left(Right(База.CODE,флДлинаКода+2),флДлинаКода);
         ТУ:=оТУлиц.GetByName(Trim(LowerCase(База.SOCR)));
         If IsEmpty(ТУ) Then
           ТУ:=оТУлиц.GetByName("0");
