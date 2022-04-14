@@ -2,12 +2,16 @@
 //Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
 //Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
-Var спТекущиеЗапросы Export; //Использовать lock для обращения, каждый элемент -- список
 Var локДрайверПодписи Export;
+
+//URL: https://честныйзнак.рф/upload/docs/True_API.html
 
 Function БыстроеФорматированиеJSON(Стр)
   If _Or(pos("HTTP/",Стр)=1,pos(_NEWLINE+"HTTP/1.1",Стр)>0) Then
-    TearStr(Стр,_NEWLINE+_NEWLINE);
+    Стр2:=TearStr(Стр,_NEWLINE+_NEWLINE);
+    If Стр="" Then
+      Exit Стр2;
+    EndIf;
   EndIf;
   Стр:=Replace(Replace(Стр,"{""","{"+_NEWLINE+""""),",""",","+_NEWLINE+"""");
   Exit Стр;
@@ -52,5 +56,265 @@ Function ОбновитьДрайверПодписи()
   EndIf;
 EndFunction
 
-спТекущиеЗапросы:=List.Create();
-SetMultiThreaded(спТекущиеЗапросы);
+Function ДатаЗапроса(аДата)
+  //Даты: yyyy-MM-ddTHH:mm:ss.SSS’Z
+  Exit EncodeString(FormatDate(аДата,"YYYY-mm-dd""T""hh:tt:ss.ppp")+"Z","PE");
+EndFunction
+
+
+Function ПолучитьЭлементJSON(ByRef Текст,От="{")
+  //{..{..}..},{..{..}..},
+  i:=1;
+  While _And(i<=Length(Текст),Текст[i]<>От) Do
+    i:=i+1;
+  EndDo;
+  i0:=i+1;
+  Уровень:=1;
+  While i<Length(Текст) Do
+    i:=i+1;
+    If _Or(Текст[i]="[",Текст[i]="{") Then
+      Уровень:=Уровень+1;
+    ElseIf _Or(Текст[i]="]",Текст[i]="}") Then
+      Уровень:=Уровень-1;
+      If Уровень=0 Then
+        Break;
+      EndIf;
+    ElseIf Текст[i]="""" Then //TODO: '
+      While i<Length(Текст) Do
+        i:=i+1;
+        If Текст[i]="\" Then //\"
+          i:=i+1;
+        ElseIf Текст[i]="""" Then
+          i:=i+1;
+          Break;
+        EndIf;
+      EndDo;
+    EndIf;
+  EndDo;
+  Result:=Mid(Текст,i0,i-i0-1);
+  Текст:=Mid(Текст,i+1);
+EndFunction
+
+Function ЗагрузитьМассивJSON(Стр)
+  //"Name":Value,...
+  //Value: "..\"..?", ?, [...]
+  aList:=List.Create();
+  While Стр<>"" Do
+    TearStr(Стр,"""");
+    Имя:=TearStr(Стр,"""");
+    TearStr(Стр,":");
+    Стр:=Trim(Стр);
+    If Length(Стр)=0 Then
+      aList[Имя]:="";
+      Break;
+    EndIf;
+    If Стр[1]="""" Then
+      TearStr(Стр,"""");
+      i:=0;
+      While i<Length(Стр) Do
+        i:=i+1;
+        If Стр[i]="\" Then
+          i:=i+1;
+        ElseIf Стр[i]="""" Then
+          Break;
+        EndIf;
+      EndDo;
+      Знач:=Left(Стр,i-1);
+      Стр:=Mid(Стр,i+1);
+      Знач:=DecodeString(Знач,"JSON");
+      TearStr(Стр,",");
+    ElseIf Стр[1]="[" Then
+      Знач:=ПолучитьЭлементJSON(Стр,"[");
+      TearStr(Стр,",");
+    Else
+      Знач:=Trim(TearStr(Стр,","));
+      If _And(Знач<>"",Знач[1]>="0",Знач[1]<="9") Then
+        Знач:=Number(Знач);
+      EndIf;
+    EndIf;
+    aList[Имя]:=Знач;
+  EndDo;
+  Exit aList;
+EndFunction
+
+
+Function ОбновитьТаблицы(флФорс=0)
+  оМагазин:=Form.оМагазин.Value;
+  оТоварнаяГруппа:=Form.оТоварнаяГруппа.Value;
+  оДокументы:=Form.оДокументы.Value;
+  НачДата:=BegOfDay(Form.НачДата.Value);
+  КонДата:=BegOfDay(Form.КонДата.Value);
+  
+  If оМагазин.Selected()=0 Then
+    If флФорс=1 Then
+      Box("Необходимо выбрать магазин!",Q_STOP);
+    EndIf;
+    Exit 0;
+  EndIf;
+  If оТоварнаяГруппа.Selected()=0 Then
+    If флФорс=1 Then
+      Box("Необходимо выбрать товарную группу!",Q_STOP);
+    EndIf;
+    Exit 0;
+  EndIf;
+  If IsEmpty(Form.пТекущийСертификат.Value) Then
+    If флФорс=1 Then
+      Box("Для магазина не выбран текущий сертификат!",Q_STOP);
+    EndIf;
+    Exit 0;
+  EndIf;
+  
+  //Запрос по документам
+  //Доп. фильтры: documentType: LP_SHIP_RECEIPT (LP_SHIP_RECEIPT_CSV, LP_SHIP_RECEIPT_XML) -- поступления (не используется)
+  //                            LP_RETURN (LP_RETURN_CSV, LP_RETURN_XML) -- возврат в оборот
+  //                            LP_ACCEPT_GOODS (LP_ACCEPT_GOODS_CSV, LP_ACCEPT_GOODS_XML) -- принятие поступления
+  //                            LP_CANCEL_SHIPMENT -- отмена принятия
+  //                            LP_INTRODUCE_OST (LP_INTRODUCE_OST_CSV, LP_INTRODUCE_OST_XML) -- оприходования
+  //                            LK_RECEIPT (LK_RECEIPT_CSV, LK_RECEIPT_XML) -- списание марок
+  //                            RECEIPT, RECEIPT_RETURN -- розничные чеки
+  //                            WRITE_OFF -- списание (только для табака)
+  //                            UNIVERSAL_TRANSFER_DOCUMENT -- поступления УПД
+  //                            UNIVERSAL_TRANSFER_DOCUMENT_FIX -- поступления УПД, исправление
+  //                            UNIVERSAL_CORRECTION_DOCUMENT -- поступления УПД, корректировка
+  //                            UNIVERSAL_CORRECTION_DOCUMENT_FIX -- поступления УПД, исправление корректировки
+  //                            UNIVERSAL_CANCEL_DOCUMENT -- отказ от УПД
+  //limit: (20..10000): всегда 200
+  //pg: товарная группа, всегда задана
+  //documentStatus: IN_PROGRESS -- проверяется
+  //        CHECKED_OK -- обработан
+  //        CHECKED_NOT_OK -- обработан с ошибками
+  //        PROCESSING_ERROR -- техническая ошибка
+  //        ACCEPTED -- принят
+  //        CANCELLED -- отменен
+  //        WAIT_ACCEPTANCE -- ожидает приёмку
+  //        PARSE_ERROR -- обработан с ошибками
+  //        WAIT_PARTICIPANT_REGISTRATION -- ожидает регистрации участника в ГИС МТ
+  //        WAIT_FOR_CONTINUATION -- ожидает продолжения обработки документа
+  Стр2:="/api/v4/true-api/doc/list?dateFrom="+ДатаЗапроса(НачДата)+"&dateTo="+ДатаЗапроса(КонДата)+"&pg="+оТоварнаяГруппа.ВнешнееНаименование+"&limit=200";
+  Стр:="";
+  СтрОшибка:=ВыполнитьЗапросГИСМТ(локДрайверПодписи,Стр2,Стр,0);
+  If Not IsEmpty(СтрОшибка) Then
+    СтрОшибка:=БыстроеФорматированиеJSON(СтрОшибка);
+    Тч:=Text.Create();
+    Тч.AddString(СтрОшибка);
+    Тч.Show("Ошибка получения списка документов",,1);
+    Exit;
+  EndIf;
+  оДокументы.ClearLines();
+
+  КДата:=КонДата+1;
+  спТип:=List.Create(Enum.коПоступлениеТМЦ.ПоступлениеТМЦ,Enum.коПоступлениеТМЦ.ВнутреннееПеремещение);  
+  ТЗ:="зСтатус:=Doc.ПоступлениеТМЦ.@Status;Condition(зСтатус>1);зДата:=Doc.ПоступлениеТМЦ.DocDate;Condition((зДата>=НачДата)And(зДата<КДата));
+  |зДок:=Doc.ПоступлениеТМЦ;
+  |зКО:=Doc.ПоступлениеТМЦ.КодОперации;
+  |Condition(зКО IN спТип);  
+  |зГИС:=Doc.ПоступлениеТМЦ.Номенклатура.Номенклатура.флПодлежитПрослеживаемости;
+  |Condition(зГИС=1);
+  |зМагазин:=Doc.ПоступлениеТМЦ.Склад.Магазин;
+  |Condition(зМагазин=оМагазин);
+  |зЮЛ:=Doc.ПоступлениеТМЦ.ЮрЛицо;
+  |Condition(зЮЛ=оМагазин.ЮрЛицо);
+  |Group зДок;";
+  
+  З:=Query.Create();
+  aTab:=З.Execute(ТЗ,0);
+
+  спТипыДокументов:=List.Create();
+  спТипыДокументов["LP_RETURN"]:="Возврат в оборот";
+  спТипыДокументов["LP_RETURN_CSV"]:="Возврат в оборот";
+  спТипыДокументов["LP_RETURN_XML"]:="Возврат в оборот";
+  спТипыДокументов["LP_ACCEPT_GOODS"]:="Подтверждение";
+  спТипыДокументов["LP_ACCEPT_GOODS_CSV"]:="Подтверждение";
+  спТипыДокументов["LP_ACCEPT_GOODS_XML"]:="Подтверждение";
+  спТипыДокументов["LP_CANCEL_SHIPMENT"]:="Отказ";
+  спТипыДокументов["LP_INTRODUCE_OST"]:="Оприходование";
+  спТипыДокументов["LP_INTRODUCE_OST_CSV"]:="Оприходование";
+  спТипыДокументов["LP_INTRODUCE_OST_XML"]:="Оприходование";
+  спТипыДокументов["LK_RECEIPT"]:="Списание";
+  спТипыДокументов["LK_RECEIPT_CSV"]:="Списание";
+  спТипыДокументов["LK_RECEIPT_XML"]:="Списание";
+  спТипыДокументов["WRITE_OFF"]:="Списание";
+  спТипыДокументов["RECEIPT"]:="Розн. продажа";
+  спТипыДокументов["RECEIPT_RETURN"]:="Розн. возврат";
+  спТипыДокументов["UNIVERSAL_TRANSFER_DOCUMENT"]:="УПД";
+  спТипыДокументов["UNIVERSAL_TRANSFER_DOCUMENT_FIX"]:="УПД, исправ.";
+  спТипыДокументов["UNIVERSAL_CORRECTION_DOCUMENT"]:="УПД коррекц.";
+  спТипыДокументов["UNIVERSAL_CORRECTION_DOCUMENT_FIX"]:="УПД коррекц. исправ.";
+  спТипыДокументов["UNIVERSAL_CANCEL_DOCUMENT"]:="Отказ от УПД";
+  
+  спИконкиДокументов:=List.Create();
+  спИконкиДокументов["RECEIPT"]:=271;
+  спИконкиДокументов["RECEIPT_RETURN"]:=271;
+  спИконкиДокументов["UNIVERSAL_TRANSFER_DOCUMENT"]:=279;
+  спИконкиДокументов["UNIVERSAL_TRANSFER_DOCUMENT_FIX"]:=279;
+  спИконкиДокументов["UNIVERSAL_CORRECTION_DOCUMENT"]:=279;
+  спИконкиДокументов["UNIVERSAL_CORRECTION_DOCUMENT_FIX"]:=279;
+  спИконкиДокументов["UNIVERSAL_CANCEL_DOCUMENT"]:=279;
+  
+  спСтатусыДокументов:=List.Create();
+  спСтатусыДокументов["IN_PROGRESS"]:="проверяется";
+  спСтатусыДокументов["CHECKED_OK"]:="обработан";
+  спСтатусыДокументов["CHECKED_NOT_OK"]:="ошибка";
+  спСтатусыДокументов["PROCESSING_ERROR"]:="тех. ошибка";
+  спСтатусыДокументов["ACCEPTED"]:="принят";
+  спСтатусыДокументов["CANCELLED"]:="отменен";
+  спСтатусыДокументов["WAIT_ACCEPTANCE"]:="ожидает прием";
+  спСтатусыДокументов["PARSE_ERROR"]:="ош. формата";
+  спСтатусыДокументов["WAIT_PARTICIPANT_REGISTRATION"]:="участник не в ГИС МТ";
+  спСтатусыДокументов["WAIT_FOR_CONTINUATION"]:="ожидает обработку";
+  
+  ФлЧастьСписка:=Pos("],""nextPage"":true}",Стр)>0;
+  оДокументы.Lock();
+  Try
+    TearStr(Стр,"""results"":[");
+    While Стр<>"" Do
+      Стр2:=ПолучитьЭлементJSON(Стр);
+      Сп:=ЗагрузитьМассивJSON(Стр2);
+      If IsEmpty(Сп["number"]) Then
+        Continue;
+      EndIf;
+      аДата:=Left(Сп["docDate"],10);//2020-07-02
+      аДата:=Date(Mid(аДата,9,2)+"."+Mid(аДата,6,2)+"."+Mid(аДата,1,4));
+      аТип:=спТипыДокументов[Сп["type"]];
+      аТип:=?(IsEmpty(аТип),Сп["type"],аТип);
+      аСтатус:=спСтатусыДокументов[Сп["status"]];
+      аСтатус:=?(IsEmpty(аСтатус),Сп["status"],аСтатус);
+      оДокументы.AddLine("Идентификатор,зКонтрагент,зДок,зТип,зСтатус",Сп["number"],Сп["senderName"]+", "+Сп["senderInn"],Сп["invoiceNumber"]+" от "+аДата,аТип,аСтатус);
+      аИконка:=спИконкиДокументов[Сп["type"]];
+      аИконка:=?(IsEmpty(аИконка),122,аИконка);
+      оДокументы.Icon(оДокументы.CurLine,"Иконка",аИконка);
+      
+      //TODO: поиск локального
+      
+    EndDo;
+    Form.оДокументы.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,оДокументы.Size());
+  Finally
+    оДокументы.UnLock();
+  EndTry;
+  If ФлЧастьСписка Then
+    Box("В список попали не все документы выбранного периода! Выберите меньший период, чтобы получить полный список!",Q_WARNING);
+  EndIf;
+  
+  Form.bPanelClose.SetFocus();
+  Exit 1;
+EndFunction
+
+Function ВывестиОтчетПоДокументу()
+  оДокументы:=Form.оДокументы.Value;
+  If оДокументы.SelectedLine=0 Then
+    Exit;
+  EndIf;
+  оДокументы.CurLine:=оДокументы.SelectedLine;
+  If IsEmpty(оДокументы.Идентификатор) Then
+    Exit;
+  EndIf;
+  //TODO
+EndFunction
+
+Function СозданиеВходящегоПоступления()
+  //TODO
+EndFunction
+
+Function ПринятьВходящийДокумент()
+  //TODO
+EndFunction

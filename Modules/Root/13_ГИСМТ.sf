@@ -139,15 +139,26 @@ Function ВыполнитьОбменССерверомГИСМТ(Ссылка,B
       Else
         aTCP:=IPConnection.Connect(Сервер);
       EndIf;
-      if aTCP.IsConnected Then
-        Break;
+      if not aTCP.IsConnected Then
+        If i=5 Then
+          Стр:="Невозможно соединиться с сервером "+Сервер+"!";
+          Exit 0;
+        EndIf;
+        Continue;
       EndIf;
+      
+      Try
+        aTCP.InitEncryption("OpenSSL",спДрайверПодписи["Библиотека"]);
+        Break;
+      Except
+        If i=5 Then
+          Стр:="Ошибка инициализации SSL: "+PopError();
+          Exit 0;
+        EndIf;
+        Continue;
+      EndTry;
     EndDo;
-    If _Or(isEmpty(aTCP),not aTCP.isConnected()) Then
-      Стр:="Невозможно соединиться с сервером "+Сервер+"!";
-      Exit 0;
-    EndIf;
-    aTCP.InitEncryption("OpenSSL",спДрайверПодписи["Библиотека"]);
+
 
     If Стр<>"" Then
       aTCP.HTTPSetOperation("POST /"+Ссылка+" HTTP/1.1");
@@ -166,7 +177,7 @@ Function ВыполнитьОбменССерверомГИСМТ(Ссылка,B
       aTCP.HTTPSetHeaderField("Content-Type","application/json; charset=UTF-8");
       aTCP.HTTPSetHeaderField("Content-Length",Length(Стр));
       aTCP.HTTPSetBody(Стр);
-    EndIf;
+    EndIf;    
     If aTCP.HTTPSendAndReceive Then
       aTCP.HTTPDecodeChunked();
       Стр:=aTCP.HTTPHeaderAndBodyAsString;
@@ -196,6 +207,7 @@ EndFunction
 
 Function ПодписатьТекстГИСМТ(спДрайверПодписи,ByRef Текст)
   спДрайверПодписи["Сообщение"]:=EncodeString(UnicodeToUTF8(Текст),"base64");
+  спДрайверПодписи["ОткрепленнаяПодпись"]:=0;
   Текст:=Trim(ExecuteFunction("SignMessage",спДрайверПодписи["МодульДрайвера"],спДрайверПодписи));
   If Текст<>"" Then
     Exit 0;
@@ -265,7 +277,7 @@ Function ВыполнитьЗапросГИСМТ(спДрайверПодпис
   If _Or(IsEmpty(спДрайверПодписи["Токен"+ФлТипСервера]),IsEmpty(спДрайверПодписи["ДатаТокена"+ФлТипСервера]),GetPeriodMs(спДрайверПодписи["ДатаТокена"+ФлТипСервера])>18000000) Then //5 часов
     Result:=ОбновитьТокенГИСМТ(спДрайверПодписи,ФлТипСервера);
     If Not IsEmpty(Result) Then
-      Exit;
+      Exit Result;
     EndIf;
   EndIf;
   
