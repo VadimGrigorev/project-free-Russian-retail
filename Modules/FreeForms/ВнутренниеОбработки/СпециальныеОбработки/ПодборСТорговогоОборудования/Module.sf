@@ -113,7 +113,7 @@ Function СопоставитьШтрихкод(Код,Данные,ФлТихо
   EndIf;
   оТаб:=Form.оТаб.Value;
   
-  If Фл Then
+  If Фл>0 Then
     If зН.DBName()="тмцПартииТМЦ" Then
       If оТаб.FindAndGoto(зН,,"Партия")=0 Then
         оТаб.AddLine("Номенклатура,Партия,Штрихкод",зН.Parent(),зН,Trim(Данные));

@@ -215,6 +215,8 @@ Function ДобавитьЗапросом(флТипПодбора,оН=0,оТГ
   EndDo;
   If Партии Then
     aTab.Sort("Номенклатура,Партия");
+  Else
+    aTab.Sort("Номенклатура");
   EndIf;
 EndFunction
 
