@@ -77,7 +77,7 @@ Object FORM
     Font=440065006600610075006C0074002C0020003800
     Color=FF00000F
     AnchorType=9
-    Flags=200
+    Flags=456
     Hint=
     Name=3F041D04300438043C0435043D043E04320430043D0438043504
     ControlSerial=4
@@ -96,7 +96,7 @@ Object FORM
     Font=440065006600610075006C0074002C0020003800
     Color=FF00000F
     AnchorType=9
-    Flags=200
+    Flags=456
     Hint=
     Name=3F0421044204
     ControlSerial=5
