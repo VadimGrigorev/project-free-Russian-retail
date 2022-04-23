@@ -58,7 +58,7 @@ Function RegisterTransaction(спНастройки)
       аДрайвер.clear();
       аДрайвер.SParam("Amount",См);
       //аДрайвер.SParam("AuthCode","");
-      аДрайвер.SParam("CashierFIO",спНастройки["Кассир"]);//TranslateTo(спНастройки["Кассир"],866)
+      аДрайвер.SParam("CashierFIO",Trim(спНастройки["Кассир"]));//TranslateTo(спНастройки["Кассир"],866)
       аРезультат:=аДрайвер.NFun(4000);
       If аРезультат<>0 Then
         Exit "Ошибка "+аРезультат;
@@ -77,7 +77,7 @@ Function RegisterTransaction(спНастройки)
       аДрайвер.clear();
       аДрайвер.SParam("Amount",См);
       //аДрайвер.SParam("AuthCode","");
-      аДрайвер.SParam("CashierFIO",спНастройки["Кассир"]);
+      аДрайвер.SParam("CashierFIO",Trim(спНастройки["Кассир"]));
       аРезультат:=аДрайвер.NFun(4002);
       If аРезультат<>0 Then
         Exit "Ошибка "+аРезультат;
