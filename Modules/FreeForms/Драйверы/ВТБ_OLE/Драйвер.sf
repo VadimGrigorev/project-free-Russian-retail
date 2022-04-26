@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, RegisterTransaction
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, RegisterTransaction, OpenShift, CloseShift
 
 Function DriverInit(спНастройки)
   Try
@@ -24,6 +24,14 @@ EndFunction
 
 Function DriverDisconnect(спНастройки)
   спНастройки["Соединено"]:=0;
+EndFunction
+
+Function OpenShift(спНастройки)
+  //Не требуется
+EndFunction
+
+Function CloseShift(спНастройки)
+  //Не требуется
 EndFunction
 
 //"Сумма" -- Сумма
