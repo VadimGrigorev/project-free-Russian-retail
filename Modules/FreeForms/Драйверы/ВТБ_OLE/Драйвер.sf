@@ -31,7 +31,24 @@ Function OpenShift(спНастройки)
 EndFunction
 
 Function CloseShift(спНастройки)
-  //Не требуется
+  Try
+    аЗапрос:=CreateOLE("ArcCom.SAPacketObj");
+    аОтвет:=CreateOLE("ArcCom.SAPacketObj");
+    аДрайвер:=CreateOLE("ArcCom.PCPOSTConnectorObj");
+    аЗапрос.CurrencyCode:=643;
+    аЗапрос.OperationCode:=7;
+    аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,15); 
+    If аРезультат<>0 Then
+      Exit "Ошибка при выгрузке данных в терминал: "+аРезультат+"!";
+    EndIf;
+    СтрОтчет:=аОтвет.SLIP;
+    Путь:="Temp\Розница\";
+    If File.CreateDirectory(Путь) Then
+      StringToFile(СтрОтчет,Путь+"ОтчетБанка.txt",1200,0);
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Ошибка при выгрузке данных в терминал!";
+  EndTry;
 EndFunction
 
 //"Сумма" -- Сумма
@@ -60,7 +77,7 @@ Function RegisterTransaction(спНастройки)
     //2 -- отмена последней успешной операции
     //3 -- возврат
     //4 -- отмена
-    //6 -- отмет по операциям
+    //6 -- отчет по операциям
     //7 -- сверка итогов
     //98 -- меню кассира
     //99 -- меню администратора
