@@ -50,8 +50,9 @@ Function ПринятьИзменения()
   If AskQuestion("Вы уверены, что корректно сопоставили разливную алкогольную номенклатуру со штучной?",Q_QUESTION+Q_YESNO)<>R_YES Then
     Exit;
   EndIf;
-  
   оЛитры:=Form.оЛитры.Value;
+  оШтрихкоды:=Form.оШтрихкоды.Value;
+  
   If оЛитры Then
     зЕдЛ:=Ref.тмцЕдиницыИзмерения;
     If not зЕдЛ.Find("Name","л") Then
@@ -81,24 +82,45 @@ Function ПринятьИзменения()
         зН2.Save();
       EndIf;
     EndIf;
+    If оШтрихкоды Then
+      аШк:=Ref.тмцШтрихкоды;
+      aList:=аШк.Load(5,"~(@Parent=зН)And(@Status<>1)");
+      aList2:=аШк.Load(5,"~(@Parent=зН2)And(@Status<>1)");
+      For i:=1 To aList2.Size() Do
+        aList2[i]:=aList2[i].Name;
+      EndDo;
+      For i:=1 To aList.Size() Do
+        If aList2.Find(aList[i].Name)=0 Then
+          //Добавим
+          аШк2:=aList[i];
+          аШк.New();
+          аШк.Parent(зН2);
+          аШк.Коэффициент:=аШк2.Коэффициент;
+          аШк.Name:=аШк2.Name;
+          аШк.флОсновной:=аШк2.флОсновной;
+          аШк.Save();
+        EndIf;
+      EndDo;
+    EndIf;
+
     аКм:=Ref.рознКомплектацияНоменклатуры;
     If аКм.Find("~(@Parent=зН2)And(ВходящаяНоменклатура.Номенклатура=зН)And(ВходящаяНоменклатура.Количество=1)") Then
       If аКм.Status()<>1 Then
         Continue;
       EndIf;
       аКм.Mark(0);
-      Continue;
+    Else
+      аКм.New();
+      аКм.Parent(зН2);
+      аКм.Name:="Вскрытие тары "+зН;
+      aTab:=аКм.LineParts("ВходящаяНоменклатура");
+      aTab.AddLine("Номенклатура,Количество",зН,1);
+      If зН.ОбъемЛитров>0 Then
+        aTab2:=аКм.LineParts("ИсходящаяНоменклатура");
+        aTab2.AddLine("Номенклатура,Количество",зН2,зН.ОбъемЛитров);
+      EndIf;
+      аКм.Save();
     EndIf;
-    аКм.New();
-    аКм.Parent(зН2);
-    аКм.Name:="Вскрытие тары "+зН;
-    aTab:=аКм.LineParts("ВходящаяНоменклатура");
-    aTab.AddLine("Номенклатура,Количество",зН,1);
-    If зН.ОбъемЛитров>0 Then
-      aTab2:=аКм.LineParts("ИсходящаяНоменклатура");
-      aTab2.AddLine("Номенклатура,Количество",зН2,зН.ОбъемЛитров);
-    EndIf;
-    аКм.Save();
   EndDo;
   ТСтроки.ClearLines();
   Message("Работа окончена!","!");

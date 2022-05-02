@@ -142,10 +142,30 @@ Object FORM
     Mask=
     Length=16
     AttachedButtons
-      @@>@eU@&t@,R@&@6@&R&_>_5@&)!4_3"@~
+      @@>@eU@&t@,R@&@6@&R%@Yj@&_!T9\R@aD_]!g_X$h
     End
     DBSource
       @@>@e@)@*R@*@&#fg'w'a'@)B_B@,!!,_P"{
+    End
+    OnAttachedButtons
+      @@>@e@fy_6r_Gt1@f_0@uL@;}@Pi2CMtp@yq#@r4]_/H@rv?@r_h_F@iP_-o@n_Nu"@\_h_gaU_e_h2@)
+      @~M@QN@C@x_[[@9_R_7_7@+@d_!@/j@=V@kI_j_R@:rc_T@YPJ@o_K_%@9@V@5@V_?@i.;_^b@=_]=@{_
+      @:P@h_\5@tPY@._/2@B_D@T_$@N_cH_9@4_M{_J@=@y_O@)@-@Vg@u@J&'@'_Z_M@5@O_I@#^@Il_C_-_
+      @O_a-Z8_31@C_[@y@=_7@DB(@>f@e7@;"_JD?@I[@H@M_C_b+@?@3_>@cLrs+_FJ:_F_k/|G<[@7@q~@C
+      @^S_J_h@&_7@'_1e_1]@LM8_\_U0_#@g_mF_iK>t}@p_6K_l9_DIZ@D0@]@0_j\@8@P_D_/8y@N@6Bv@
+      @v@Y@v@6_E&@F[@Y_P_T@+@-@8@5@"_6_Q@'_(@V@\@l-g@DY_H@X_h}_B@f]\@lU_h*_c_S_;@%@v@C
+      @@Lk@s_(_:k_;@e@GE_1_9_7@A<@(>@yh@P@}@^_1@n_X_1_!@c@/{-@}v@P@v@c_U4e(@Qr]i@a@n@g_
+      @&7@'zv_Id_:_X_dt_W_#m_-@]@qA@B_!@h_&@c@=@.a_\_f@J_V@S@;@+_%_0_Q@Pjo@f|u@5_P@R@b
+      @@S_D@g@a_E_T@Y_&@>1@1k@d_%a_+_$kp_B._HUL@s\S_N>_Yb_<C@7aX:k_F_iQ_c_P@p#@=@q>v@w@
+      @S_7@y_\H;@l_:_[@vEI\@~_W,_a~@U_Z@00W@q@^_A_6_f7E_.'_Y_T_'@>|o_1@8_^_g_8@&@0Q_>G_
+      @g@A@L_9@q_9_+@t@e@QL_1L@n\"@O_<@z@\W@c_kN@V@A@Q_W_I@SE_f_E_1(@._$@F_^_$@b|@=G_.
+      @@(@<@H_R_C_C_kK@#_U@D@X_JJ_^_0GA@B@%V_N@f@g3(H@O_gd_"_?@M@N@5_,b@(@b_lX@D@n@%_+_
+      @9_,@Bm_K_\_e'uP@j@1_>j1_X?@x@{h_k@O_[0@>@4_U@[@c@}+_0j@3!A@m@c@P\_E@m_[&_X@cz_Xd
+      @_]g_\_)@mE@V>C$(_jO@i@d_h_B@"tU@pE_%@M<_1@P_b_(q@Pr@O_4@*$@a)a_F$_&_?g\_8@6@3K@-
+      @@s@s@L@\,@u_#_R@0_'@]@,@R>@f_[Y_T@H@g_d_gh@5_'_S_#_ZvZ_*@,_'V_S@k@Z[_2@8@z@=@]_7
+      @@~@|F@w,{@u_\}@v+<_m@f@u/@U@;_0_4_H@7@2_)@U_A_[|a@R_I@:@I@w_&_Al_af@u_:@O@7@)_m
+      @{@3!_U"@~&_B=@/@,Q_0@N_f_Vy_7_I_*@,Q_[_gd@5_I_l#@0@S@?_)j_b@C@=@u@9P@7@%vS@y_"@=
+      @@\@Q@A@C_c@}_l_mx@tt_0_>p@%@AU@[E_6_a8_S@EW_d
     End
   End
   Object LABEL

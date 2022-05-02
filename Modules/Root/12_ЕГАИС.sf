@@ -654,6 +654,7 @@ Function глВыгрузитьСписаниеМарокВЕГАИС(оМага
           "<?xml version=""1.0"" encoding=""UTF-8"" standalone=""no""?><A>"+
           "<url>http://check.egais.ru?id=ffffffff-ffff-ffff-ffff-ffffffffffff&amp;dt=0000000000&amp;cn=000000000000</url>"+
           "<sign>FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF</sign><ver>2</ver></A>";
+          
       СтрОтвет:=Стр;
       СтрОтвет:=ReformatXML(СтрОтвет);
       Exit 1;
