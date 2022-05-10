@@ -64,8 +64,10 @@ Function СохранитьУстановки(ФлЗакрыть=0)
   
   глОбновитьРасписаниеПротоколаОбмена(Элемент,"Modules\FreeForms\ПротоколыОбмена\Фронтол\",Form.оРасписаниеВыгрузки.Value,Form.оРасписаниеЗагрузки.Value);
   
-  Form.IsChanged(0);
-  Form.Close();
+  If ФлЗакрыть Then
+    Form.IsChanged(0);
+    Form.Close();
+  EndIf;
 EndFunction
 
 Function ПолучитьНомерДокумента(зДок)

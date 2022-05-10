@@ -88,12 +88,16 @@ Function RegisterTransaction(спНастройки)
       аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,15); 
       If аРезультат<>0 Then
         Exit "Ошибка при выгрузке данных в терминал: "+аРезультат+"!";
+      ElseIf Number(аОтвет.ResponseCodeHost)<>0 Then
+        Exit аОтвет.TextResponse+" ("+аОтвет.ResponseCodeHost+")";
       EndIf;
     ElseIf аТипОперации=1 Then
       аЗапрос.OperationCode:=3;
       аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,15); 
       If аРезультат<>0 Then
         Exit "Ошибка при выгрузке данных в терминал: "+аРезультат+"!";
+      ElseIf Number(аОтвет.ResponseCodeHost)<>0 Then
+        Exit аОтвет.TextResponse+" ("+аОтвет.ResponseCodeHost+")";
       EndIf;
     ElseIf аТипОперации=100 Then
       //Ничего не требуется
@@ -103,6 +107,8 @@ Function RegisterTransaction(спНастройки)
       аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,15); 
       If аРезультат<>0 Then
         Exit "Ошибка при выгрузке данных в терминал: "+аРезультат+"!";
+      ElseIf Number(аОтвет.ResponseCodeHost)<>0 Then
+        Exit аОтвет.TextResponse+" ("+аОтвет.ResponseCodeHost+")";
       EndIf;
     EndIf;
   Except
