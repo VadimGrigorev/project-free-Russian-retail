@@ -589,6 +589,7 @@ EndFunction
 //ЮрЛицо
 //ЕГАИССылка -- URL типа "https://check.egais.ru?id=cf1b1096-3cbc-11e7-b3c1-9b018b2ba3f7", если не пустая, будет выведено дополнение к чеку.
 //ЕГАИСПодпись -- строка типа "79DED4A448069B0BFF602FF646F4E9B24D253D311679EA15307AEF38AEEE7933C9175DE5814C3DCF89BF63853CB75003D9FD979F3BEBBC93AFADF1D9A429623F"
+//ДополнительнаяИнформация -- текст для печати после всех чеков
 //ТабИСМП -- таблица "Номенклатура,Марка,ФлНеПрошлаПроверку,Причина,Поле1,Поле2" для проверки и прикрепления к чеку
 //ТабОшибкиПроверкиМарок -- исходящая таблица со столбцами "Марка,Причина"
 //Таблица -- Номенклатура,Количество,Сумма,СтавкаНДС
@@ -1068,6 +1069,19 @@ Function PrintReceipt(спНастройки)
         аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_TEXT_WRAP"],спПеременные["LIBFPTR_TW_WORDS"]);
         аДрайвер.libfptr_print_text(aHandle);
               
+        аДрайвер.libfptr_end_nonfiscal_document(aHandle);
+      EndIf;
+      
+      //Печать дополнительной информации (банковская квитанция и т.п.)
+      ДополнительнаяИнформация:=спНастройки["ДополнительнаяИнформация"];
+      If Trim(ДополнительнаяИнформация)<>"" Then
+        аДрайвер.libfptr_begin_nonfiscal_document(aHandle);
+        While ДополнительнаяИнформация<>"" Do
+          Стр:=TearStr(ДополнительнаяИнформация,_NEWLINE);
+          аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_TEXT"],Стр);
+          аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_ALIGNMENT"],спПеременные["LIBFPTR_ALIGNMENT_LEFT"]);
+          аДрайвер.libfptr_print_text(aHandle);
+        EndDo;
         аДрайвер.libfptr_end_nonfiscal_document(aHandle);
       EndIf;
     Except

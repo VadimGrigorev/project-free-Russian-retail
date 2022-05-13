@@ -60,11 +60,13 @@ EndFunction
 //                 100 -- Подтверждение предыдущей операции, если требуется (вызывается после закрытия чека)
 //                 101 -- Отказ от предыдущей операции
 //"ИнформацияПоТранзакции" -- Исходящая переменная для хранения информации, которая может быть использована для "отката транзакции". При первом вызове равна нулю.
+//"ДополнительнаяИнформация" -- Исходящая переменная для образа чека, который необходимо вывести на печать на ККМ, если это необходимо
 Function RegisterTransaction(спНастройки)
   Try
     См:=Round(спНастройки["Сумма"]*100);
     аТипОперации:=Number(спНастройки["ТипОперации"]);
     спНастройки["ТипПоследнейОперации"]:=аТипОперации;
+    спНастройки["ДополнительнаяИнформация"]:="";
     
     аЗапрос:=CreateOLE("ArcCom.SAPacketObj");
     аОтвет:=CreateOLE("ArcCom.SAPacketObj");
@@ -91,6 +93,7 @@ Function RegisterTransaction(спНастройки)
       ElseIf Number(аОтвет.ResponseCodeHost)<>0 Then
         Exit аОтвет.TextResponse+" ("+аОтвет.ResponseCodeHost+")";
       EndIf;
+      спНастройки["ДополнительнаяИнформация"]:=Str(аОтвет.SLIP);
     ElseIf аТипОперации=1 Then
       аЗапрос.OperationCode:=3;
       аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,15); 
@@ -99,6 +102,7 @@ Function RegisterTransaction(спНастройки)
       ElseIf Number(аОтвет.ResponseCodeHost)<>0 Then
         Exit аОтвет.TextResponse+" ("+аОтвет.ResponseCodeHost+")";
       EndIf;
+      спНастройки["ДополнительнаяИнформация"]:=Str(аОтвет.SLIP);
     ElseIf аТипОперации=100 Then
       //Ничего не требуется
     ElseIf аТипОперации=101 Then
@@ -110,6 +114,7 @@ Function RegisterTransaction(спНастройки)
       ElseIf Number(аОтвет.ResponseCodeHost)<>0 Then
         Exit аОтвет.TextResponse+" ("+аОтвет.ResponseCodeHost+")";
       EndIf;
+      спНастройки["ДополнительнаяИнформация"]:=Str(аОтвет.SLIP);
     EndIf;
   Except
     Exit PopError()+_NEWLINE+"Ошибка при выгрузке данных в терминал!";
