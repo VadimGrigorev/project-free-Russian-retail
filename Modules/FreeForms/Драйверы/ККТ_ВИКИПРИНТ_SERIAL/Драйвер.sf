@@ -1028,6 +1028,8 @@ Function PrintReceipt(спНастройки)
       //Печать дополнительной информации (банковская квитанция и т.п.)
       ДополнительнаяИнформация:=спНастройки["ДополнительнаяИнформация"];
       If Trim(ДополнительнаяИнформация)<>"" Then
+        ExecuteCommand(спНастройки,$30,"1"+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1));
+        
         ExecuteCommand(спНастройки,$40," "+Chr($1C,1)+"1");
         While ДополнительнаяИнформация<>"" Do
           Стр:=TearStr(ДополнительнаяИнформация,_NEWLINE);
@@ -1037,6 +1039,8 @@ Function PrintReceipt(спНастройки)
           EndIf;
           ExecuteCommand(спНастройки,$40,EncodeStringKKT(Left(Стр,72))+Chr($1C,1)+"1");
         EndDo;
+        
+        ExecuteCommand(спНастройки,$31,Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1));
       EndIf;
     Except
       Message("Ошибка печати нефискальной части чека: "+PopError(),"!");
