@@ -2371,3 +2371,81 @@ Function ВвестиСуммуОбновитьФорму(Магазин,СпН�
     Form.тСумма2.FontColor:=_CLR_RED;
   EndIf;
 EndFunction
+
+Function ОбновлениеИндикацииДоступности(Магазин,Форма)
+  //Проверка рабочего режима УТМ, раз в полминуты
+  //Проверка доступности 8.8.8.8:53, раз в полминуты
+  СтрИндикация:="";
+  While 1 Do
+    СтрУТМ:="";
+    Try
+      If Магазин.АдресЕГАИС="TEST" Then
+        СтрУТМ:="Тестовый УТМ";
+      ElseIf Магазин.АдресЕГАИС<>"" Then
+        Прокси:="";
+        Сервер:=Магазин.АдресЕГАИС;
+        Сервер:=глРазделитьАдресИПрокси(Сервер,Прокси);
+        If Сервер<>"" Then
+          If Прокси<>"" Then
+            //<ProxyType>@<ProxyIP>@<User>@<Password>
+            aTCP:=IPConnection.Create();
+            ПроксиТип:=TearStr(Прокси,"@");
+            ПроксиАдр:=TearStr(Прокси,"@");
+            ПроксиПольз:=TearStr(Прокси,"@");
+            aTCP.UseProxy(ПроксиАдр,ПроксиТип,ПроксиПольз,Прокси);
+            aTCP.Connect(Сервер);
+          Else
+            aTCP:=IPConnection.Connect(Сервер);
+          EndIf;
+          if Not aTCP.IsConnected Then
+            СтрУТМ:="УТМ не работает";
+          Else
+            aTCP.HTTPSetOperation("GET /opt/in HTTP/1.0");
+            aTCP.HTTPSetHeaderField("Host",Сервер);
+            aTCP.HTTPSetHeaderField("User-Agent","Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
+            aTCP.HTTPSetHeaderField("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            aTCP.HTTPSetHeaderField("Accept-Language","en");
+            aTCP.HTTPSetHeaderField("Connection","Close");
+            If not aTCP.HTTPSendAndReceive Then
+              СтрУТМ:="Проблемы с УТМ";
+            Else
+              Стр:=aTCP.HTTPGetOperation();
+              TearStr(Стр," ");
+              Стр:=TearStr(Стр," ");
+              If Стр<>"200" Then
+                СтрУТМ:="Проблемы с УТМ";
+              EndIf;
+            EndIf;
+          EndIf;
+        EndIf;
+      EndIf;
+    Except
+    EndTry;
+    
+    СтрИнтернет:="";
+    Try
+      aTCP:=IPConnection.Connect("8.8.8.8:53");
+      if Not aTCP.IsConnected Then
+        aTCP:=IPConnection.Connect("8.8.8.8:443");
+        if Not aTCP.IsConnected Then
+          СтрИнтернет:="Нет Интернета";
+        EndIf;
+      EndIf;
+      aTCP.Disconnect();
+    Except
+    EndTry;
+    
+    Стр:=СтрИнтернет+?((СтрИнтернет<>"")And(СтрУТМ<>""),", ")+СтрУТМ;
+    If СтрИндикация<>Стр Then
+      Try
+        PostMessageToForm(Форма,10002,Стр);
+        СтрИндикация:=Стр;
+      Except
+      EndTry;
+    EndIf;
+    
+    For i:=1 To 120 Do
+      Sleep(250);
+    EndDo;
+  EndDo;
+EndFunction
