@@ -3304,7 +3304,7 @@ Function ОбновитьТаблицуПоступлений()
   aTab.Sort("зДата+,зНомер+");
   aTab.Select();
   While aTab.Next() Do
-    aTab.зИНН:=TearStr(aTab.зИНН,"/");
+    aTab.зИНН:=TearStr((aTab.зИНН),"/");
     aTab.зУИ:=Mid(aTab.зУИ,2);
     aTab.УдаленныйИндекс:=-1;
   EndDo;
@@ -5432,6 +5432,11 @@ Function СозданиеВходящегоПоступленияИзЕГАИС(
             EndIf;
           EndIf;
           aTab.Партия:=аПар;
+        EndIf;
+      ElseIf аПар.Поступление<>aDoc Then
+        аПар.Поступление:=aDoc;
+        If not глЗаписать(аПар) Then
+          Exit;
         EndIf;
       EndIf;
       aTab.СтавкаНДС:=ТДокумент.Номенклатура.СтавкаНДС;
