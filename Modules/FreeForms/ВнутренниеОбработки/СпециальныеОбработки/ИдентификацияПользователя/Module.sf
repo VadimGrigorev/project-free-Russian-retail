@@ -40,6 +40,11 @@ Function ПроверитьПароль(ФлПослеСканирования=0
     Form.тПроверкаПароля.Caption:="Пароль верен";
     Form.оПароль.Value:="";
     Результат:=1;
+  ElseIf ValidateUserPassword(оПользователь.Идентификатор,оПароль) Then
+    Form.тПроверкаПароля.FontColor:=_CLR_GREEN;
+    Form.тПроверкаПароля.Caption:="Пароль верен";
+    Form.оПароль.Value:="";
+    Результат:=1;
   Else
     Form.тПроверкаПароля.FontColor:=_CLR_RED;
     Form.тПроверкаПароля.Caption:="Пароль неверен";
