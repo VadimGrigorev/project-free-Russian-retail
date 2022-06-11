@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, CertificatesList, CheckCertificate, SetCertificate, SignMessage
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, CertificatesList, CheckCertificate, SetCertificate, SignMessage, VerifySignature, EncryptData, DecryptData, CreateHash, GetCertificatePrint
 
 Function DriverInit(спНастройки)
   Try
@@ -106,13 +106,15 @@ Function SetCertificate(спНастройки)
   EndTry;
 EndFunction;
 
-//спНастройки["Сообщение"] -- бинарное сообщение в виде строки base64 -- возвращает подписанное сообщение также в base64
+
+//спНастройки["Сообщение"] -- бинарное сообщение в виде строки base64 -- возвращает подписанное сообщение также в base64, либо просто подпись без сообщения, если последняя открепленная
 //спНастройки["ОткрепленнаяПодпись"] -- по умолчанию 0
+//спНастройки["ТекСертификат"] -- сертификат (должен быть выбран)
 //спНастройки["ПарольСертификата"] -- по умолчанию нет
 Function SignMessage(спНастройки)
   Try
     If IsEmpty(спНастройки["ТекСертификат"]) Then
-      Exit "Сертификат для не выбран или не найден!";
+      Exit "Сертификат для подписи не выбран или не найден!";
     EndIf;
     
     аСертификат:=спНастройки["ТекСертификат"];
@@ -139,12 +141,142 @@ Function SignMessage(спНастройки)
     аКриптоДанные.Content:=спНастройки["Сообщение"];
     флОткрепленная:=Number(спНастройки["ОткрепленнаяПодпись"])<>0;
     
-    //CadesType: Тип усовершенствованной подписи (1)
+    //Типы подписей:
+    //CADESCOM_CADES_DEFAULT = 0 (CADESCOM_CADES_X_LONG_TYPE_1)
+    //CADESCOM_CADES_BES = 1
+    //CADESCOM_CADES_T = 5
+    //CADESCOM_CADES_X_LONG_TYPE_1 = $5D
+    //CADESCOM_PKCS7_TYPE = $FFFF
+    
+    //CadesType: Тип усовершенствованной подписи (1 = CADESCOM_CADES_BES)
     //bDetached: Вид подписи: отделенная (true) или совмещенная (false). По умолчанию совмещенная.
     //EncodingType: Кодировка возвращаемой подписи (0 - BASE64)
     Результат:=аКриптоДанные.SignCades(аКрипто,1,флОткрепленная,0);
     //Убираем пробелы и переносы строк
     спНастройки["Сообщение"]:=Replace(Replace(Результат,_NEWLINE,"")," ","");
+  Except
+    Exit "Ошибка выполнения команды: "+PopError();
+  EndTry;
+EndFunction
+
+//спНастройки["Сообщение"] -- бинарное сообщение в виде строки base64
+//спНастройки["Результат"] -- 0 -- подпись некорректная, 1 -- подпись корректная
+//спНастройки["ОткрепленнаяПодпись"] -- по умолчанию 0
+//спНастройки["Подпись"] -- для открепленных подписей, необходима сама открепленная подпись (не содержащая сообщение)
+Function VerifySignature(спНастройки)
+  Try
+    спНастройки["Результат"]:=0;
+    флОткрепленная:=Number(спНастройки["ОткрепленнаяПодпись"])<>0;
+    аКриптоДанные:=CreateOLE("CAdESCOM.CadesSignedData");
+    Try
+      If флОткрепленная Then
+        аКриптоДанные.ContentEncoding:=1;//Текст в BASE64
+        аКриптоДанные.Content:=спНастройки["Сообщение"];
+        //CadesType: 1 = CADESCOM_CADES_BES
+        //bDetached: Вид подписи: отделенная (true) или совмещенная (false).
+        аКриптоДанные.VerifyCades(спНастройки["Подпись"],1,1);
+      Else
+        //CadesType: 1 = CADESCOM_CADES_BES
+        аКриптоДанные.VerifyCades(спНастройки["Сообщение"],1,0);
+      EndIf;
+      спНастройки["Результат"]:=1;
+    Except
+    EndTry;
+  Except
+    Exit "Ошибка выполнения команды: "+PopError();
+  EndTry;
+EndFunction
+
+//спНастройки["Сообщение"] -- бинарное сообщение в виде строки base64 -- возвращает закодированное сообщение также в base64
+//спНастройки["ТекСертификат"] -- сертификат (должен быть выбран)
+Function EncryptData(спНастройки)
+  Try
+    If IsEmpty(спНастройки["ТекСертификат"]) Then
+      Exit "Сертификат для кодирования не выбран или не найден!";
+    EndIf;
+    
+    аСертификат:=спНастройки["ТекСертификат"];
+    аКрипто:=CreateOLE("CAdESCOM.CPEnvelopedData");  
+    аКрипто.ContentEncoding:=1;//CADESCOM_BASE64_TO_BINARY;
+    аКрипто.Content:=спНастройки["Сообщение"];
+    //Cades работает только с алгоритмом ГОСТ 28147-89
+    //аКрипто.Algorithm:=...
+    аКрипто.Recipients.Add(аСертификат);
+    //If not IsEmpty(спНастройки["ПарольСертификата"]) Then
+    //  //спНастройки["ПарольСертификата"];
+    //EndIf;
+    
+    Результат:=аКрипто.Encrypt();
+    //Убираем пробелы и переносы строк
+    спНастройки["Сообщение"]:=Replace(Replace(Результат,_NEWLINE,"")," ","");
+  Except
+    Exit "Ошибка выполнения команды: "+PopError();
+  EndTry;
+EndFunction
+
+//спНастройки["Сообщение"] -- бинарное сообщение в виде строки base64 -- возвращает раскодированное сообщение также в base64
+//Сертификат не требуется, КриптоПро самостоятельно подбирает сертификат для расшифровки из доступных установленных
+Function DecryptData(спНастройки)
+  Try
+    аКрипто:=CreateOLE("CAdESCOM.CPEnvelopedData");  
+    аКрипто.ContentEncoding:=1;//CADESCOM_BASE64_TO_BINARY;
+    аКрипто.Decrypt(спНастройки["Сообщение"]);
+    спНастройки["Сообщение"]:=аКрипто.Content;
+  Except
+    Exit "Ошибка выполнения команды: "+PopError();
+  EndTry;
+EndFunction
+
+//спНастройки["Сообщение"] -- бинарное сообщение в виде строки base64 -- возвращает хэш сообщения
+//спНастройки["Алгоритм"] -- SHA1 - 0
+//                           MD5 - 1
+//                           SHA256 - 2
+//                           SHA384 - 3
+//                           SHA512 - 4
+//                           GOST_3411 - 5
+//                           GOST_3411_HMAC - 6
+//                           GOST_3411_2012_256 - 7
+//                           GOST_3411_2012_256_HMAC - 8
+//                           GOST_3411_2012_512 - 9
+//                           GOST_3411_2012_512_HMAC - 10
+Function CreateHash(спНастройки)
+  Try
+    аКрипто:=CreateOLE("CAdESCOM.HashedData");  
+    //CADESCOM_HASH_ALGORITHM_CP_GOST_3411 (Алгоритм ГОСТ Р 34.11-94) 100
+    //CADESCOM_HASH_ALGORITHM_CP_GOST_3411_HMAC (Алгоритм ГОСТ Р 34.11-94 HMAC) 110
+    //CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256 (Алгоритм ГОСТ Р 34.11-2012) 101
+    //CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256_HMAC (Алгоритм ГОСТ Р 34.11-2012 HMAC) 111
+    //CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_512 (Алгоритм ГОСТ Р 34.11-2012) 102
+    //CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_512_HMAC (Алгоритм ГОСТ Р 34.11-2012 HMAC) 112
+    //CADESCOM_HASH_ALGORITHM_SHA1 0
+    //CADESCOM_HASH_ALGORITHM_MD5 3
+    //CADESCOM_HASH_ALGORITHM_SHA_256 4
+    //CADESCOM_HASH_ALGORITHM_SHA_384 5
+    //CADESCOM_HASH_ALGORITHM_SHA_512 6
+    СпАлгоритмы:=List.Create(0,3,4,5,6,100,110,101,111,102,112);
+    aNum:=Number(спНастройки["Алгоритм"])+1;
+    If (aNum<1)or(aNum>СпАлгоритмы.Size()) Then
+      Raise "Неподдерживаемый алгоритм "+(aNum-1);
+    EndIf;
+    аКрипто.Algorithm:=СпАлгоритмы[aNum];
+    аКрипто.ContentEncoding:=1;//CADESCOM_BASE64_TO_BINARY;
+    аКрипто.Hash(спНастройки["Сообщение"]);
+    спНастройки["Сообщение"]:=аКрипто.Value;
+  Except
+    Exit "Ошибка выполнения команды: "+PopError();
+  EndTry;
+EndFunction
+
+//спНастройки["ТекСертификат"] -- сертификат (должен быть выбран)
+//спНастройки["Отпечаток"] -- отпечаток сертификата MD5 в верхнем регистре
+Function GetCertificatePrint(спНастройки)
+  Try
+    If IsEmpty(спНастройки["ТекСертификат"]) Then
+      Exit "Сертификат для подписи не выбран или не найден!";
+    EndIf;
+    
+    аСертификат:=спНастройки["ТекСертификат"];
+    спНастройки["Отпечаток"]:=Uppercase(аСертификат.Thumbprint);
   Except
     Exit "Ошибка выполнения команды: "+PopError();
   EndTry;

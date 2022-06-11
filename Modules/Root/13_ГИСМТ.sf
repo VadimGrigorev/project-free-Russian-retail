@@ -108,6 +108,55 @@ Function глЗагрузитьДеревоJSON(ByRef Стр,Окончание=
   Exit аВетка;
 EndFunction
 
+Function глВосстановитьJSONИзДерева(аВетка) Export
+  Стр:="";
+  //Если все ветки содержат GetNothing и нет имен веток, это массив
+  ФлМассив:=1;
+  For i:=1 To аВетка.Size() Do
+    аВетка2:=аВетка.ByIndex(i);
+    If (аВетка2.Value<>GetNothing)Or(аВетка2.Name<>"") Then
+      ФлМассив:=0;
+      Break;
+    EndIf;
+  EndDo;
+  If ФлМассив Then
+    //{...},{...}
+    Стр:="";
+    For i:=1 To аВетка.Size() Do
+      аВетка2:=аВетка.ByIndex(i);
+      AppendStringToBufferedString(Стр,?(i=1,"",",")+"{"+глВосстановитьJSONИзДерева(аВетка2)+"}");
+    EndDo;
+  Else
+    //"Name":<Value>,"Name":<Value>
+    For i:=1 To аВетка.Size() Do
+      аВетка2:=аВетка.ByIndex(i);
+      AppendStringToBufferedString(Стр,?(i=1,"",",")+""""+EncodeString(аВетка2.Name,"JSON")+""":");
+      If аВетка2.Size()>0 Then
+        Стр2:=глВосстановитьJSONИзДерева(аВетка2);
+        If (Стр2<>"")And(Стр2[1]="{") Then
+          AppendStringToBufferedString(Стр,"["+Стр2+"]");
+        Else
+          AppendStringToBufferedString(Стр,"{"+Стр2+"}");
+        EndIf;
+      Else
+        Стр2:=аВетка2.Value;
+        If TypeStr(Стр2)="NUMBER" Then
+          AppendStringToBufferedString(Стр,Str(аВетка2.Value));
+        ElseIf TypeStr(Стр2)="NOTHING" Then
+          AppendStringToBufferedString(Стр,"[]");
+        ElseIf _And(Стр2<>"",(Стр2[1]="{")Or(Стр2[1]="[")) Then
+          //Уже содержит кусок JSON
+          AppendStringToBufferedString(Стр,Стр2);
+        Else
+          AppendStringToBufferedString(Стр,""""+EncodeString(Стр2,"JSON")+"""");
+        EndIf;
+      EndIf;
+    EndDo;
+  EndIf;
+  Exit Стр;
+EndFunction
+
+
 Function _СкопироватьФайлВоВременнуюПапку(ЛокальныйФайл,ByRef Результат="")
   Результат:=Addbackslash(GetTempDirectory())+GetFileName(ЛокальныйФайл);
   If Not File.DoesFileExist(ЛокальныйФайл) Then
