@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, CashDrawerInfo, OpenCashDrawer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer
 
 //Документация: https://htmlpreview.github.io/?https://github.com/dreamkas/pirit_documentation/blob/master/output/documentation_fm16_1_2.html
 
@@ -1055,3 +1055,29 @@ Function PrintReceipt(спНастройки)
     Exit PopError()+_NEWLINE+"Неудачная попытка выгрузки чека!";
   EndTry;
 EndFunction
+
+//ДополнительнаяИнформация -- строка для печати
+Function PrintText(спНастройки)
+  Try
+    //Печать дополнительной информации (банковская квитанция и т.п.)
+    ДополнительнаяИнформация:=спНастройки["ДополнительнаяИнформация"];
+    If Trim(ДополнительнаяИнформация)<>"" Then
+      ExecuteCommand(спНастройки,$30,"1"+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1));
+    
+      While ДополнительнаяИнформация<>"" Do
+        Стр:=TearStr(ДополнительнаяИнформация,_NEWLINE);
+        If Стр="" Then
+          ExecuteCommand(спНастройки,$40," "+Chr($1C,1)+"1");
+          Continue;
+        EndIf;
+        ExecuteCommand(спНастройки,$40,EncodeStringKKT(Left(Стр,72))+Chr($1C,1)+"1");
+      EndDo;
+      
+      ExecuteCommand(спНастройки,$31,Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1));
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка печати нефискальной информации!";
+  EndTry;
+EndFunction
+
+

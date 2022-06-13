@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, CashDrawerInfo, OpenCashDrawer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer
 
 //Документация: http://doc.shtrih-m.ru/
 
@@ -1017,5 +1017,27 @@ Function PrintReceipt(спНастройки)
       EndTry;
     EndIf;
     Exit PopError()+_NEWLINE+"Неудачная попытка выгрузки чека!";
+  EndTry;
+EndFunction
+
+//ДополнительнаяИнформация -- строка для печати
+Function PrintText(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    //Печать дополнительной информации (банковская квитанция и т.п.)
+    ДополнительнаяИнформация:=спНастройки["ДополнительнаяИнформация"];
+    If Trim(ДополнительнаяИнформация)<>"" Then
+      While ДополнительнаяИнформация<>"" Do
+        Стр:=TearStr(ДополнительнаяИнформация,_NEWLINE);
+        аДрайвер.StringForPrinting:=Стр;
+        аДрайвер.UseReceiptRibbon:=1;
+        аДрайвер.UseJournalRibbon:=0;
+        If аДрайвер.PrintString()<>0 Then
+          Raise аДрайвер.ResultCodeDescription;
+        EndIf;
+      EndDo;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка печати нефискальной информации!";
   EndTry;
 EndFunction

@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, CashDrawerInfo, OpenCashDrawer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer
 
 Function DriverInit(спНастройки)
 EndFunction
@@ -173,6 +173,17 @@ Function PrintReceipt(спНастройки)
     If Trim(ЕГАИССылка)<>"" Then
       Message("Виртуальный ККТ: квитанция ЕГАИС: Ссылка ЕГАИС: "+ЕГАИССылка,"I");
       Message("Виртуальный ККТ: квитанция ЕГАИС: Подпись ЕГАИС: "+ЕГАИСПодпись,"I");
+    EndIf;
+  Except
+    Exit "Виртуальный ККТ: "+PopError();
+  EndTry;
+EndFunction
+
+//ДополнительнаяИнформация -- строка для печати
+Function PrintText(спНастройки)
+  Try
+    If Trim(спНастройки["ДополнительнаяИнформация"])<>"" Then
+      Message(спНастройки["ДополнительнаяИнформация"],"I");
     EndIf;
   Except
     Exit "Виртуальный ККТ: "+PopError();

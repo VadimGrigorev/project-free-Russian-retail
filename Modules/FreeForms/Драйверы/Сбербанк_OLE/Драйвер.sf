@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, RegisterTransaction, OpenShift, CloseShift
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, RegisterTransaction, OpenShift, CloseShift, ReportX, ReportZ
 
 Function DriverInit(спНастройки)
   Try
@@ -34,6 +34,7 @@ EndFunction
 
 Function CloseShift(спНастройки)
   Try
+    спНастройки["ДополнительнаяИнформация"]:="";
     аДрайвер:=спНастройки["Драйвер"];
     аДрайвер.Clear();
     аРезультат:=аДрайвер.NFun(6000);
@@ -46,11 +47,53 @@ Function CloseShift(спНастройки)
     If File.CreateDirectory(Путь) Then
       StringToFile(СтрОтчет,Путь+"ОтчетБанка.txt",1200,0);
     EndIf;
+    If Length(СтрОтчет)<2049 Then //Защита от перерасхода кассовой ленты
+      спНастройки["ДополнительнаяИнформация"]:=СтрОтчет;
+    EndIf;
     аДрайвер.Clear();
   Except
     Exit PopError()+_NEWLINE+"Ошибка при выгрузке данных в терминал!";
   EndTry;
 EndFunction
+
+Function ReportX(спНастройки)
+  Try
+    спНастройки["ДополнительнаяИнформация"]:="";
+    аДрайвер:=спНастройки["Драйвер"];
+    аДрайвер.Clear();
+    аРезультат:=аДрайвер.NFun(6002);
+    If аРезультат<>0 Then
+      Exit "Ошибка "+аРезультат;
+    EndIf;
+    
+    СтрОтчет:=аДрайвер.GParamString("Cheque");
+    Путь:="Temp\Розница\";
+    If File.CreateDirectory(Путь) Then
+      StringToFile(СтрОтчет,Путь+"ОтчетБанкаПромежуточный.txt",1200,0);
+    EndIf;
+    If Length(СтрОтчет)<2049 Then //Защита от перерасхода кассовой ленты
+      спНастройки["ДополнительнаяИнформация"]:=СтрОтчет;
+    EndIf;
+    аДрайвер.Clear();
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка печати X-отчета!";
+  EndTry;
+EndFunction
+
+Function ReportZ(спНастройки)
+  Try
+    спНастройки["ДополнительнаяИнформация"]:="";
+    Путь:="Temp\Розница\";
+    If File.CreateDirectory(Путь) Then
+      СтрОтчет:=FileToString(Путь+"ОтчетБанка.txt",1200);
+    EndIf;
+    If Length(СтрОтчет)<2049 Then //Защита от перерасхода кассовой ленты
+      спНастройки["ДополнительнаяИнформация"]:=СтрОтчет;
+    EndIf;
+  Except
+  EndTry;
+EndFunction
+
 
 //"Сумма" -- Сумма
 //"Магазин" -- Текущий магазин

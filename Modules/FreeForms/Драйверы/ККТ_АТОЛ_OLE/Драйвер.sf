@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, CashDrawerInfo, OpenCashDrawer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer
 
 //Документация: http://integration.atol.ru/api/
 
@@ -759,3 +759,26 @@ Function PrintReceipt(спНастройки)
     Exit PopError()+_NEWLINE+"Неудачная попытка выгрузки чека!";
   EndTry;
 EndFunction
+
+
+//ДополнительнаяИнформация -- строка для печати
+Function PrintText(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    //Печать дополнительной информации (банковская квитанция и т.п.)
+    ДополнительнаяИнформация:=спНастройки["ДополнительнаяИнформация"];
+    If Trim(ДополнительнаяИнформация)<>"" Then
+      аДрайвер.beginNonfiscalDocument;
+      While ДополнительнаяИнформация<>"" Do
+        Стр:=TearStr(ДополнительнаяИнформация,_NEWLINE);
+        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TEXT,Стр);
+        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_ALIGNMENT,аДрайвер.LIBFPTR_ALIGNMENT_LEFT);
+        аДрайвер.printText;
+      EndDo;
+      аДрайвер.endNonfiscalDocument;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка печати нефискальной информации!";
+  EndTry;
+EndFunction
+

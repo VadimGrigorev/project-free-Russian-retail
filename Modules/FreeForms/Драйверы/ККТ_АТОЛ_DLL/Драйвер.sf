@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, CashDrawerInfo, OpenCashDrawer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer
 
 //Документация: http://integration.atol.ru/api/
 
@@ -1098,3 +1098,26 @@ Function PrintReceipt(спНастройки)
   EndTry;
 EndFunction
 
+//ДополнительнаяИнформация -- строка для печати
+Function PrintText(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    aHandle:=спНастройки["АТОЛУказатель"];
+    спПеременные:=спНастройки["АТОЛПеременные"];
+  
+    //Печать дополнительной информации (банковская квитанция и т.п.)
+    ДополнительнаяИнформация:=спНастройки["ДополнительнаяИнформация"];
+    If Trim(ДополнительнаяИнформация)<>"" Then
+      аДрайвер.libfptr_begin_nonfiscal_document(aHandle);
+      While ДополнительнаяИнформация<>"" Do
+        Стр:=TearStr(ДополнительнаяИнформация,_NEWLINE);
+          аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_TEXT"],Стр);
+          аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_ALIGNMENT"],спПеременные["LIBFPTR_ALIGNMENT_LEFT"]);
+          аДрайвер.libfptr_print_text(aHandle);
+      EndDo;
+      аДрайвер.libfptr_end_nonfiscal_document(aHandle);
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка печати нефискальной информации!";
+  EndTry;
+EndFunction
