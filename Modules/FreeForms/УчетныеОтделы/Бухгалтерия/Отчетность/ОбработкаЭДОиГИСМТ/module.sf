@@ -1782,18 +1782,9 @@ Function ДеревоДокументовСохранитьВФайл(Ветка
     EndIf;
     Файл:=Путь+Ветка.Name;
     Стр:=Str(Ветка.Value);
-    Кодировка:=1200;
-    If Uppercase(GetExt(Файл))="XML" Then
-      Кодировка:=65001;
-      If Pos("WINDOWS-1251",Uppercase(Стр))>0 Then
-        Кодировка:=1251;
-      EndIf;
-    ElseIf Uppercase(GetExt(Файл))="JSON" Then
-      Кодировка:=65001;
-    EndIf;
     Try
       File.CreateDirectory(GetPath(Файл));
-      StringToFile(Стр,Файл,Кодировка,1);
+      StringToFile(Стр,Файл,0,0);
     Except
       Result:=0;
       Box("Невозможно сохранить файл "+Файл,Q_WARNING);
