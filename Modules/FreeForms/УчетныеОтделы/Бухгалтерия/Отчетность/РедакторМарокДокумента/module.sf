@@ -190,18 +190,20 @@ Function РедакторИнфо()
   Form.оМарки.UpdateValue();
   Стр:=Trim(Form.оМарки.Value);
   Рез:="";
-  Try
-    AssertStringValues(Стр,150,_NEWLINE,5);
-  Except
+  If СтрокиРедактор.СтрН.флАлкогольнаяПродукция Then
     Try
-      AssertStringValues(Стр,68,_NEWLINE,5);
+      AssertStringValues(Стр,150,_NEWLINE,5);
     Except
-      СтрОшибка:=PopError();
-      TearStr(СтрОшибка,"Value #");
-      СтрОшибка:=TearStr(СтрОшибка," ");
-      Рез:="ошибка длины марки в строке "+СтрОшибка;
+      Try
+        AssertStringValues(Стр,68,_NEWLINE,5);
+      Except
+        СтрОшибка:=PopError();
+        TearStr(СтрОшибка,"Value #");
+        СтрОшибка:=TearStr(СтрОшибка," ");
+        Рез:="ошибка длины марки в строке "+СтрОшибка;
+      EndTry;  
     EndTry;  
-  EndTry;  
+  EndIf;
   Стр:=GroupStringValues(Стр,_NEWLINE);
   Ном:=LinesCount(Стр);
   Рез:="Марок: "+Ном+?(Рез<>"",", "+Рез);

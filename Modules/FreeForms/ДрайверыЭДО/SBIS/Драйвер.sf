@@ -544,6 +544,16 @@ Function WriteInboundDocument(спНастройки)
     EndIf;
     пОтпечаток:=спДрайверШифрования["Отпечаток"];
     
+    //Запись дополнительных вложней (актов расхождения?)
+    ТабВложения:=спНастройки["Вложения"];//Файл,Тип
+    ТабВложения.Select();
+    While ТабВложения.Next() Do
+      //https://sbis.ru/help/integration/api/all_methods/write_enclosure
+//1. Убедимся, что этого документа еще нет в общем документе
+//2. Используем СБИС.ЗаписатьВложение
+//here;
+    EndDo;
+    
     //https://sbis.ru/help/integration/api/sequence/incom_doc?tb=tab2
     //https://sbis.ru/help/integration/api/sequence/ep?tb=tab2
     //Подписание документов:

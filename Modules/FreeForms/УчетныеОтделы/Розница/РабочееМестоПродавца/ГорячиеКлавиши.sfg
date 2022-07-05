@@ -1,0 +1,54 @@
+FormatVersion=1
+Layer 4D00610069006E00
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=13043E0440044F0447043804350420003A043B0430043204380448043804
+  Width=555
+  Height=415
+  OnOpen
+    @@>@e@fxus4e1@g@N@DT_]m4.S@>[@%@Qu_#]@A_d_=@10@.@3@L5~@lhm_/(_>X_D%@qK@&_L_K_i_8_
+    @"_G@1@x5t_>_X@;@=@,@<_R@d@5@,@<gX@mI_S|_*@*@O@Fsn@{@+_!q@S_AS@X*p_C_X_M5<s@<p@,f
+    @l<H_,@?._!@5_]@[_*@HF@I@m@(_VZ{,?D@u;@:W@e_V@y_eF_._"_5|@A_&(_4@B_T_"@'_<S@V_Q2
+    @_;@3_3w@Z7V;@'@<sS_1@}@5_$)*@C_[d_*@3@c@?@m!b_d@z_>_D@g@.@E_[1@xjxG@*tU_W_\_%Q@)
+    @_gC$[_/_m|r@n@T_[h_9@a@l(@$#_f-@>@t_M@<*_P@H@.psf}4@d_(I@+@._W@?_'@?@M3@0UD@2@cO
+    @_D@:Bu@Ky@&@Q:I@,&N@<_A_2[8A@H@5@I@;_1l~@~o:"_Q_$_.@6@G_k!_hw_g@K@A@$_36@<@^@}@f
+    @@Ay@*U_9V@$>_KOD@{@Ai7_$_D:_g@u@W_kH_9y_>@<[_H_0@\_^_f@x6@R_L@z_X\@*(|_=f_[@33i@
+    @M_G@;_3_l_*@$_!72@tV_Q@|_4/@v_#@0@;_Z_P@F}_8D_Nv_/SU@b@x@8@V@YTOL@u_Y_^?_CN@gE_)
+    @@T6@9@,@A@U@\$_F_"@]Dv@/)N@+@u@M@br@"_/@C_e@._A_4_$_Yd@)_g@S_7P_X_&_b@q@C@2\@E@0
+    @@W@w@Z4@#._a@K_f@A_R$I@A&_c_;_&*@4@)@k@nb_C@L_K_/8A_F1X*@AER_)@C@^@[@E@C_F_9_h@k
+    @@._"P@%_D@p{_Tw@1@F)_&<_Z^_j@C|V@jATz*yo,_%_:_;@"_N]@M@N@P_b@7_V3_<1_!_)@d@JM_J_
+    @*@W@)@i@a@&Y_7_<@q_X6_^_>_9@y6@$_0r@Bt@B_[|_'_j&w@u@Az_X:@5_/_R&@]_df@,@$@Yk]w_B
+    @_^b_Z_jG}_b_4_-t@Q@"_8_P@3_j_e@X@r@0@U_PW@$@b!_*@b@^_7^g%@f@X@[@C_i@a_)@(@p@0_e@
+    @47t@?v@#_+@\P_\b_1_6@8E.@uE_^_g<@7@D_7q@>M@J_gY_T#_3_G_D@%$_e!_>[@I_7@,@o@]_&_D@
+    @V_Ph@E_-_)|_:_i]_9_B~_$_T_K_%_g6_Jj_?a_X@n,@t@1_S"U)_/wQ?_K_26_)1C}@C_3_C_?X_M@d
+    @_?_R_?_9{_0@A@"i&3_?D@&I_0@F_Q@?_]r_<_S@#_A@P@]x@p&_d(_7_>_5_F@u@N@<_AK@4@s_0@C>
+    @@y>_$b@|_>@)M8_%_G_B@d@f_<V_*@v_W0_!_i'K
+  End
+  OnTimerInterval=0
+  MaxControlSerial=4
+  LoadModes=0
+  Object SFTABLE
+    LayerName=4D00610069006E00
+    Left=5
+    Top=5
+    Width=550
+    Height=410
+    Font=41007200690061006C002C00200031003000
+    Color=FF000005
+    AnchorType=15
+    Flags=304
+    Hint=
+    Name=2204300431043B04380446043004
+    ControlSerial=3
+    Scale=100
+    EditorMode=0
+    HotKey=
+    TableData
+      @wjxe@>@e,@<,S@*@*5@(@&@&@&%@(1_Y_/!$B@]Y1@N!@7N1@p#@7P1Y!_]-B@E%_/_[9R"I@4'(;O-@
+      @~@a_A@X@j@OC@ZC@XC@Ne#L@K/_'@iV81@y@|@)udV_L_,_,'!Fx*@$
+    End
+  End
+End

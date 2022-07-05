@@ -4,6 +4,14 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 Function OnOpen()
+  If глПотокРабочегоМестаПродавца<>0 Then
+    If not IsEmpty(GetThreadForm(глПотокРабочегоМестаПродавца)) Then
+      Result:=0;
+      Exit;
+    EndIf;
+  EndIf;
+
+
   LoadModule(11,"Modules\FreeForms\УчетныеОтделы\Розница\РабочееМестоПродавца",Param,Option,"Module","Form");
   Result:=0;
 EndFunction
