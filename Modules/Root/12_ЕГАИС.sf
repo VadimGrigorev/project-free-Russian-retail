@@ -2470,10 +2470,12 @@ Function глФункцияОдногоЗапросаЕГАИС(спЗапрос
               Ответы.Идентификатор:=Стр1;
             EndIf;
             Ответы.НакИД:=Стр1;
-            If Ответы.Ответ<>"" Then
-              AppendStringToBufferedString(Ответы.Ответ,"------------------------------"+_NEWLINE);
+            СтрОтвет:=Ответы.Ответ;
+            If СтрОтвет<>"" Then
+              AppendStringToBufferedString(СтрОтвет,"------------------------------"+_NEWLINE);
             EndIf;
-            AppendStringToBufferedString(Ответы.Ответ,СтрСсылка+_NEWLINE+Стр2+_NEWLINE);
+            AppendStringToBufferedString(СтрОтвет,СтрСсылка+_NEWLINE+Стр2+_NEWLINE);
+            Ответы.Ответ:=СтрОтвет;
           EndIf;
           Continue;
         EndIf;
@@ -2520,10 +2522,12 @@ Function глФункцияОдногоЗапросаЕГАИС(спЗапрос
         If Ответы.Идентификатор<>Ответы.ТранИД Then
           Ответы.Идентификатор:=Ответы.ТранИД;
         EndIf;
-        If Ответы.Ответ<>"" Then
-          AppendStringToBufferedString(Ответы.Ответ,"------------------------------"+_NEWLINE);
+        СтрОтвет:=Ответы.Ответ;
+        If СтрОтвет<>"" Then
+          AppendStringToBufferedString(СтрОтвет,"------------------------------"+_NEWLINE);
         EndIf;
-        AppendStringToBufferedString(Ответы.Ответ,СтрСсылка+_NEWLINE+Стр2+_NEWLINE);
+        AppendStringToBufferedString(СтрОтвет,СтрСсылка+_NEWLINE+Стр2+_NEWLINE);
+        Ответы.Ответ:=СтрОтвет;
       EndDo;
       
       //Возможны ситуации, когда ЕГАИС присылает более одного ответа для одной цепочки документа.
@@ -2553,10 +2557,12 @@ Function глФункцияОдногоЗапросаЕГАИС(спЗапрос
           EndIf;
           If Ответы["ТранИД",i]=Ответы["ТранИД",j] Then
             Ответы.CurLine:=i;
-            If Ответы.Ответ<>"" Then
-              AppendStringToBufferedString(Ответы.Ответ,"------------------------------"+_NEWLINE);
+            СтрОтвет:=Ответы.Ответ;
+            If СтрОтвет<>"" Then
+              AppendStringToBufferedString(СтрОтвет,"------------------------------"+_NEWLINE);
             EndIf;
-            AppendStringToBufferedString(Ответы.Ответ,Ответы["Ответ",j]+_NEWLINE);
+            AppendStringToBufferedString(СтрОтвет,Ответы["Ответ",j]+_NEWLINE);
+            Ответы.Ответ:=СтрОтвет;
           
             If Ответы["Идентификатор",j]=Ответы["ТранИД",j] Then
               Ответы["Идентификатор",i]:=Ответы["ТранИД",j];
@@ -2581,10 +2587,12 @@ Function глФункцияОдногоЗапросаЕГАИС(спЗапрос
           EndIf;
           If Ответы["НакИД",i]=Ответы["НакИД",j] Then
             Ответы.CurLine:=i;
-            If Ответы.Ответ<>"" Then
-              AppendStringToBufferedString(Ответы.Ответ,"------------------------------"+_NEWLINE);
+            СтрОтвет:=Ответы.Ответ;
+            If СтрОтвет<>"" Then
+              AppendStringToBufferedString(СтрОтвет,"------------------------------"+_NEWLINE);
             EndIf;
-            AppendStringToBufferedString(Ответы.Ответ,Ответы["Ответ",j]+_NEWLINE);
+            AppendStringToBufferedString(СтрОтвет,Ответы["Ответ",j]+_NEWLINE);
+            Ответы.Ответ:=СтрОтвет;
             
             If Ответы["Идентификатор",j]=Ответы["ТранИД",j] Then
               Ответы["Идентификатор",i]:=Ответы["ТранИД",j];
