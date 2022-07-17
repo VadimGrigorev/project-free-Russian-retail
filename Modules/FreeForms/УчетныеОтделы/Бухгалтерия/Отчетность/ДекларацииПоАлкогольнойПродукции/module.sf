@@ -20,7 +20,7 @@ Var пДиректор Export, пБухгалтер Export;
 
 Var ВсегоДал0 Export, ВсегоДал1 Export, ВсегоДал2 Export, ВсегоДал3 Export, ВсегоДал4 Export, ВсегоДал5 Export, 
     ВсегоДал6 Export, ВсегоДал8 Export, ВсегоДал9 Export, ВсегоДал10 Export, ВсегоДал11 Export,
-    НомерРаздела Export;
+    НомерРаздела Export, СквНом Export;    
 
 
 Function ЗагрузитьУмолчанияАП()

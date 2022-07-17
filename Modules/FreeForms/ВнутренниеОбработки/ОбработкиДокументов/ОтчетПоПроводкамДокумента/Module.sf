@@ -83,6 +83,7 @@ Function Печать(Док,Т)
   Function ПечатьПоЮрЛицу(Т,aTab,ЮрЛицо)
     пСм0:=0;пКл0:=0;
     пН:=0;
+    нН:=0;
     aTab.Select();
     While aTab.Next() Do
       If (ЮрЛицо<>aTab.ЮрЛицо) Then
