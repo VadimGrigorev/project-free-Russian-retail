@@ -2064,6 +2064,9 @@ Function OnExecute(СпУстановки)
     If not Амортизация(спДок,"03.5","02.2") Then
       Exit;
     EndIf;
+    If not Амортизация(спДок,"04.1","05") Then
+      Exit;
+    EndIf;
     
     If not ОбработатьДокументы(спДок) Then
       Exit;
