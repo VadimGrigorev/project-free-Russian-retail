@@ -149,7 +149,7 @@ Function DriverConnect(спНастройки)
       rCOMMTIMEOUTS.Allocate();
       rCOMMTIMEOUTS.ReadIntervalTimeout:=MAXDWORD;
       rCOMMTIMEOUTS.ReadTotalTimeoutMultiplier:=MAXDWORD;
-      rCOMMTIMEOUTS.ReadTotalTimeoutConstant:=0;
+      rCOMMTIMEOUTS.ReadTotalTimeoutConstant:=Min(250,спНастройки["СканерВремя"]*3);
       rCOMMTIMEOUTS.WriteTotalTimeoutMultiplier:=0;
       rCOMMTIMEOUTS.WriteTotalTimeoutConstant:=0;//Не нужна, ничего записывать не будем
       If not aKernel32.SetCommTimeouts(aHandle,rCOMMTIMEOUTS) Then
@@ -243,7 +243,8 @@ Function GetNextMessage(спНастройки)
       EndIf;
     EndIf;
     If СканерСуффикс<>"" Then
-      If Pos(СканерСуффикс,Стр)=Length(Стр)-Length(СканерСуффикс)+1 Then
+      iNum:=Pos(СканерСуффикс,Стр);
+      If _And(iNum>0,iNum=Length(Стр)-Length(СканерСуффикс)+1) Then
         Стр:=Left(Стр,Length(Стр)-Length(СканерСуффикс));
         спНастройки["НакопленноеСообщение"]:="";
         спНастройки["ПоследнийПрием"]:=0;

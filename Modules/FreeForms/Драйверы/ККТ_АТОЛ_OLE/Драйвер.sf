@@ -262,8 +262,6 @@ Function PrintReportZ(спНастройки)
 EndFunction
 
 
-
-
 //ФФД 1.2: https://forum.nalog.ru/index.php?app=core&module=attach&section=attach&attach_id=3772
 //Используются поля:
 //Агент -- не используется
