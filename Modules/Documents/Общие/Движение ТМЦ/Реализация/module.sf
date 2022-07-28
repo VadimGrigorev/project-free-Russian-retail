@@ -136,3 +136,104 @@ Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПара
 
   Exit 1;
 EndFunction
+
+Function OnUnknownAction(Тип)
+  aEl:=Form.Object;
+  If Тип="Загрузка штрихкодов и марок из текстового файла..." Then
+    If _Or(aEl.Status()<0,Form.IsChanged()=1) Then
+      Box("Документ не записан!",Q_STOP);
+      Exit;
+    EndIf;
+    Box("Файл загрузки должен иметь текстовый формат и в каждой строке содержать два значения -- штрихкод EAN (или код номенклатуры с ведущими нулями) и код марки. "+
+      "Разделителем служит либо знак табуляции, либо точка с запятой. При загрузке в документ будут добавлены позиции в количестве, совпадающем с количеством марок (строк).",Q_INFORMATION);
+    Файл:="File.txt";
+    If not OpenFileDialog(Файл,"Выберите файл для загрузки (Штрихкод _TAB Код марки):","Файлы txt (*.txt)|*.txt",0) Then
+      exit;
+    EndIf;
+    Т:=Text.Create(1);
+    Т.Load(Файл,0);
+    Симв:=_TAB;
+    If _And(Т.Size()>0,Pos(_TAB,Т.GetLine(1))=0) Then
+      Симв:=";";
+    EndIf;
+    
+    ТМаркиДокумента:=глМаркиЗагрузитьДокумент(aEl,0,1);
+    aTab:=aEl.LineParts("Номенклатура");
+    MainTab:=Form.MainTab.Value;
+    MainTab.Lock();
+    Try
+      For i:=1 To Т.Size() Do
+        Form.StatusText(""+i+" из "+Т.Size());
+        Стр:=Т.GetLine(i);
+        стрШк:=TearStr(Стр,Симв);
+        зН:=Nothing();
+        зПар:=Ref.тмцПартииТМЦ;
+        If Length(стрШк)=12 Then
+          зН:=Ref.тмцНоменклатура;
+          If not зН.Find("Code",стрШк) Then
+            Message("Номенклатура с кодом "+стрШк+" не найдена, строка будет пропущена!","!");
+            Continue;
+          EndIf;
+        Else
+          зШк:=Ref.тмцШтрихкоды;
+          зШк.Select("Name,@Status",стрШк,0);
+          зН3:=Nothing();
+          While зШк.Next() Do
+            зН2:=зШк.Parent();
+            If _And(зН2.Status()=0,зН2.флПартионныйУчет,_Or(зН2.флПодлежитПрослеживаемости,зН2.флАлкогольнаяПродукция)) Then
+              зН:=зН2;
+              Break;
+            ElseIf зН2.Status()=0 Then
+              зН3:=Coalesce(зН3,зН2);
+            EndIf;
+          EndDo;
+          зН:=Coalesce(зН,зН3);
+          If IsEmpty(зН) Then
+            Message("Номенклатура со штрихкодом "+стрШк+" не найдена, строка будет пропущена!","!");
+            Continue;
+          EndIf;
+        EndIf;
+        стрМр:=TearStr(Стр,Симв);
+        If стрМр<>"" Then
+          зМр:=Ref.тмцМаркировкаПозиций;
+          If зМр.Find("КодМарки,<флСостояние",стрМр,2) Then
+            зПар:=зМр.Parent();
+            зН:=зПар.Parent();
+          Else
+            //Ищем партию
+            зПар:=Ref.тмцПартииТМЦ;
+            зПар.UseOrder("Code-");
+            зПар.Find("~(@Status=0)And(@Parent=зН)");
+          EndIf;
+          If IsEmpty(зПар) Then
+            Message("Для номенклатуры "+зН+" не найдена ни одна партия, строка будет пропущена!","!");
+            Continue;
+          EndIf;
+        EndIf;
+        aTab.CurLine:=0;
+        If aTab.LocateAndGoto("Номенклатура,Партия",зН,зПар)=0 Then
+          aTab.AddLine("Номенклатура,Партия,СтавкаНДС,Количество,Цена",зН,зПар,зН.СтавкаНДС,1,0);
+          глПересчитатьСтроку(aEl,aTab,"Код@Цена@Количество2@Сумма@СуммаНДС");
+        Else
+          aTab.Количество:=aTab.Количество+1;
+          глПересчитатьСтроку(aEl,aTab,"Количество2@Сумма@СуммаНДС");
+        EndIf;
+        If стрМр<>"" Then
+          ТМаркиДокумента.AddLine("Партия,Марка",зПар,стрМр);
+        EndIf;
+      EndDo;
+      If aEl.Status()<2 Then
+        aEl.Save();
+      ElseIf Not глОбработать(aEl,1) Then
+        Message("Невозможно обработать документ!","!");
+        Exit;
+      EndIf;
+      If not глМаркиЗарегистрироватьДокумент(aEl,ТМаркиДокумента,4,,1) Then
+        Box("Невозможно добавить списваемые марки в документ!",Q_STOP);
+      EndIf;
+    Finally
+      MainTab.UnLock();
+    EndTry;
+    Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,MainTab.Size());
+  EndIf;
+EndFunction

@@ -149,7 +149,7 @@ Function DriverConnect(спНастройки)
       rCOMMTIMEOUTS.Allocate();
       rCOMMTIMEOUTS.ReadIntervalTimeout:=MAXDWORD;
       rCOMMTIMEOUTS.ReadTotalTimeoutMultiplier:=MAXDWORD;
-      rCOMMTIMEOUTS.ReadTotalTimeoutConstant:=Min(250,спНастройки["СканерВремя"]*3);
+      rCOMMTIMEOUTS.ReadTotalTimeoutConstant:=5;
       rCOMMTIMEOUTS.WriteTotalTimeoutMultiplier:=0;
       rCOMMTIMEOUTS.WriteTotalTimeoutConstant:=0;//Не нужна, ничего записывать не будем
       If not aKernel32.SetCommTimeouts(aHandle,rCOMMTIMEOUTS) Then
