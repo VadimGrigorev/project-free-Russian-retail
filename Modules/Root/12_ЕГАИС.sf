@@ -3230,7 +3230,7 @@ EndFunction
 
 Function OnSystemStart()
   //Запуск отдельной задачи-потока обмена с ЕГАИС
-  If (DBVar.ЗапускатьЗадачуЕГАИСВВизуальномКлиенте=1)And(ProgramMode()=1) Then
+  If _And(ProgramMode()=1,глТипОтдельногоПроцесса="",DBVar.ЗапускатьЗадачуЕГАИСВВизуальномКлиенте=1) Then
     глСервисныйПоток:=Mutex.ExecuteFunctionInSeparateThread("глФункцияСервисногоПотока",0);
   EndIf;  
 EndFunction

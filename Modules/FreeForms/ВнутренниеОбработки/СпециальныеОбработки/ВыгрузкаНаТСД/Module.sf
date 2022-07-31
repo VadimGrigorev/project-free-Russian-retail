@@ -172,18 +172,18 @@ Function OnExecute()
   EndDo;
 
   Try
-    Стр:=Trim(ExecuteFunction("DriverConnect",спНастройки["МодульДрайвера"],спНастройки));
+    Стр:=глВыполнитьФункциюДрайвера("DriverConnect",спНастройки);
     If Стр<>"" Then
       Raise Стр;
     EndIf;
     спНастройки["Успешно"]:=0;
     спНастройки["Позиции"]:=aTab;
     спНастройки["Очистка"]:=Form.оОчистка.Value;
-    Стр:=Trim(ExecuteFunction("UploadPositions",спНастройки["МодульДрайвера"],спНастройки));
+    Стр:=глВыполнитьФункциюДрайвера("UploadPositions",спНастройки);
     If Стр<>"" Then
       Raise Стр;
     EndIf;
-    ExecuteFunction("DriverDisconnect",спНастройки["МодульДрайвера"],спНастройки);
+    глВыполнитьФункциюДрайвера("DriverDisconnect",спНастройки);
   Except
     Message("Ошибка при обмене с драйвером: "+PopError(),"!");
     Exit;

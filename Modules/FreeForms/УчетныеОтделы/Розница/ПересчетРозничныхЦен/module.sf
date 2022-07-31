@@ -234,7 +234,7 @@ Function ПроизвестиВыгрузку()
     Form.StatusText("Выгрузка в "+спНастройки["Оборудование"]+"...");
     Try
       спНастройки["ВыгрузкаНоменклатуры"]:=aTab;
-      Стр:=Trim(ExecuteFunction("DriverUpdateNomeclature",спНастройки["МодульДрайвера"],спНастройки));
+      Стр:=глВыполнитьФункциюДрайвера("DriverUpdateNomeclature",спНастройки);
       If Стр<>"" Then
         Raise Стр;
       Endif;

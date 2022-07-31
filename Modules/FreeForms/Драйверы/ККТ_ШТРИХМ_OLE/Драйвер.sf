@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
 
 //Документация: http://doc.shtrih-m.ru/
 
@@ -212,6 +212,7 @@ Function ShiftInfo(спНастройки)
       спНастройки["НомерККТ"]:=аДрайвер.SerialNumber;
       //Штрих-М не поддерживает получение такой информации
       спНастройки["БумагаЗаканчивается"]:=0; 
+      спНастройки["ОбщаяПроблемаККМ"]:=аДрайвер.ECRMode=5; 
     EndIf;
   Except
     Exit "Ошибка команды: "+PopError();
@@ -1039,5 +1040,18 @@ Function PrintText(спНастройки)
     EndIf;
   Except
     Exit PopError()+_NEWLINE+"Неудачная попытка печати нефискальной информации!";
+  EndTry;
+EndFunction
+
+//спНастройки["ВызываемаяФункция"] -- функция для вызова
+Function SeparateProcessServer(ByRef спНастройки)
+  спНастройки["Драйвер"]:=глККМОбъектДрайвера;
+  Try
+    ExecuteFunction(спНастройки["ВызываемаяФункция"],1,спНастройки);
+  Finally
+    If глККМОбъектДрайвера=0 Then
+      глККМОбъектДрайвера:=спНастройки["Драйвер"];
+    EndIf;
+    спНастройки["Драйвер"]:=0;
   EndTry;
 EndFunction

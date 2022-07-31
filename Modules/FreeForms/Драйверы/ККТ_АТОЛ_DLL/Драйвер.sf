@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
 
 //Документация: http://integration.atol.ru/api/
 
@@ -445,7 +445,10 @@ Function ShiftInfo(спНастройки)
       
       аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DATA_TYPE"],спПеременные["LIBFPTR_DT_SHORT_STATUS"]);
       аДрайвер.libfptr_query_data(aHandle);    
-      спНастройки["БумагаЗаканчивается"]:=аДрайвер.libfptr_get_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_PAPER_NEAR_END"]);
+      спНастройки["БумагаЗаканчивается"]:=_Or(аДрайвер.libfptr_get_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_PAPER_NEAR_END"]),
+        not аДрайвер.libfptr_get_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT"]));
+      спНастройки["ОбщаяПроблемаККМ"]:=_Or(аДрайвер.libfptr_get_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_PRINTER_CONNECTION_LOST"]),
+        аДрайвер.libfptr_get_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_PRINTER_ERROR"]),аДрайвер.libfptr_get_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_BLOCKED"]));
     EndIf;
   Except
     Exit "Ошибка команды: "+PopError();
@@ -994,7 +997,7 @@ Function PrintReceipt(спНастройки)
       EndIf;
       If not аДрайвер.libfptr_get_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_DOCUMENT_PRINTED"]) Then
         While аДрайвер.libfptr_continue_print(aHandle)<>0 Do
-          If AskQuestion("Невозможно напечатать чек. Ошибка: "+_errorDescription(аДрайвер,aHandle)+"! Отменить не продолжать печать (нет) или повторно попытаться напечатать (да)?",Q_QUESTION+Q_YESNO)=R_YES Then
+          If AskQuestion("Невозможно напечатать чек. Ошибка: "+_errorDescription(аДрайвер,aHandle)+"! Не продолжать печать (нет) или повторно попытаться напечатать (да)?",Q_QUESTION+Q_YESNO)=R_YES Then
             Continue;
           EndIf;
           Break;
@@ -1123,5 +1126,23 @@ Function PrintText(спНастройки)
     EndIf;
   Except
     Exit PopError()+_NEWLINE+"Неудачная попытка печати нефискальной информации!";
+  EndTry;
+EndFunction
+
+//спНастройки["ВызываемаяФункция"] -- функция для вызова
+Function SeparateProcessServer(ByRef спНастройки)
+  спНастройки["Драйвер"]:=глККМОбъектДрайвера;
+  спНастройки["АТОЛПеременные"]:=глККМОбъектДрайвера2;
+  Try
+    ExecuteFunction(спНастройки["ВызываемаяФункция"],1,спНастройки);
+  Finally
+    If глККМОбъектДрайвера=0 Then
+      глККМОбъектДрайвера:=спНастройки["Драйвер"];
+    EndIf;
+    If глККМОбъектДрайвера2=0 Then
+      глККМОбъектДрайвера2:=спНастройки["АТОЛПеременные"];
+    EndIf;
+    спНастройки["Драйвер"]:=0;
+    спНастройки["АТОЛПеременные"]:=0;
   EndTry;
 EndFunction
