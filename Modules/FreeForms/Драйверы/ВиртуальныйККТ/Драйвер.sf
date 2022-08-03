@@ -192,5 +192,5 @@ EndFunction
 
 //спНастройки["ВызываемаяФункция"] -- функция для вызова
 Function SeparateProcessServer(ByRef спНастройки)
-  ExecuteFunction(спНастройки["ВызываемаяФункция"],1,спНастройки);
+  Result:=ExecuteFunction(спНастройки["ВызываемаяФункция"],1,спНастройки);
 EndFunction
