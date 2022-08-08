@@ -2467,7 +2467,7 @@ Function ЗакрытьЧекПринятиеЧека()
             "Сумма транзакции: "+Сумма;
           Путь:="Temp\Розница\ОшибкиЧеков\";
           If File.CreateDirectory(Путь) Then
-            StringToFile(Стр,Путь+"failure_"+FormatDate(Date(),"YYYYmmddhhttss")+".txt",1200,0);
+            StringToFile(Стр,Путь+"БанковскийТерминал_"+FormatDate(Date(),"YYYYmmddhhttss")+".txt",1200,0);
           EndIf;
           Exit 0;
         EndTry;

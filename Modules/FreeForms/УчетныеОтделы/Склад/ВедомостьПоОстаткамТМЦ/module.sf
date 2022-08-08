@@ -136,10 +136,10 @@ Function Печать(СпУстановки)
         |зПриход:=зПриход0"+пОп+";
         |зКонОст:=зКонОст0"+пОп+";
         |Postprocessing (
-        |Aggregate1 зРасход As SUM(зРасход0"+пОп+");
-        |Aggregate1 зНачОст As SUM(зНачОст0"+пОп+");
-        |Aggregate1 зПриход As SUM(зПриход0"+пОп+");
-        |Aggregate1 зКонОст As SUM(зКонОст0"+пОп+");
+        |Aggregate зРасход As Expense(зРасход0"+пОп+");
+        |Aggregate зНачОст As BegTotals(зНачОст0"+пОп+");
+        |Aggregate зПриход As Income(зПриход0"+пОп+");
+        |Aggregate зКонОст As EndTotals(зКонОст0"+пОп+");
         |)";
     Else
       ТЗ:=ТЗ+"зРасход:=Expense(Количество);

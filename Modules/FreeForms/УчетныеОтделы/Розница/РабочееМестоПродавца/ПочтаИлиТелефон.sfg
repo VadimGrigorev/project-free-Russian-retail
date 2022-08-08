@@ -9,18 +9,69 @@ Object FORM
   Width=355
   Height=155
   OnOpen
-    @@>@e@v@[_6@5_>d1_1_SRIF@4=@A@kzr@T%@?_#S@P=]0@p@/@r@e_1)18@KLh[x_Vo@3L_]_S_a@d@z
-    @_aL_U"@K@k@#_[_9_7_9_e_8Y_&@/nw+_$@'_H_4s_)@H=_3tk;S@8.@~@n@9a@+8@/B@)>@.<@1@oa_
-    @d@;@(_K_^@B@0@F@JG_/_=_A@[@D_'@\C@*F_f3@<K_]@H-@a@)_2@{_>&@]E_jED@8@DKQ@&_C@[{_F
-    @_K_^9_-_h@e@7@S^@E~C_b_3a_1c_=_4+@ri@U:M_./_/_V@B(@$_N@u/@qB_<'}@-@8M_K_Qfb_a_(@
-    @\M[@,_)@^@1@xSd@^7[@EL@tza_XOS_7d_Fv@^@{_hd\@>_>6_J@ofa_e/@e_Mh@N_/_P|@S@'-@p_3
-    @@7D_[d_4_I_j_<n@R0_\_&@-@"]@Y@;@3C@^@y_'@rZ@e@z_)_+@FGA_U_S@J^@{~@>_XT@tS@1@,@>
-    @K_a_;:@\@E@)7z_D$_C@|_W_Vs_D_2@A@"_A_\@ez@o_O_K@<NF@)@p_%C@)_#_b_"_Z_J@j@|9@6\_0
-    @_d_[_kL@B2@A@^@]@Ar_j@M@<@t@4_Q_:_V_*@t@-@j_aT_1@X{@{_E_Q_-O>@V_T@A@5@=_K@7@t@(0
-    @_j3M_^Ywx@s@e@?_j@:IE@|_!_M_=@'@*_%@C@7@j_C@B_Vu_gn_G=s@r@-@q_[@P@h@Bj_>_O@y_=I_
-    @,_F@6q_B@#V@~_e_]_G@1L_+@a2S@7@\OD@]@[_&@<K_*X@20@:_R@e_k@S_&@=P:@#@b@Z@5@S@+@Q_
-    @N@1_:*_a@[_K=@1@d_Cw@^_l/_X_C@&H@\D_m4_I@y@V@gB@5@l@-~$Y_d@4Y_P@R_*@ok@$@Z@j@w_K
-    @_K{@r_4b;@g_f_*_6?@=_!_S_S_h-_W@5@sW_g_dk@+_G_$c@X@;_M_JAB|&@d@S@E$_G@h_"@=
+    @@>@e@v@[_6@54e-_1@D@a43Y/63@:@dwEe?@dN}@Y_X_R_A@}h@dH)LP)y@O@8@q_?@}Jq2@Fbc@BI@x
+    @Le#@j@.HU_!_2_KY@ha@]@{p_Q@]_]g_)_aA_3@z@:@"_Ci@S_7@L@w_NH@4_/P@8@H_b@"_V@s|_iP
+    @@,@%F_dW_*_2_d{|fN.@^@y@5@4@+):@3@C@3@<*_]@H@m_7q_._=_>wNI_f_&h@*_Z@r^@H@#}@g_$_
+    @B@]k2_B_S@[@)@*_]g@V1@Z_&@N_*_W'M@m+[_1@u5]1_(_K<_\_F_1_V@a<@}@#@P@u@)_$@Z@x@8G8
+    @_j_K_4@T@eT_:@+@,@=-_;@nf_9@Q@f_V_iy@S_(D@Q:ly@Q@Y_Kb@W\_J@*@L_"@rt@2_J_?9/@"@N@
+    @a-@RT@2_-KT@e_3L@W@9{@F@}_=_Na_j_R@S@bC@/_A7@8._6_:_M@e_c6_l<_gda_[_Q@H_A_-@(@^
+    @}@\_E~U_0o@a]_1J_eM@|_;@)@p@o@-_._?A@y@5_%w@F@N@D~@r@U@F@z@W@S@;_KCa_#@}_!@A@x@
+    @,NvrI_D_l_(@$@?Of@t_=v_:@H@;@._.{M_G@t_m@w@c@L_1o:k@<@Z_8Ls_8v_"@O@M_A@<@=@V_WO/
+    @_+_:@zD@BUw@x_5_$_00@=Tv@16P@;j_KO@%@"@._e>}x_!_=X_.@Z_W:_%@=_/sN@l_Vu_a_h@}@z@]
+    @p@Z@;6y_Yg_j_h@c@o@&@S@P9@a_5;_<@[@K@$_&@]@%<_!@BL@9_4@Ep_[@#n@h@sp_3_C_.Th_]@~_
+    @S@S@?_3@5@I@~_5_WKn@1(_doR_G@$@X_m@P@w_DI@B@X_i@w!@,_>L@#@Ys_d@Y?@>m@Q_#@E@B@h@n
+    @B@N_T@=@,@%@]$_hW_!@9O@M_BX@7&_g_N@9_*@y_V@p_B_A_6Y6_$E@,_Y@]@X_*C@aB5_fa@,@m@%_
+    @S,_Z\@J_0@"j_X7_!_h@/_H_bx@T_7k_B_2@P_m@4c_2@k_A@U@b@~@)_Az@&_k_B5_Y_-|_*@P_%+_Y
+    @_6_f@-6b@I_"R_[Y@}t@f@^_%_U_f.s@y_8R
+  End
+  OnTimer
+    @@>@e@#u@#s_-t-a0@DT_]0@a9@Ns@Wp9A4=@2@S2_?&@*H_^(R@E@XJH@i_l@Es@B('@9_>_I_Z@}@pa
+    @_"@3@i@H#@1N@y_-(@g@z@H@NL#:ms@(@blL*_[@a_Kt^@S@>Y@+L:@l@j_?@a@B_,_aA_e@P@}@O@:_
+    @4_WmF@H_7GI_ZL@>9_=o:m@m_._[@TyA@X]@)@g@8_2_1_U_=@"_SM_<@A]@$J$_F@%_Pt@D_9_*Q_a@
+    @E@y_/]_VZ_12_K_Dd_Qd@lz@e_5@W|@h@\+D:W5_/U_.@,_?@W@[@D(_b@"_:@S=y@q@zX_A(@oL2_Qh
+    @_b@)@t_X@[8ha@:@q@>_7@"@py6@m@SX@T4@\@.@\w@/@b\@f@O_d@r@\_%M_7nGf@SXW@f@\_[_C_)\
+    @@vw_J@^_R_W@Rr@a2@yrs@4@/6@d@'@2@S@G_V_$w_fZ_S_]@j^_YaFE_H@5{_S@l;@8_._H@E_i@oD_
+    @2,_K_X@}-@W|6@VU@F_O@e_C@]_M_]_H_O4_9_l@U_T@]@-@P{@A,@k_C@}._ew_I@B@;^_D@Uz_!@l
+    @[_)@Pa;_N@lm@n@A@c_b@#_:@f@U*_&a@b;_e@x_d,_2@8z_e
+  End
+  OnKeyPress
+    @@>@e@ny@5_Ft-_d@J@hH_Y@n_=@m@rv_A_+4@.@['n+.mB@j@[@k@ut@3_I0_T_B@4@v_?@d@A@X_B@
+    @F_*_:bI@W@mRq@c@k@W@9_]_Q@|c_G_X_=P_8_U@Uv_%@m{\@nk@C@h_\Zx@l"0_E_.@d@8@d@#@g_]5
+    @]@V>@Q[_N7r4_Z@'@%@N_X/@g_^@?$I@3@e@:[_/_JQ|1_6a@Cg@e_Z_O6@T@2_[@W_:@D@C_GZ[_Ru@
+    @'Q@YEiF_B@D|_K_O@U_V=@(a_Pd_CP_'@P_0X@R_(H_(@p@=@O@8@^X_?)m_m.~_,@c_^!@-@Dl_7@7
+    @@Y@6@S@x@>2@B@8_[t@G_i!@=C@4_>3_l_$@(n@u@:@5@Tj@K_[!S_/@c@Xt_c@Q2o_R@)_TVm_^_PK(
+    @_1f)_(:_Z@^N_A@r@{@O@4_&F@d~/T<>_c_L@sh@0E7_'?@CkGz_S_3t@,_Cx@M@|_R2_JY@iSx@,@"_
+    @D_h@u_)0_D_\_>K@*K@{_S_6@.@B[@E@S@p2_I_>O@D_2_[@0s_I@eA_C@,s@8_H_-@f@e=_E@e@]_(_
+    @dn@g@=@[@d/_B@N_!b4@v@j@O_G@ey@Fs@|[_/_)+@"_:_3_i.@D@k9_&\O@7@V_T@Q_9@7_"bgy_D1_
+    @!@)_f_[}A@w@+_Ud@b_f@B'@)_'E@g@.yn@u@MYA_^_=u@B_5_K=@bmW/4@t@6_)@x2@a@Oz@;_<T@M@
+    @C_S@x@U@j@"@%H_eHo@j_h@76@hg@#_(@f@q@e_U@v7mG@AX_lD0@4@HM{@1_BO_4@-@#Uy@d_g@g_l@
+    @q@fG_3_7@}n@86B@B@r7_4@.@(@v,@|H_=8@6_g-?_C_cl@*_aL@#C_X@~|t_f_!@c_B@;_6@^@e_Y1@
+    @7_'_8@lxz@m@C'\@3H@</_7@:@Y\_D@;6@R_bj#_Pi@:4@f@OI~('@%@7'@\_&_6@j@U@v@r@)]@?i_S
+    @)@1}q1@V@p_d_h,@,Goe@4@k@o_'\_!_B@Q_D_!_?_FR8@J@1@)@q_U@}[}_?@xR]_=_D_(v-_J@Q9~@
+    @W_Y_D_V;@._PT@|pWh@e_c@k_6]Z_e@H_Y)_>_O2w@m@r@tA_+_j%_X8\_Z@}@V_[2i._X_ey@9nc@H
+    @@E+@rS@}?B_]@Q@)s|[g@N@%fw@*>@T_>_An9@._Jfi_M@7&_*v6_>i_Q,@]L@g_lf@9p_*_U;_d_8_
+    @49XQ_?_&_E{1_Mt@~_)"_0$@Cb#_k_$@k_:_\V@/@M@Z@e5_<<@#_c_2y_l_+@d_+@J_A+_b@??@D@+
+    @@8@P@5@Pd@8_'@f@t^_M@7@t_+_>@,@H@n@Q_kk_a@}#@w_E@?_J|_7_2_1c_S@v@X@dk@T#_J@A/@1
+    @b_Z@GD_8_b_G@._Q[&_Ks_;b@zX_:_U8z@-Z_8L@n@]@t@b@x@c_e@1l_IB_CQ_h@5@:@r_f_T@.@?@
+    @*@g:_*_c#_"iX_2_;8_R_l@x@0_5z_Q_k$_U_jGw
+  End
+  OnMessage
+    @@>@e_(yq@5_Fd1@f_.@eL_c_Jw_O@8+v#_1@~$_D_D"_&Ci@W3Ku_[y@iAvgLB_m_*@5@,_C9@2l4i@s
+    @z@1_B_6_X@d@bY@5_Bq@0_=@[7@:i@9~@'@C@lA|[@:p_S_H_S!@9_7?_&_j@Lk@>,_D@j"I_H_-@4_5
+    @>_'_C@'@B@Qu_Jc_,@U@N@fX_2@>0@=1%_$@l_**k@e_]G@<_0n_db@'@x_:a^_&_B@^@i@U@ui{@74_
+    @f9_+w%_?!_!@)_)t@JJ@-k^@Hce_6@6P_P@j@g@;_T'_$O@.z_5_d@]?@.@O_$@m@B3_j@1@u{@}@E_
+    @-_5@j@U_8@le@5_U.Z@2_=@X@{G_]l@uS@kTN@e_G@DA_<@A@d@O@L(0U_0Lf_/_&_jq[_H_L@,_\_m<
+    @@)/_:_"_b4_:[@<@,d@<@[@B@Nb@q(_4t_'n@g@z_^B_&_N@+@SL@>_V_kU_db@sY@'L_0@[_5VL_)@w
+    @@W_Sp@;@ya_/@^@R_UE_N_U?@<_m_8@d_\@X@(_c@i:_H_M}@~8@d_B"Q@f@-_A@y_3@p@u_V@0b_[@G
+    @_Y@J@\@W(@B_bH_l@V2_8K@o@1@N@)]_.@-_M_\v_W@+@sZ_M|_$_Y!_6@.@B#_R4_Qb_0_F@y_Z@1@D
+    @Tb_.@0@2y@[@.%K_X@S_)(_%X@OjM@o_2@s@q_1_[!@pqY7_$@%E_WG_R@DG_[^_eEB_bSiK@r@0G_[p
+    @@l:_]2_X@+_Q_P_0_c2z_F_!Y_^_l_T@s_2@8-O_L_g_h@]_KB@g~9_[@o@1@<W@3_?8L_"i_lw_h$@3
+    @_k@IH7(_^@F@VL.@3@\_m@-_R@w@gr_!_'c@f@|_i@I@u>@e@.$qx@X@sfh_,o@T_T2@f_(@o_%_(_Ii
+    @@r@b_J@]2x_X@0@E@8@-_!_?_N@;y@>@#_e\x$@,@q@._RY_>@B@s@vu_R_j@3EsMu_%X@<{_[@Z!>3_
+    @,P@-@r@q@{_b@(@i6@W_[@P@>@Y_J.@W@VJ@}@p_X@\y1@2r_g@e_e@s@N_>@H_d@F@#a@c_m_:@}c_I
+    @@-_K0@w_BH_!_m:@m@e@J_l@g_5_Z@{@1xR@k_[Z@~_6@5_'_$_*_P@,@\@x@Oxe@u>_k@El_S@L@y_%
+    @@Hb@]@O@i_#]_V5@3_X-@{@z_ZufW@SL@c@S@k@]K_C_X_Y@cD_)@x_h@D@?@K_(@>Ul_<@H@ZCT]_=@
+    @w@Su@%_M@p@j_V}@t_8>tz@O@:]_),y@]h@/_d_5_[T_m#_K*=_7
   End
   OnTimerInterval=0
   MaxControlSerial=13
@@ -49,7 +100,7 @@ Object FORM
     Font=440065006600610075006C0074002C0020003800
     Color=FF00000F
     AnchorType=9
-    Flags=8
+    Flags=24
     Hint=
     Name=3A043D041F04400438043D044F0442044C04
     ControlSerial=2
