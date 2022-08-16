@@ -704,7 +704,7 @@ Function глВыполнитьФункциюДрайвера(ИмяФункци
       //Требуется инициализация или переинициализация процесса
       аПроцесс:=спНастройки["ПодчиненныйПроцесс"];
       If Uppercase(ИмяФункции)="DRIVERDEINIT" Then
-        If _And(IsEmpty(аПроцесс),аПроцесс.IsProcessActive) Then
+        If _And(not IsEmpty(аПроцесс),аПроцесс.IsProcessActive) Then
           аПроцесс.TerminateProcess(1);
         EndIf;
         аПроцесс:=0;

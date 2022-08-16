@@ -8,6 +8,16 @@
 
 //Документация: http://integration.atol.ru/api/
 
+Function _errorDescription(аДрайвер,aHandle)    
+  Стр:=RepeatStr(" ",1024);
+  Размер:=аДрайвер.libfptr_error_description(aHandle,Стр,Length(Стр));
+  if Размер>Length(Стр) Then
+    Стр:=RepeatStr(" ",Размер);
+    аДрайвер.libfptr_error_description(aHandle,Стр,Length(Стр));
+  EndIf;
+  Exit Стр;
+EndFunction
+
 Function DriverInit(спНастройки)
   Try
     СтрПеременные:="LIBFPTR_PARAM_TEXT=65536;LIBFPTR_PARAM_TEXT_WRAP=65537;LIBFPTR_PARAM_ALIGNMENT=65538;LIBFPTR_PARAM_FONT=65539;LIBFPTR_PARAM_FONT_DOUBLE_WIDTH=65540;LIBFPTR_PARAM_FONT_DOUBLE_HEIGHT=65541;LIBFPTR_PARAM_LINESPACING=65542"+
@@ -310,17 +320,6 @@ Function DriverConnect(спНастройки)
       Exit Ини.GetData(Имя,"")<>"";
     EndFunction  
     
-    Function _errorDescription(аДрайвер,aHandle)    
-      Стр:=RepeatStr(" ",1024);
-      Размер:=аДрайвер.libfptr_error_description(aHandle,Стр,Length(Стр));
-      if Размер>Length(Стр) Then
-        Стр:=RepeatStr(" ",Размер);
-        аДрайвер.libfptr_error_description(aHandle,Стр,Length(Стр));
-      EndIf;
-      Exit Стр;
-    EndFunction
-    
-    
   Try
     аДрайвер:=спНастройки["Драйвер"];
     aHandle:=спНастройки["АТОЛУказатель"];
@@ -349,6 +348,35 @@ Function DriverConnect(спНастройки)
       Exit "Ошибка открытия ККМ "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
     EndIf;
     спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0"));
+    
+    //Исправление текущей даты и времени в ККМ -- Атол не дайет возможности исправить дату и время программно
+    ТекДата0:=Date();
+    аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DATA_TYPE"],спПеременные["LIBFPTR_DT_DATE_TIME"]);
+    аДрайвер.libfptr_query_data(aHandle);    
+    аГод:=0;
+    аМесяц:=0;
+    аДень:=0;
+    аЧас:=0;
+    аМинута:=0;
+    аСекунда:=0;
+    ТекДата:=аДрайвер.libfptr_get_param_datetime(aHandle,спПеременные["LIBFPTR_PARAM_DATE_TIME"],аГод,аМесяц,аДень,аЧас,аМинута,аСекунда);
+    ТекДата:=Date(Right("0"+аДень,2)+"."+Right("0"+аМесяц,2)+"."+Right(аГод,4)+" "+Right("0"+аЧас,2)+":"+Right("0"+аМинута,2)+":"+Right("0"+аСекунда,2));
+    If not IsEmpty(ТекДата) Then
+      If Abs(GetPeriod(ТекДата,ТекДата0,5))>30000 Then //Полминуты
+        ТекДата0:=Date();
+        аДрайвер.libfptr_set_param_datetime(aHandle,спПеременные["LIBFPTR_PARAM_DATE_TIME"],GetYear(ТекДата0),GetMonth(ТекДата0),GetDay(ТекДата0),GetHour(ТекДата0),GetMinute(ТекДата0),GetSecond(ТекДата0));
+        If аДрайвер.libfptr_write_date_time(aHandle)<>0 Then
+          Стр:="Время в ККТ сильно отличается от времени компьютера (на "+Abs(GetPeriod(ТекДата,ТекДата0,5) div 1000)+" с.), однако изменить время не удалось ("+
+            _errorDescription(аДрайвер,aHandle)+"), рекомендуется изменить время в ККМ вручную!";
+          If IsExecutingInSeparateProcess Then
+            Exit Стр;
+          Else
+            Box(Стр,Q_WARNING);
+          EndIf;
+        EndIf;
+      EndIf;
+    EndIf;
+        
     спНастройки["Соединено"]:=1;
   Except
     Exit PopError()+_NEWLINE+"(2) Драйвер не установлен или в нерабочем состоянии!";
@@ -441,7 +469,6 @@ Function ShiftInfo(спНастройки)
         аДрайвер.libfptr_get_param_str(aHandle,спПеременные["LIBFPTR_PARAM_SERIAL_NUMBER"],Стр,Length(Стр));
       EndIf;
       спНастройки["НомерККТ"]:=Стр;
-      //аДрайвер.libfptr_get_param_datetime(aHandle,спПеременные["LIBFPTR_PARAM_DATE_TIME"],...);   время истечения
       
       аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DATA_TYPE"],спПеременные["LIBFPTR_DT_SHORT_STATUS"]);
       аДрайвер.libfptr_query_data(aHandle);    
@@ -456,16 +483,6 @@ Function ShiftInfo(спНастройки)
 EndFunction
 
 Function OpenShift(спНастройки)
-    Function _errorDescription(аДрайвер,aHandle)    
-      Стр:=RepeatStr(" ",1024);
-      Размер:=аДрайвер.libfptr_error_description(aHandle,Стр,Length(Стр));
-      if Размер>Length(Стр) Then
-        Стр:=RepeatStr(" ",Размер);
-        аДрайвер.libfptr_error_description(aHandle,Стр,Length(Стр));
-      EndIf;
-      Exit Стр;
-    EndFunction
-
   Try
     аДрайвер:=спНастройки["Драйвер"];
     aHandle:=спНастройки["АТОЛУказатель"];
@@ -485,16 +502,6 @@ Function OpenShift(спНастройки)
 EndFunction
 
 Function CloseShift(спНастройки)
-    Function _errorDescription(аДрайвер,aHandle)    
-      Стр:=RepeatStr(" ",1024);
-      Размер:=аДрайвер.libfptr_error_description(aHandle,Стр,Length(Стр));
-      if Размер>Length(Стр) Then
-        Стр:=RepeatStr(" ",Размер);
-        аДрайвер.libfptr_error_description(aHandle,Стр,Length(Стр));
-      EndIf;
-      Exit Стр;
-    EndFunction
-
   Try
     аДрайвер:=спНастройки["Драйвер"];
     aHandle:=спНастройки["АТОЛУказатель"];
@@ -602,16 +609,6 @@ EndFunction
 //СуммаЗакрытияАванса -- при операции закрытия аванса (11), сумма указывает на часть суммы документа, которая ушла на закрытие аванса
 //ЭлектроннаяСумма+ДругаяБезналичнаяСумма должны быть меньше или равны параметру Сумма
 Function PrintReceipt(спНастройки)
-    Function _errorDescription(аДрайвер,aHandle)
-      Стр:=RepeatStr(" ",1024);
-      Размер:=аДрайвер.libfptr_error_description(aHandle,Стр,Length(Стр));
-      if Размер>Length(Стр) Then
-        Стр:=RepeatStr(" ",Размер);
-        аДрайвер.libfptr_error_description(aHandle,Стр,Length(Стр));
-      EndIf;
-      Exit Стр;
-    EndFunction
-
   ФлОтменитьЧек:=0;
   Try
     аДрайвер:=спНастройки["Драйвер"];

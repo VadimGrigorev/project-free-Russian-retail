@@ -77,6 +77,27 @@ Function DriverConnect(спНастройки)
       Exit "Ошибка открытия ККМ "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
     EndIf;
     спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0"));
+    
+    //Исправление текущей даты и времени в ККМ -- Атол не дайет возможности исправить дату и время программно
+    ТекДата0:=Date();
+    аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_DATA_TYPE,аДрайвер.LIBFPTR_DT_DATE_TIME);
+    аДрайвер.queryData();    
+    ТекДата:=Date(аДрайвер.getParamDateTime(аДрайвер.LIBFPTR_PARAM_DATE_TIME));
+    If not IsEmpty(ТекДата) Then
+      If Abs(GetPeriod(ТекДата,ТекДата0,5))>30000 Then //Полминуты
+        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_DATE_TIME,Date());
+        If аДрайвер.writeDateTime()<>0 Then
+          Стр:="Время в ККТ сильно отличается от времени компьютера (на "+Abs(GetPeriod(ТекДата,ТекДата0,5) div 1000)+" с.), однако изменить время не удалось ("+
+            аДрайвер.errorDescription+"), рекомендуется изменить время в ККМ вручную!";
+          If IsExecutingInSeparateProcess Then
+            Exit Стр;
+          Else
+            Box(Стр,Q_WARNING);
+          EndIf;
+        EndIf;
+      EndIf;
+    EndIf;
+    
     спНастройки["Соединено"]:=1;
   Except
     Exit PopError()+_NEWLINE+"(2) Драйвер не установлен или в нерабочем состоянии!";
@@ -156,7 +177,6 @@ Function ShiftInfo(спНастройки)
       аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_DATA_TYPE,аДрайвер.LIBFPTR_DT_SERIAL_NUMBER);
       аДрайвер.queryData;    
       спНастройки["НомерККТ"]:=аДрайвер.getParamString(аДрайвер.LIBFPTR_PARAM_SERIAL_NUMBER);
-      //аДрайвер.getParamDateTime(аДрайвер.LIBFPTR_PARAM_DATE_TIME);   время истечения
       
       аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_DATA_TYPE,аДрайвер.LIBFPTR_DT_SHORT_STATUS);
       аДрайвер.queryData;    

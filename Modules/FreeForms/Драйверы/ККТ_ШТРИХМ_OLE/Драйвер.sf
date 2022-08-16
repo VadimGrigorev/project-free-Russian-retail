@@ -116,16 +116,54 @@ Function DriverConnect(спНастройки)
       аТип:=Number(аДрайвер.ValueOfFieldInteger);
     EndIf;
     спНастройки["_TaxType"]:=аТип;
+
+    //Исправление текущей даты и времени в ККМ
+    If аДрайвер.GetECRStatus()<>0 Then
+      Exit "Ошибка выполнения GetECRStatus: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    ТекДата0:=Date();
+    ТекДата:=Date(аДрайвер.Date);
+    ТекВремя:=аДрайвер.TimeStr;//XX:XX:XX?
+    If not IsEmpty(ТекДата) Then
+      ТекДата:=Date(""+ТекДата+" "+ТекВремя);
+      If not IsEmpty(ТекДата) Then
+        If Abs(GetPeriod(ТекДата,ТекДата0,5))>30000 Then //Полминуты
+          //Данная операция не работает при открытой смене: выполнить аДрайвер.FNSessionState?
+          аДрайвер.Date:=Date();
+          If аДрайвер.SetDate()<>0 Then
+            Стр:="Время в ККТ сильно отличается от времени компьютера (на "+Abs(GetPeriod(ТекДата,ТекДата0,5) div 1000)+" с.), однако изменить время не удалось, возможно требуется закрыть смену и войти в режим продавца снова! "+
+              "Ошибка установки даты в ККМ: "+аДрайвер.ResultCodeDescription;
+            If IsExecutingInSeparateProcess Then
+              Exit Стр;
+            Else
+              Box(Стр,Q_WARNING);
+            EndIf;
+          Else
+            аДрайвер.TimeStr:=GetTime(Date());
+            аДрайвер.Time:=аДрайвер.TimeStr;
+            If аДрайвер.SetTime()<>0 Then
+              Стр:="Время в ККТ сильно отличается от времени компьютера (на "+Abs(GetPeriod(ТекДата,ТекДата0,5) div 1000)+" с.), однако изменить время не удалось, возможно требуется закрыть смену и войти в режим продавца снова! "+
+                "Ошибка установки времени в ККМ: "+аДрайвер.ResultCodeDescription;
+              If IsExecutingInSeparateProcess Then
+                Exit Стр;
+              Else
+                Box(Стр,Q_WARNING);
+              EndIf;
+            EndIf;
+          EndIf;
+        EndIf;
+      EndIf;
+    EndIf;
     
     //Неверный режим?
-    If аДрайвер.GetShortECRStatus()<>0 Then
-      Exit "Ошибка выполнения GetShortECRStatus: "+аДрайвер.ResultCodeDescription;
-    EndIf;
+    //If аДрайвер.GetShortECRStatus()<>0 Then
+    //  Exit "Ошибка выполнения GetShortECRStatus: "+аДрайвер.ResultCodeDescription;
+    //EndIf;
     If аДрайвер.ECRAdvancedMode=3 Then
       If аДрайвер.ContinuePrint()<>0 Then
         Exit "Ошибка ContinuePrint: "+аДрайвер.ResultCodeDescription;
       EndIf;
-    EndIf;
+    EndIf;    
     
     спНастройки["Соединено"]:=1;
   Except
