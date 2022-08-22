@@ -213,6 +213,7 @@ EndFunction
 
 
 Function ВвестиШтрихкод()
+  глСброситьСостояниеСтанеров();
   aList:=List.Create();
   LoadModule(10,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\СканированиеШтрихкода",aList,0,"Module","Form");
   If aList["Ответ"]<>1 Then
@@ -318,20 +319,20 @@ Function OnAfterEdit(SourceTable,EditMode,ObjectType,ObjectIndex,Line,Column,isC
   //Ищем тип цен
   ТЦ:=0;
   Стр:=0;
-  For б:=1 to спОсновныеЦены.Size() Do
+  For i:=1 to спОсновныеЦены.Size() Do
     Стр:=Стр+1;
     If Стр=Column-5 Then
-      ТЦ:=спОсновныеЦены.Get(б);
+      ТЦ:=спОсновныеЦены[i];
       Break;
     EndIf;
   EndDo;
   If ТЦ=0 Then
     оТЦ:=Form.оТЦ.Value;
-    For б:=1 to оТЦ.Size() Do
-      If оТЦ.Check(б) Then
+    For i:=1 to оТЦ.Size() Do
+      If оТЦ.Check(i) Then
         Стр:=Стр+1;
-        If Стр=Column-6 Then
-          ТЦ:=оТЦ.Get(б);
+        If Стр=Column-5 Then
+          ТЦ:=оТЦ[i];
           Break;
         EndIf;
       EndIf;
@@ -345,4 +346,3 @@ Function OnAfterEdit(SourceTable,EditMode,ObjectType,ObjectIndex,Line,Column,isC
     О.Text:=FormatNumber(Знч,1,"",2);
   EndIf;
 EndFunction
-

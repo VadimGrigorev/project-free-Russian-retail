@@ -134,7 +134,7 @@ Function DriverConnect(спНастройки)
             Стр:="Время в ККТ сильно отличается от времени компьютера (на "+Abs(GetPeriod(ТекДата,ТекДата0,5) div 1000)+" с.), однако изменить время не удалось, возможно требуется закрыть смену и войти в режим продавца снова! "+
               "Ошибка установки даты в ККМ: "+аДрайвер.ResultCodeDescription;
             If IsExecutingInSeparateProcess Then
-              Exit Стр;
+              Result:=Chr(1)+Стр;
             Else
               Box(Стр,Q_WARNING);
             EndIf;
@@ -145,7 +145,7 @@ Function DriverConnect(спНастройки)
               Стр:="Время в ККТ сильно отличается от времени компьютера (на "+Abs(GetPeriod(ТекДата,ТекДата0,5) div 1000)+" с.), однако изменить время не удалось, возможно требуется закрыть смену и войти в режим продавца снова! "+
                 "Ошибка установки времени в ККМ: "+аДрайвер.ResultCodeDescription;
               If IsExecutingInSeparateProcess Then
-                Exit Стр;
+                Result:=Chr(1)+Стр;
               Else
                 Box(Стр,Q_WARNING);
               EndIf;

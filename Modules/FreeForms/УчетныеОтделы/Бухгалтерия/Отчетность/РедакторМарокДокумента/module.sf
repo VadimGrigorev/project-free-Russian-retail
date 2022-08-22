@@ -58,6 +58,7 @@ Function ДобавлениеСуществующегоЯщика(КодЯщик
     Exit;
   EndIf;
   If isEmpty(КодЯщика) Then
+    глСброситьСостояниеСтанеров(НакопленноеСообщение);
     aList:=List.Create();
     LoadModule(10,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\СканированиеШтрихкода",aList,0,"Module","Form");
     If aList["Ответ"]<>1 Then

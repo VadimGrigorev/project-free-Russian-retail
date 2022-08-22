@@ -24,6 +24,11 @@ Function ПриПодбореНоменклатуры(Эл,Фл)
   Form.оТМЦ.InvokeEvent("OnInitLine","IndexFrom,IndexTo",aTab.Size(),aTab.Size());
 EndFunction
 
+Function ОбновитьДоступность()
+  Form.тТ6.IsDisabled:=1-Form.флВыполнятьОбменВОтдельномПриложении.Value;
+  Form.ТаймаутВыполненияВОтдельномПриложении.IsDisabled:=1-Form.флВыполнятьОбменВОтдельномПриложении.Value;
+EndFunction
+
 Function ОбновитьТипОборудования()
   aEl:=Form.Object;
   If aEl.Путь="" Then
