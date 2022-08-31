@@ -640,6 +640,21 @@ Object FORM
     Caption=27043004410442044B043504
     HotKey=
     Picture=0
+    OnClick
+      @@>@e_0y@14e5_l?_9@Z_L@gn@u_WzR@L@a@4@9@/X@^_I_Rf~_-@o@o@(A,3q_/@i@o_;J@O_*_J_[
+      @@e_(@mWjt@*@b@f@b@5_9@C_S_)@B@KEp@z_-1A@z_/@C@G@J3^_U@RQ@H@S@mIC_S@G_[@MZ_T@9b
+      @@]l'^@3_3C@+@h_a_$@V@^@Px@PV@?_:@^_!@>_^f_1_/@\_M@[@Sb_S_!@:_XN_1f_)Q@OV@m_62@W@
+      @-l_/Y:(":rZ@[a_IM@J~@;n@U@jx_\10R_1]@0@<_4@i_D@a@{OKv_!_1_<V@FLZ@i@-$_Z_c@4@\@8_
+      @)^_Q@sk_(@XZ_/@V_$]Ig@T@9@X@9N@#_,MN9@j&E_b@b_[[@)@:@O!?_c@#_Ma@X@\}_L_\:_L'@%@?
+      @_Z@kd_i@p@}@}@d@|_,U0_?_[H_C@;@|G_5_g@lb@g@R@-_%E_R_+e@f_^O_G{_8@tI_?@|s@Bmx'@,
+      @_U_/|=J@1_C@:_g@<I@]vQ@N_'_U@k@S@^@>q@V@w@a_go_h_<_4@2A_<_^Ga@S@X2_(@cx_O_k@SY@
+      @,@>@JXa_mYu@gt_i@Q_<_'@m@g_F@z_!Zb_6@(_<@WfP3w@7U_i_O_X@pX@0_1@]_fj@w_*@d@r_;R_
+      @8tlh_eW_._=@C@n_i_ha]_m{_1V@k@1@g@1_9_=@;@L_I@E_6l_7@u@]o:_K_X@Uh@h^~_Q@Dz_P@l_/
+      @Y_k7@}N@d@B@C@Q_X@9@=_W_$_&@\[@%e@B_1@j@%@f@g_]_l_h_bs|_a@;_gE@5_l@C]@|@A~@y/.}O
+      @e@Y_./@99|@+@oXj@o@-Y_4_K@1@C_7@B@g_Icm@4@t(_(@m~^@gj}?@<@X_I@._?S@'(_7@q_W@I_a=
+      @@%_X,{_-S_&i[_[@k@1@"_O_7@s@,_,_g@M@ts@M>|A03@D_i@"_A_8_Cl@w_M@*_m@GU@0_C_k@o_a<
+      @}_K@N@}Mk_i@t@0@Y~_[@d@>@[@F@(@T@1_3@4_K&>_K"@7R_C@h
+    End
   End
   Object LABEL
     LayerName=4D00610069006E00

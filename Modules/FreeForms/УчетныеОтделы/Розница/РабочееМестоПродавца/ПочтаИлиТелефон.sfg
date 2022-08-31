@@ -74,7 +74,7 @@ Object FORM
     @w@Su@%_M@p@j_V}@t_8>tz@O@:]_),y@]h@/_d_5_[T_m#_K*=_7
   End
   OnTimerInterval=0
-  MaxControlSerial=13
+  MaxControlSerial=23
   LoadModes=0
   Object GROUPBOX
     LayerName=4D00610069006E00

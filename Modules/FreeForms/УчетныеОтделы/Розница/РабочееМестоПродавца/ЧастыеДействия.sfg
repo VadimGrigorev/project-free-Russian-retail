@@ -1,0 +1,34 @@
+FormatVersion=1
+Layer 4D00610069006E00
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=0
+  Caption=27043004410442044B043504200034043504390441044204320438044F04
+  Width=0
+  Height=0
+  OnOpen
+    @@>@e@fz_K@53e1@g@N@DT_]@v@P_1@&^_<_/@1@q@6@"[_g@?5@Qx_4@~@&_FH_!Sbx_,_D@m@}~@/v@
+    @C_\@5_e@d_E_(_&a#@n@c_6_J_Y_9_7_9@C_a_8_Zd@PnV@ko@SAV_,_CC@^@<xk&9@X_^@\@p@M@0@G
+    @y@i=_V@s_!Lg_%@t@0|@5_-_dW@gi_g7FbFy6@(_I_3@>_\S~_;@~@y+@'_[t<_[@M_/_N_IEl_Jf_K@
+    @Hi@m?_=$@iM_<@M@0@,V=C_I_29$@z_[@d)W_f_Zf_Ku_(F@Y(A_i@a@7@2@NZ_*Y@O_C3xPT@.@rD_'
+    @_Z_>6@f_<@a@U_]_(@k,_F_._i@c@o@Y@l$@$^_f_b@*_C@w@b_AB_e@O@)\x@oq_=_E]x@HXp_N_E-_
+    @Ah_G7@Ka@~$@d)3j_D!@od_N%v"@T@f_ce_-_0(_L_&_1@anF@w_F@S_9@H_^_=@&Z_+@C-_k&>@k@g_
+    @*_T'@|@b_D_1@$:}_5:_2,_]_J2h~_:_3@C4_&O@Cz@L_k?_B.@~@-@8|_06_a_f@x6_a_M@z@(rl8|@
+    @c@b@|_"OJ_F_D>f_d_m_c_=@~_\@nnS@ha[@jyw@v@.G_m_6@0_R,Pj=lH@<@\kD@r@Oiy@0_&_j@S@9
+    @7@V2@%_2+_P_9@S-M(@(_K@%@Q@O@n@+@&@r@&_X@s_f_1_g@Y_[d@u@k@K_G);_8@p@x_J_.@EJ?@b@
+    @V@3_.s,_=@k@6_-_Xc@L@u@19@t$@?qa_,@Zw.+@v_a_e@P_^@=~_S_UUW4@h_:tw0z@C_[V@l@?_4@P
+    @@5tJ_"U~_M_mb]_>|@u@1B@d"@}@;_L@&@2@#_7]o_'@x_!@#_QQ(@d@3[Q=@B@f_2@u@;@]@V.@y_0@
+    @=@wK6_S_X@:@F_N_j@(F_69_$_K_)Vzw_]_(}@^_0@#@A_G_:_aW@p_O@w_a@i_k@e_M@w@g_<8~8@~l
+    @Q_/@RIa_38cQ@Z_Od@$_1_V@f_U/[@C@~@;2a_M=_I@6@(@>@d@j(_%_L_Y@\e_0^@3@&_?q@^_O_G@
+    @]kk_;_T@>=@'_m@5_Xc2@S@;+@SP@]@h@Q_'@I@w@x_Q_"@{@U@v_R@b_A[._<@H@p_1_C"1_I#_8C_%
+    @_?.R@USc@k@h@I_=q@aKH@X@"_LLm_*_N@Uy7@[_H@|_ld_R_+@8r_j@d@)_2_MJSP_G_K%_(@7f@%Gr
+    @@e_Wk_h@U@DN@=N_GC_B_"_1/@D+l_E_B_,@Z_d_eP@W@V@rI_*\U_3_#_a_%_+@}@LI_c_bl_V_4I@\
+    @_W_2@p@N_c_#Exd@K#_)T@h@9{V@/&XU_%_$@n]6z@c*\@#@L_X_Zfv(_!@y[@Q_S&_\@^~-_T@d@+
+    @_C_!_XrBc'@%_j0K_!@$_b_U}@gvh_,@Ix@h@V@2H}@e@D[:@Si_6_b@cM@j_C@F"KkUy
+  End
+  OnTimerInterval=0
+  MaxControlSerial=2
+  LoadModes=0
+End

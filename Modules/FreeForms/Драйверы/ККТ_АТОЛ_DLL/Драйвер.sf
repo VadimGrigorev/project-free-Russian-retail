@@ -972,9 +972,11 @@ Function PrintReceipt(спНастройки)
       //Закрытие чека
       аДрайвер.libfptr_close_receipt(aHandle);
       While аДрайвер.libfptr_check_document_closed(aHandle)<>0 Do
-        If AskQuestion("Потеря связи с ККТ или ФН при закрытии документа. Описание ошибки: "+_errorDescription(аДрайвер,aHandle)+". Попытайтесь исправить ошибку и нажмите повторить "+
-            "или нажмите отмену, если исправить ошибку не удается (в этом случае, чек может быть отменен)!",Q_WARNING+Q_RETRYCANCEL)=R_RETRY Then
-          Continue;
+        If not IsExecutingInSeparateProcess Then
+          If AskQuestion("Потеря связи с ККТ или ФН при закрытии документа. Описание ошибки: "+_errorDescription(аДрайвер,aHandle)+". Попытайтесь исправить ошибку и нажмите повторить "+
+              "или нажмите отмену, если исправить ошибку не удается (в этом случае, чек может быть отменен)!",Q_WARNING+Q_RETRYCANCEL)=R_RETRY Then
+            Continue;
+          EndIf;
         EndIf;
         Break;
       EndDo;
@@ -994,8 +996,10 @@ Function PrintReceipt(спНастройки)
       EndIf;
       If not аДрайвер.libfptr_get_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_DOCUMENT_PRINTED"]) Then
         While аДрайвер.libfptr_continue_print(aHandle)<>0 Do
-          If AskQuestion("Невозможно напечатать чек. Ошибка: "+_errorDescription(аДрайвер,aHandle)+"! Не продолжать печать (нет) или повторно попытаться напечатать (да)?",Q_QUESTION+Q_YESNO)=R_YES Then
-            Continue;
+          If not IsExecutingInSeparateProcess Then
+            If AskQuestion("Невозможно напечатать чек. Ошибка: "+_errorDescription(аДрайвер,aHandle)+"! Не продолжать печать (нет) или повторно попытаться напечатать (да)?",Q_QUESTION+Q_YESNO)=R_YES Then
+              Continue;
+            EndIf;
           EndIf;
           Break;
         EndDo;
