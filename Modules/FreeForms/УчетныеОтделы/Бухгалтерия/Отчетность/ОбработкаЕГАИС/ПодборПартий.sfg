@@ -1,75 +1,83 @@
-Layer Main
+FormatVersion=1
+Layer 4D00610069006E00
   isVisible=1
   isActive=1
 End
 Object FORM
   FormFlags=1
-  Caption=Подбор партий для перемещения в ЕГАИС внутри одной базы
+  Caption=1F043E04340431043E04400420003F0430044004420438043904200034043B044F0420003F043504400435043C043504490435043D0438044F0420003204200015041304100418042104200032043D04430442044004380420003E0434043D043E04390420003104300437044B04
   Width=605
   Height=430
   OnOpen
-    @@>@e@Du_,@4_>d1_(_^c@S@8@{G_CK=,_Q!@0u@mf1@P_#_/6@\=]n=@P_l?_N@G_/@T0d@d@v_"@$
-    @[_J@~_(@wuMg_6@u.nP@6}_8_9_G_e_R_(_E_M@6=@U8@E)zu@{@{@n_P_l@US@q_P@oy@e_E@6@6_\_
-    @"@<@G_5x_\@u@FdC@^[4+@m_5n@KA_Lj@]@?@1;_._M_S@3@F@7@A@S3@]_".3_#@qx}@13_E_l5T@N@
-    @Y@#_a@e@Hy_QP@ei_J@2;i_,@/@}@eg&&Km_95?=/@H_.E<_2gf@K_R_c@MZF@{v@;C~tF_&@,t@y@Y@
-    @j_%@.@b@<_]_1@A@9(_1@R_fD+u_MyV_a@I_"_l@0>_/r_eVC@fU'@I6@{_-@B@nJ@{G_\5@4@0@X_k
-    @_+*_i@w@"_f{R_54@"ly@2_i_Y@#m@W@bB_m_8@LK?_G@U_d}@-FG_F_b@g_m@#TLu@aW@FDcV@Odn_d
-    @Y_Z_-@^5}p@&@J_-Q_0@d@ft$@d\@r@\_lZ~@Y]@o&@H_!K_h@m_"_ca5@n_'fc@?_Y@cj8u@EE<@=_N
-    @_2@p_<_i_c_5@{@h@a@M_Z=>_[_+@=@$@y_d@z@5;@l@9@a@$P_jm_'@}_%@#_Gs@h._9j@Z_U!@oA_j
-    @_;V!\_B@RB~_g_B@j_B#Z_g@>2@)@73_9j_S~_j_i_Cs@I_I?>@=#_Zoc@E@E_g_F@d_i_B!@X@H_I@T
-    @_g.NU@mH
+    @@>@e@fxq@1_Gd1@f_.@e+_$@[?+_()@h@(@.@3}@z@(Eo_^@N_N1@lF/@P_U@n_bt_V@[7@YZZ/@}_m_
+    @)@5@gz@Y@#@eg@J}@?@=@,@<_J@dYE@~@nO@9@?_+@A@[_j@B@8Jg>@/@O@\@1@i_)@$_V-@pta:@1@
+    @s>|I_F_2_$@P_Ds_f_k@1_m)o!os4@e@l@f-"z-@%@Sw@I@>sv^E@(_E_Y[NI_\@V1@X_W@H_'"_&_!_
+    @'_>_,@U_21_V@B_1S@*_j_?C_b@X@B-_ml@|+_4k@U@9_X-_G4@t_[9@>S}>@k@I|_3@APM_gHo}_L@
+    @FG@=@8@Q_S~_Z}@l(@#@C_P_b@?@1_N@<@D_D@DSps\_=@[@k@As_%_\H6_J_!f@D@AwT_7@:@O@a=7@
+    @)9@Hwl@e@W>J_#@dc@u@}_##_*W_Ba@X@u@1<_g&@]0@U_.&_do_f_[_P;_k@C@Y@-_XX@SO@|;@|~U_
+    @.o_\=@Yu_MY@,@H_.r@r@-@V_V@-Zk@A_V@0@>mM_>_]@F]7B@)_Cq_39@"']@|@=h7K@4I@y_(_)@%i
+    @Q#@<@r_?U_O@K_d@"_"_^8_c_K_C@|@G_'@S@7_3n_!_&^@p@n_6@O?@B_&@F_1@v@Q_e_+Q@yf_)U@9
+    @@p_5&_O@p@B:@b@~$P@#@u@P@]@5@"_+@A@-@S_5M@3@9@>+a$ag_jGU@c?kr@h9_B7W@r_&@a@0$_)/
+    @_XY@a@m.a_KSss_;_*K$j@^S@XF@B@5@E_RFb_O@E2@5@1Hct_af_l_\@R@9@J_7@1@*@u_S_%K@z@m_
+    @=d@5@-_\P@y@|_T@h_j\_E@D0_*;Mg_l6Z_ID@N@%_]@{@a@r_j_1@d@z@7@]K@4Q@P@#T@5_U(@Do_8
+    @_:_3_*@,_\&@a@L_*C@%_"@a_m&@r_\@n!
   End
   OnTimerInterval=0
   MaxControlSerial=7
   LoadModes=0
   Object LABEL
-    LayerName=Main
+    LayerName=4D00610069006E00
     Left=5
     Top=10
     Width=595
     Height=25
-    Font=Arial, 12, B
+    Font=41007200690061006C002C002000310032002C0020004200
     Color=FF00000F
     AnchorType=11
     Flags=8
     Hint=
     Name=
     ControlSerial=1
-    Caption=Подбор партий для перемещения в ЕГАИС внутри одной базы
+    Caption=1F043E04340431043E04400420003F0430044004420438043904200034043B044F0420003F043504400435043C043504490435043D0438044F0420003204200015041304100418042104200032043D04430442044004380420003E0434043D043E04390420003104300437044B04
     HAlign=0
     VAlign=0
-    AttachedButtons=
   End
   Object TABLE
-    LayerName=Main
+    LayerName=4D00610069006E00
     Left=5
     Top=35
     Width=595
     Height=340
-    Font=Default, 8
+    Font=440065006600610075006C0074002C0020003800
     Color=FF000005
     AnchorType=15
     Flags=33554440
     Hint=
-    Name=оТаб
+    Name=3E04220430043104
     ControlSerial=2
-    AttachedButtons=0#0@10020#0###@10021#2###@10022#0###@10023#0###
     HotKey=
     Folders=0
+    AttachedButtons
+      @@>@eU@&t@,R@&@6@&R%@Y'-jd@u-_1B@O1W%_^@SRh@T@y@sWj3&!@[@T)l
+    End
     OnAttachedButtons
-      @@>@e@;vqs_Gd1_(k_5@F9_g@*o@M_+Wy/@j@mv@m'F_FosJ1E@qfv@'E_<_*{_c_+@n@Q_f"@\_BHo7@
-      @F@SY@1e_A\G@f@~_4ky@0A_'@g@f@?_a_J@d@r_A_d(q_:_W?@h\_(@fo_:</@"Rw_4@+?@y@p@h@e_.
-      @5_k@"*@4_,_1_1_N@2g@G@Zh@K@+fL&F_X@UK@j_*R._R4@]F_ga_j@U@>_74&@,@a@&;@,z@~v@t@T_
-      @#_?_,FI@W@[_9@)7R?_S=#t^_-_S/_a_%_9@30@A_96N@h.@._[PR@b_)_[Z_J_U@y_"@<@F@ZD_Ag@W
-      @sR@&@&@46@[}_'J@{@'k+X@S@{@C@[_7@M@/L@P$@i~@(8h_e@Vb\_2_J;_f_cV_0@.X_4_#@c_9@P@
-      @3_-gxJ_a@N_S@<0Fw2@9@b_E@LI@qf@b@1w#@W_j@UPd_6.@\@W@[@g@O_$@+g7@{*_g_7@\X/_k@%^
-      @x@G@*,@B5f@Z_#r5@^V-i@H[@\s@{@.@o@aD@38@U@B_E_e@u@;4_]7*gT@h;_O_k@%r?5_E@T@v@n9U
-      @i_3@(@S@E1@XI,@4_5_$P_5}@IB@}P_N@o@,@6<@j_:@k}@I_6@+B_c@iF_e,U_B;@2@xj@zn@"@H_F_
-      @L@-@)3o_3@H_Z_]#_\,_6Z@TY@'@S@'z_7_R@X_TzM_An_i%@Q_c@.=X@=@</@d_&_&_i@BO@>@F_V-@
-      @s6!_da@sY_J[@D;@&[j_>Z@6rXy_j_f.*G@S@a_5FU_XO@A@T_9@y@=_E@=-_GJ,_J-Q_9._W@\@M@j?
-      @@-@4_W_j@Z_e_EFh@1*0_;_%\_a@Q@[_B@i_CbKrE=_>b@T@ax_N_lM_4+@K@c@\S@S_8_"@-@w_"_g_
-      @h_-_U@Ar"@n_]@D_C_gki@p_$_e@'_E@p_>@;_I@;6@w@/@u@=:mu_l@8D_m@F@D_SQ_T@|@3_G_f@Y
-      @_i@"+@nk@K_l$@Ui@eae@{@s_:_V%@yB@s_U@[U@wY_!@;_X}@=@~_^(@A_Y@Fs
+      @@>@e@fxo@5_Fd1@g_.@eL_cv_c@Wo&_M%3*_!$*S_D@G>wu#@]_F@$@A@s_=^_?x@?K1@r_k_e_k@,@<
+      @._1SL@szM@B@-@-@,_*_g_R_<@k7@n_bdE~@(@#_;G_k@m@1_%@k@O@$x_^@O_&&y@rr$?@8(@B_5?]^
+      @_S*r>@w_=@Og@<C@T_#@R@9$_%(|i@?430@Y4/@6_dY^@O_SP_)"@m_2_D@(@X@f_0@V_2K_X=|'_\@=
+      @+_E@S@B@y_X@)(_;7@:b_lf?_+@9--@5_U._N@0ui2@-@c@(@3@W-@u_'.@x3@T@.p6@R@N>_M@x(@5@
+      @dS@m_X@x_jr_+_56@>_h.@%@x@^hc@jUL_N@:Z@|@h_,@<*@oA_M@n_H@EA@z@K@2_J8xwR1Lz@P_B_4
+      @@z_X_+@F_]G@P_<@#_U@u_$@7@uQ8_SCrq_cR_;@F_O]xb@R_#_C@S@o_b@J@E"_kG_\@^E_K_O@X@(_
+      @[_][R_2_\2e@Y~@4$@e@D@]{f@v@n@m1@#@(@|@byi@%U6_G@u@b\2@1@%@v@|n2_:@Y_:@)@1@'r@Y@
+      @#@%@;@M_B@B@i@?@2@W@>@R@\@V4_:>@T]@y=_#_jm@7j@AT_A_N_\|@%_6@a_Dw@4_P_1@:j@*Wv_i
+      @_%_/P=h~_<H@5_:@&@4@H_9_%$@B'i}G@M@C@m_AIZ_P@#@^q_/@j_B_l_!@c_j@e_a>@.@L5UEaN@E@
+      @)@D@l_2AOE@9_Y_F_k@T@EO_)_Z@..y@r_&_5@^_MOf@Ky\_=@E@7@7@]@Oi_a_c@*R_$@^_Z@Y@>_I@
+      @"@+@[k_L@]@<i@b_2T@m_F"@>@l@3U@1R@B@tZ@<g_'_G@*=@H_:g_j@~@'O_a@-_IY@)_6@whJ@BfY\
+      @<@{_U2_;@=_f@V@y_P@B@M@\_=@e3_T@C_A_C?_?n@k@=_f!l@D|@C@H_j_9@<@&_)<_Wxw'@5_T1=_e
+      @_]_d(_LS|@C_Dn@w@(_Q@r@M_5@9_X@w@'7_45@Au@hW@\_P@%9_O_d@b_ZC@3t@5@L_1_/@7@R_f4_H
+      @ae_[@VpG_0_DJeQMe_'_"_;@"@Bm@[(_]@~@]y@G_$@3_Sw&|@N@c@Rw@E@5@|_Q_MFW@^_C@ZJ_W@:@
+      @w@>@]@Ob_Bb_&_+_m@;/y@Mce@2,_H_j]8U@C_S_b@vF@g:_'Q@y_!_Q@(@j_E_D7oi_S|_l_!_.@M_g
+      @_m_4_K_k@U_g@1_V@s_<]@f_m>_01@v_%l_Dq5@Xp_;9yM_^@{_eSY_4BJT@c@z@Z_[@)@%][_>_G_7_
+      @"_X_*_"9*@y
     End
     HeaderColumnsData
       @R#R#R#R#S#R#R#R#R#S#T#STR#ZV#]G@(GzGfC@'G@(G@$G{G@'G@"G@#GvG@,G@-G@*G@5G####]G@(
@@ -80,71 +88,74 @@ Object FORM
     End
   End
   Object BUTTON
-    LayerName=Main
+    LayerName=4D00610069006E00
     Left=100
     Top=405
     Width=90
     Height=25
-    Font=Default, 8
+    Font=440065006600610075006C0074002C0020003800
     Color=00000000
     AnchorType=12
     Flags=8
     Hint=
-    Name=кнЗагрузить
+    Name=3A043D04170430043304400443043704380442044C04
     ControlSerial=3
-    Caption=Отмена
+    Caption=1E0442043C0435043D043004
     HotKey=
     Picture=0
     OnClick
-      @@>@eW_1S+_-d1&_;@E@'_[_\_6%p@(@5:@y_c1@Yf@S'_b_-@tR\_7\@Z@*@J@L@O@k7z_[y_A@0@%_"
-      @@d_c7}9}_[@J@r;@'@}_>US_QJ@Q_m@-Z_Gy}_-_ie@K@E@&l@*_g_9_\@Q@:Eq4ZTV@"f_N@h1@~@$@
-      @o_=]_[@]_I@'{_B@3@=@2@{@?_)_\_Z$M@0p@h
+      @@>@e@#@V_6+_-R1i_[_N@w%_mCo,_FzC;~_>~@J@I@O_h2_Nf@C5_b_m_,@d@O<*Ug_9p/@b#&r@>D_L
+      @@UM_9_#_,@&@K@Y>>aY@"@zu_c_5@]'@f_V@[@B@w_A@~_7V]_<_g_S@)@X@b_3f_[=M@]^@8I?.@v@S
+      @r@~@(@f@A@%_BJAhN@^+Qs1@7@/_1_+_6R{h_i_[?._]{@v=@H[@M9@m_D@k_2,0_P@/@l?@5@"_Nb_3
+      @t@p_l(@u@n=c
     End
   End
   Object BUTTON
-    LayerName=Main
+    LayerName=4D00610069006E00
     Left=5
     Top=405
     Width=90
     Height=25
-    Font=Default, 8
+    Font=440065006600610075006C0074002C0020003800
     Color=00000000
     AnchorType=12
     Flags=8
     Hint=
-    Name=bPanelProceed
+    Name=6200500061006E0065006C00500072006F006300650065006400
     ControlSerial=4
-    Caption=Принять
-    HotKey=Ctrl+Enter
+    Caption=1F04400438043D044F0442044C04
+    HotKey=4300740072006C002B0045006E00740065007200
     Picture=1
     OnClick
-      @@>@e@;u_,@0_Gd1_(<_j0w@fF@kJ_9W@r=_2O@MD_C@z_>_;wt_O.S@XG@y6@6_m@w@m5@An@P_U(@u
-      @5@3_'@\_&M@?i@Q@._>@#@bFaF@p@?_'@b_"_a_d_8_1j_2@1_%_.@lw_;_]@Y@{A:@-@S4|_^@y1@[
-      @9@y_)@E@Rq@O_f@e_<%_m_kq)@m:@L@*e4@PZ_j}@W_[@K@P=_T@I#_._C|tyC@'^q@8@t~@rz_f-@N
-      @_c8_l@>@*K@._(@7_HU@}@#@v@C@#@2_A@1@{_9@*_"_[_'@|@c@)_P%l_C_)_Lp_;<_8@W@v_dS@u@:
-      @_So@8@z5|F@:G@x_C@i@F@I_'@0&@i@C@|@N@"@:5_Tn$@6@6T@:_<@Q_"_<x@{@y_WM?@&7~@T_,_L_
-      @A_;_&@%@)@]@9@^@/@M@l@K@w_b!_5_F@,@P_J@&_C@^l_B_d_]_!_h@U_b@m@B@EB@-@S@MY_;A_a@
-      @-_H:_H_]@p_%@<@$!E16@'@Myt5@>_7_fYl@\*@0fjFa_2c_U@T;,_a@a):_l^_1-c_<_7_Z_Me@)_:@
-      @4_GQ@\_*@]]e_V}_U@lS[_Y@g@jmR_b_(@8g?@X@S@y_-@K@%@I_.68^LB@Hx@Y@/_1@)@CqdvZ_._Vd
-      @@7@]@%m$@hb@E_f@C*V_!@g@tW_I_kz@x_K_Z_D@1_I_._"@v@g_IS@gb_Gw_T_ZQT@W_UR_#q@op%_L
-      @@~U@<j_^%_,_9@B_G:_4@.Qhh@K@,@4;0_"_[_._=_7@N_O@BhZ,W@97;_m@f@l@[Y@#@F@I_b@cu@g_
-      @SA'@8@.@g
+      @@>@e@\x@#@1_>@&5b8_Sn1@*D@>@~@n_,@R%_"P_43<_>G@3;_&u@o@f@9@E_L@\_#0@z@2_!@yy@q_m
+      @@E_:[@5@Y_1@vDG_'@%_:@B_)_K_S@*@^@<_U@a@ox_;Wq_T@e@w_3D@N^_9[_R@[@N_H_S-@1@Q[@(@
+      @R@8@ubA_]!_"2_&@W_I_,@=A_K'3!_UdQ_R@Ka?_a)_#|_T_,@(@SW_M@w_J:N_._j/l_/_i9K_X5d@(
+      @@\@zJ@L@L{9@(_(\@R&@P@s(<&_"_USa_=@X@z@T@h4n_U@G@,@:g_*@q@#@l@3_hp_K@X_U@5_%@m@
+      @w_5_*@G0@X_c_5@|@#_V@E@K_H:V,|_#_/@E@U_EC@d_!@&@p@x@X=@|q@4@rW@kA_3_$_U@5$6@S@>4
+      @_adEs@i_<_bP?O@>_g@P_kx@3|_f@]@7@g#_*_1Z@N@-@p_dET@%@iU_<_&@o_j9_SiK@1_<<hv_4_6@
+      @-@tpr8_f_Jf@B_%T@d_Y@M_(7_6o@?=@._Pq_m_^yy_a<_f1zQ_?@|_,_7}L_>@v@%_2_?_4_,_8-@z;
+      @]P_N3m@-_Y_h_$MLZ@G@T@L_R_!"b+{@K@'"_d_)_RwSn_R@Sg_Q_;@1_Q@&y@P|_g_G@N@g@X_Z@&a_
+      @;+y_B@CRP_/@4t@<h(I@V@L@\O@YL@g_;Y_'vrA_\LE@S_._h_k@M@O_l7_]z_<@c@A_P_+@w@iG@?_I
+      @@kP4_PR@3_Pt_L6D_Z@1@-=@/@:@N_\Oa@|@N}@<@H_5G@c@N@X_X@/_S@M_F[3@|@X_^@}'y(@LZ6_'
+      @{z_L:c_QI_j@e_F@?C@s_I@t@|[@js@O_k5_A?_M@5S@o@^@Q@Ey@2-_/@n@D_5@W@5@La@C8_.@W&@
+      @8@dc_L_7@YE@I_(_2<_K@&)0@m,_R@>_>c_\D@O@'_YH@8/@}_l3@h_m{@=_j@%@B6@|_/_9\_X_:@l
+      @@:@h@>@W_A_kk@=N_(_6@h@>@oN@7@[_O_6_Z_$$@P@*@z_:
     End
   End
   Object CHECKBOX
-    LayerName=Main
+    LayerName=4D00610069006E00
     Left=5
     Top=380
     Width=600
     Height=20
-    Font=Default, 8
+    Font=440065006600610075006C0074002C0020003800
     Color=FF00000F
     AnchorType=12
     Flags=8
     Hint=
-    Name=оВсеОстатки
+    Name=3E041204410435041E0441044204300442043A043804
     ControlSerial=6
-    Caption=Переместить все остатки на выбранном рег. ид. ЕГАИС
+    Caption=1F043504400435043C04350441044204380442044C04200032044104350420003E0441044204300442043A04380420003D043004200032044B043104400430043D043D043E043C0420004004350433042E002000380434042E00200015041304100418042104
     HotKey=
     HAlign=2
   End

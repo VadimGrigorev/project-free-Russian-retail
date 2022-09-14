@@ -5,6 +5,20 @@
 
 Function ПодборНоменклатуры(зН,З)
   ТСтроки:=Form.ТСтроки.Value;
+  
+  If зН.IsFolder() Then
+    Сп:=Ref.тмцНоменклатура.Load(0,"~(@ELEMENT IN зН)And(@Status=0)And(@ISFOLDER=0)");
+    ТСтроки.Lock();
+    Try
+      For i:=1 To Сп.Size() Do
+        ПодборНоменклатуры(Сп[i],1);
+      EndDo;
+    Finally
+      ТСтроки.Unlock();
+    EndTry;
+    Exit;
+  EndIf;
+
   If ТСтроки.FindAndGoto(зН,,"ШтучнаяНоменклатура")>0 Then
     If З=0 Then
       Box("Данная позиция уже присутствует в документе!",Q_STOP);
@@ -23,7 +37,7 @@ Function ПодборНоменклатуры(зН,З)
     EndIf;
     Exit;
   EndIf;
-  If З<>0 Then
+  If (З<>0)And(З<>1) Then
     зКл:=З.зКл;
   Else
     зКл:=Storage.ОстаткиТМЦ.Gross1("Количество",,0,"Номенклатура",зН);

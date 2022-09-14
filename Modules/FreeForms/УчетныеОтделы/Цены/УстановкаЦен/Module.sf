@@ -213,7 +213,7 @@ EndFunction
 
 
 Function ВвестиШтрихкод()
-  глСброситьСостояниеСтанеров();
+  глСброситьСостояниеСканеров();
   aList:=List.Create();
   LoadModule(10,"Modules\FreeForms\ВнутренниеОбработки\СпециальныеОбработки\СканированиеШтрихкода",aList,0,"Module","Form");
   If aList["Ответ"]<>1 Then
