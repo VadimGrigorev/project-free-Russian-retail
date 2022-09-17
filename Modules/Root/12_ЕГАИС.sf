@@ -1914,7 +1914,7 @@ Function ВыполнитьОбменССервером(Ссылка,ByRef Ст�
     aTCP.HTTPSetHeaderField("User-Agent","Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
     aTCP.HTTPSetHeaderField("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
     aTCP.HTTPSetHeaderField("Accept-Language","en");
-    aTCP.HTTPSetHeaderField("Connection","Close");
+    aTCP.HTTPSetHeaderField("Connection","Keep-Alive");
     
     If Стр<>"" Then
       Стр:="Content-Disposition: form-data; name=""xml_file""; filename=""request.xml"""+_NEWLINE+
