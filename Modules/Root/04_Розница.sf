@@ -140,11 +140,11 @@ Function глЗагрузитьДрайверы(Реинициализация=0
         If File.DoesFileExist(Путь+".sfc") Then
           aBuf:=Buffer.Create();
           aBuf.LoadFromFile(Путь+".sfc");
-          аМодуль:=LoadFunctionFromBuffer(aBuf);
+          аМодуль:=LoadFunctionFromBuffer(aBuf,Путь+".sfc");
           спНастройки["МодульДрайвера"]:=аМодуль;
         ElseIf File.DoesFileExist(Путь+".sf") Then
           Стр:=FileToString(Путь+".sf",0);
-          аМодуль:=Compile(Стр,1);
+          аМодуль:=Compile(Стр,1,,Путь+".sf");
           спНастройки["МодульДрайвера"]:=аМодуль;
         Else
           Raise "Отсутствует модуль драйвера!";
@@ -240,11 +240,11 @@ Function глЗагрузитьДрайверыДругогоМагазина(Р
       If File.DoesFileExist(Путь+".sfc") Then
         aBuf:=Buffer.Create();
         aBuf.LoadFromFile(Путь+".sfc");
-        аМодуль:=LoadFunctionFromBuffer(aBuf);
+        аМодуль:=LoadFunctionFromBuffer(aBuf,Путь+".sfc");
         спНастройки["МодульДрайвера"]:=аМодуль;
       ElseIf File.DoesFileExist(Путь+".sf") Then
         Стр:=FileToString(Путь+".sf",0);
-        аМодуль:=Compile(Стр,1);
+        аМодуль:=Compile(Стр,1,,Путь+".sf");
         спНастройки["МодульДрайвера"]:=аМодуль;
       Else
         Raise "Отсутствует модуль драйвера!";
