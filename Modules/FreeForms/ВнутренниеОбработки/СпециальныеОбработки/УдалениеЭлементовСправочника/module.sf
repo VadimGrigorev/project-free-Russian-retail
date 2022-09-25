@@ -20,10 +20,6 @@ EndFunction
 
 
 Function ДобавитьИсключения(Сп)
-  Фл:=1;
-  а:=Ref.рбУдаленныеБазы;
-  Фл:=а.Find("@Status",0);
-
   ФлТМЦ:=0;
   For i:=1 To Сп.Size() Do
     If not isEmpty(Сп.Get(i)) Then
@@ -35,20 +31,19 @@ Function ДобавитьИсключения(Сп)
     EndIf;  
   EndDo;
     
-  If Фл=1 Then
+  б:=Ref.рознСопоставлениеОбъектовОбмена;
+  If б.Find("@Status",0) Then
     //Сопоставленные элементы?
-    б:=Ref.рбСопоставленныеЭлементы;
-    в:=Сп.Size();
-    For i:=1 To в Do
+    For i:=1 To Сп.Size() Do
       Эл:=Сп.Get(i);
       If isEmpty(Эл) Then
         Continue;
       EndIf;
       Вид:=Эл.DBName();
-      If Вид="рбСопоставленныеЭлементы" Then
+      If Вид="рознСопоставлениеОбъектовОбмена" Then
         Continue;
       EndIf;
-      aList:=б.LoadEx(0,1,,"Элемент",Эл);
+      aList:=б.LoadEx(0,1,,"Объект",Эл);
       For i2:=1 To aList.Size() Do
         Эл:=aList.Get(i2);
         Сп.Add(Эл,Trim(Эл)+" ("+Trim(Эл.DBName())+")");

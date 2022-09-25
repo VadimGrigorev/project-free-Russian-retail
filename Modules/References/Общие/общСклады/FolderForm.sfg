@@ -1,4 +1,5 @@
-Layer Main
+FormatVersion=1
+Layer 4D00610069006E00
   isVisible=1
   isActive=1
 End
@@ -11,13 +12,13 @@ Object FORM
   MaxControlSerial=4
   LoadModes=0
   Object MACRO
-    ModuleName=Modules\Macros\Справочники\Заголовок.sfg
-    LayerName=Main
+    ModuleName=4D006F00640075006C00650073005C004D006100630072006F0073005C0021043F044004300432043E0447043D0438043A0438045C001704300433043E043B043E0432043E043A042E00730066006700
+    LayerName=4D00610069006E00
     Left=5
     Top=5
     Width=380
     Height=47
-    Font=Default, 8
+    Font=440065006600610075006C0074002C0020003800
     Color=00000000
     AnchorType=9
     Flags=8
@@ -26,13 +27,13 @@ Object FORM
     ControlSerial=1
   End
   Object MACRO
-    ModuleName=Modules\Macros\Справочники\ОсновныеКнопки.sfg
-    LayerName=Main
+    ModuleName=4D006F00640075006C00650073005C004D006100630072006F0073005C0021043F044004300432043E0447043D0438043A0438045C001E0441043D043E0432043D044B0435041A043D043E043F043A0438042E00730066006700
+    LayerName=4D00610069006E00
     Left=5
     Top=65
     Width=280
     Height=25
-    Font=Default, 8
+    Font=440065006600610075006C0074002C0020003800
     Color=00000000
     AnchorType=12
     Flags=8
@@ -41,26 +42,27 @@ Object FORM
     ControlSerial=2
   End
   Object BUTTON
-    LayerName=Main
+    LayerName=4D00610069006E00
     Left=290
     Top=65
     Width=90
     Height=25
-    Font=Default, 8
+    Font=440065006600610075006C0074002C0020003800
     Color=00000000
     AnchorType=12
     Flags=8
     Hint=
     Name=
     ControlSerial=3
-    Caption=Отчеты
+    Caption=1E0442044704350442044B04
     HotKey=
     Picture=0
     OnClick
-      @@>@e@+_7S+_-d1@L_Mb@W]-@r3R_R!X@I(_\1z@k@>kwo+,_WW\@,_H@*I_&4h@*yV@Q@\_A_i_M@J@^
-      @@+_>_A@*[@hOBz@U_7_0@{S@S_L@>_[@LR@HV_k_c!n@w-@/_c_'Cf@1*@:q_h@#-@V;<V_="_A%j@f@
-      @[t_*@i._"_%<@M_,@j@$@BI_B@h@9@%@7}_36i_0u_Mh@PH_D@4@<_O=@V_H@y@Z@B_m_2At_8_*|@u_
-      @;@]@%@P@Yu9@K_,,@#H@S_Q
+      @@>@e@#@Ue@1_-t1@K_SR@pf0_c@"F_Pt5~q@v_<V@c@a9hn@~_l)s_=_N_mc_h_(I@]v_-_Z@Y_E@b_[
+      @_Y|@)>@:z@pA@f@:_?_"3.@[_$@;_M_5<Y@w@b6a@=@k@]_g_Vs@x_E_R?_N@D_M_i@xc@lpt_R_P+@^
+      @_9_j_Q0_bd|eN@a@n8@7@=_A@0_h?G_e@Y@s_L@:Ji_bF@sB_7@qd_*_k(f_#@0&@l_al_e_%_><_l(@
+      @w@.@7X_7@=_e_T@9@"4_e_<_!@y_C@*(n_A@V@w_+NEU_c@l@h_H@q@N@-n@(m&_2_Z_e_)_hsD@)@F_
+      @6@m;@02_K0@;"_g_,GU
     End
   End
 End

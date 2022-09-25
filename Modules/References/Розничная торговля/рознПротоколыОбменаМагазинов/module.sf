@@ -8,6 +8,24 @@ Function OnAfterElementSave()
   Form.ТабУстановки.Parent:=Form.Object;
 EndFunction
 
+Function ПолучитьСвойствоПротокола(Имя)
+  aEl:=Form.Object;
+  If IsEmpty(aEl.ПутьДрайвераОбмена) Then
+    Exit "";
+  EndIf;
+  Try
+    Стр:=FileToString(AddBackslash(aEl.ПутьДрайвераОбмена)+"Протокол.ini");
+    Ини:=Ini.Create();
+    Ини.AddFromString(Стр);
+    If IsEmpty(Ини) Then
+      Exit "";
+    EndIf;
+    Exit Ини.GetData(Имя,"");
+  Except
+    Exit "";
+  EndTry;
+EndFunction
+
 Function OnBeforeElementSave()
   aEl:=Form.Object;
   If IsEmpty(aEl.ПутьДрайвераОбмена) Then

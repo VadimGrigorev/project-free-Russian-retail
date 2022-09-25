@@ -255,44 +255,23 @@ Function глПолучитьПромежуточнуюТаблицуИзмен�
         Form.StatusText("Изменение цен: "+пНом2+" из "+пНом);
       EndIf;
           
-      If флЦентральнаяБаза=0 Then
-        Фл:=0;
-        Сп:=List.Create();
-        aTab:=З.зН.LoadPeriodicalValues("Цена",НачДата,КонДата);
-        ЦенаТ:=З.зН.GetValue("Цена",НачДата-1);
-        
-        aTab.Select();
-        While aTab.Next() Do
-          Фл:=Фл+1;
-          Сп.SetByName(""+aTab._Date,aTab._Value-ЦенаТ);
-          ЦенаТ:=aTab._Value;
-        EndDo;
-        
-        If Фл=0 Then
-          Continue;
-        EndIf;
-        
-        ТНом.AddLineSorted("зН","зН,ТЦ,Кл",З.зН,Сп,Фл);
-      Else
-        aList:=Ref.рбОсновныеЦены.Load(0,"@Parent",З.зН);
-        For i2:=1 to aList.Size() Do
-          аЭл:=aList.Get(i2);
-          Фл:=0;
-          Сп:=List.Create();
-          aTab:=аЭл.LoadPeriodicalValues("Цена",НачДата,КонДата);
-          ЦенаТ:=аЭл.GetValue("Цена",НачДата-1);
-          aTab.Select();
-          While aTab.Next() Do
-            Фл:=Фл+1;
-            Сп.SetByName(""+aTab._Date,aTab._Value-ЦенаТ);
-            ЦенаТ:=aTab._Value;
-          EndDo;
-          If Фл=0 Then
-            Continue;
-          EndIf;
-          ТНом.AddLineSorted("зН","зН,ТЦ,Кл",З.зН.Code+"@"+Trim(аЭл.рбПрефиксУдаленнойБазы),Сп,Фл);
-        EndDo;
+      Фл:=0;
+      Сп:=List.Create();
+      aTab:=З.зН.LoadPeriodicalValues("Цена",НачДата,КонДата);
+      ЦенаТ:=З.зН.GetValue("Цена",НачДата-1);
+      
+      aTab.Select();
+      While aTab.Next() Do
+        Фл:=Фл+1;
+        Сп.SetByName(""+aTab._Date,aTab._Value-ЦенаТ);
+        ЦенаТ:=aTab._Value;
+      EndDo;
+      
+      If Фл=0 Then
+        Continue;
       EndIf;
+      
+      ТНом.AddLineSorted("зН","зН,ТЦ,Кл",З.зН,Сп,Фл);
     EndDo;
   EndIf;
   

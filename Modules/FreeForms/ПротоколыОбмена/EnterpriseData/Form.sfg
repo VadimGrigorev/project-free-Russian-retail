@@ -485,7 +485,7 @@ Object FORM
     Font=440065006600610075006C0074002C00200038002C0020004200
     Color=FF00000F
     AnchorType=9
-    Flags=8
+    Flags=33816584
     Hint=
     Name=3E0412044104350414043E043A0443043C0435043D0442044B04
     ControlSerial=68
@@ -605,8 +605,8 @@ Object FORM
       @_:_'E<r_Y_M_J_'X@|(_X@j@Up_V@A[_KTJ_X_3@G_a3@(@3@Q_Y_P_>@d_,_A_J@o_6_b@M]@f_<@wB
       @@2@f@QX_/X@o@e!_P9_h_5\_9_k~_2_a9c_[@,p_M_SS_J@M@O_!_i@-]Yo_[@wK_Hy8u_K@[_i@L_j_
       @P@Du_IJ@z@Ci_9-@F_:@+C8_^*@%_*R_e._:@d8:@{cD_a<@?_A_3_$@k_^[@;_%_G@;_8}@|_9:@{@$
-      @M@v@e_4@1@-'@e@zSS=f_/_E@z@x@<@10_U@8_V@B[_NV>E@B{b@J@-C<}_-@to_H@1K_#7@>_K@i_*@
-      @f_)&@\@bn_"_!_SA@G_8_-@F
+      @@t>@5_^_F@d"@p@2p5@=D_N_b_D{_&_"@N_b[_c_I=@7@g@U@X_*M@h_,@}@W@TN_M_BG@4_!5@2,_'@
+      @5_;_Mr_M@I_Fp@p_G_a0_l@E_-@t
     End
   End
   Object LABEL
@@ -779,7 +779,7 @@ Object FORM
     Font=440065006600610075006C0074002C0020003800
     Color=FF00000F
     AnchorType=9
-    Flags=8
+    Flags=33816584
     Hint=
     Name=3E0414043E043A0443043C0435043D0442041E0420041F04
     ControlSerial=80

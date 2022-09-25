@@ -106,18 +106,12 @@ Function Печать(СпУстановки)
         
         While З.Next(3) Do
           зН:=З.зН;
-          If флЦентральнаяБаза=0 Then
-            If зТЦ=0 Then
-              If ТНом.FindAndGoto(зН,,"зН",1)=0 Then
-                Continue;
-              EndIf;
-            ElseIf ТНом.FindAndGoto(зН.Code+"@"+Trim(зТЦ.Code),,"зН",1)=0 Then
+          If зТЦ=0 Then
+            If ТНом.FindAndGoto(зН,,"зН",1)=0 Then
               Continue;
             EndIf;
-          Else
-            If ТНом.FindAndGoto(зН.Code+"@"+Trim(З.зСк.рбПрефиксУдаленнойБазы),,"зН",1)=0 Then
-              Continue;
-            EndIf;
+          ElseIf ТНом.FindAndGoto(зН.Code+"@"+Trim(зТЦ.Code),,"зН",1)=0 Then
+            Continue;
           EndIf;
           ТЦ:=ТНом.ТЦ;
           
