@@ -201,7 +201,7 @@ Function СопоставитьШтрихкод(Данные)
   б.Parent(а);
   б.Name:=Trim(Данные);
   б.Коэффициент:=1;
-  б.Save();
+  б.Save(,,а);
 EndFunction
 
 Function ПоКнопкеЦены(aEl)

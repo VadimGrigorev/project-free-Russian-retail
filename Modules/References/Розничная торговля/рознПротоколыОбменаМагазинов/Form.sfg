@@ -7,7 +7,7 @@ Object FORM
   FormFlags=1
   Caption=
   Width=530
-  Height=525
+  Height=550
   OnOpen
     @@>@e@fxq@5_Fd1@f_.@eLy@s@s=@A@/_O@Wo@WvR'8R_1@GKu2F_bo_(z@/m_Ax*xK@X_h_a_i_R_Y_^
     @KD@~@\@~_!@=@<@<_J@dY@|@]@{p@*@M_]w@w_\._Ph\_F_A9@)@m@X@M@A@jg_7@(.@m@p@bz@&_8@
@@ -25,12 +25,12 @@ Object FORM
     @[@Q@B_X_!@f>_P_*_P_f@e@c_&@9_>@m@=L:_bVi,_^5>yC@-_WV@-Mt[w_8@W_m!~@}_2_F
   End
   OnTimerInterval=0
-  MaxControlSerial=49
+  MaxControlSerial=51
   LoadModes=0
   Object GROUPBOX
     LayerName=4D00610069006E00
     Left=5
-    Top=270
+    Top=295
     Width=525
     Height=225
     Font=440065006600610075006C0074002C0020003800
@@ -47,7 +47,7 @@ Object FORM
     Left=5
     Top=80
     Width=525
-    Height=185
+    Height=210
     Font=440065006600610075006C0074002C0020003800
     Color=FF00000F
     AnchorType=9
@@ -76,7 +76,7 @@ Object FORM
     ModuleName=4D006F00640075006C00650073005C004D006100630072006F0073005C0021043F044004300432043E0447043D0438043A0438045C001E0441043D043E0432043D044B0435041A043D043E043F043A0438042E00730066006700
     LayerName=4D00610069006E00
     Left=5
-    Top=500
+    Top=525
     Width=280
     Height=25
     Font=440065006600610075006C0074002C0020003800
@@ -156,7 +156,7 @@ Object FORM
   Object TABLE
     LayerName=4D00610069006E00
     Left=15
-    Top=290
+    Top=315
     Width=510
     Height=195
     Font=440065006600610075006C0074002C0020003800
@@ -292,7 +292,7 @@ Object FORM
   Object BUTTON
     LayerName=4D00610069006E00
     Left=290
-    Top=500
+    Top=525
     Width=90
     Height=25
     Font=440065006600610075006C0074002C0020003800
@@ -327,7 +327,7 @@ Object FORM
   Object BUTTON
     LayerName=4D00610069006E00
     Left=385
-    Top=500
+    Top=525
     Width=90
     Height=25
     Font=440065006600610075006C0074002C0020003800
@@ -527,6 +527,64 @@ Object FORM
     Name=
     ControlSerial=48
     Caption=23043404300447043D0430044F0420003704300433044004430437043A0430043A00
+    HAlign=2
+    VAlign=0
+  End
+  Object EDITBOX
+    LayerName=4D00610069006E00
+    Left=170
+    Top=262
+    Width=350
+    Height=20
+    Font=440065006600610075006C0074002C0020003800
+    Color=FF00000F
+    AnchorType=9
+    Flags=65672
+    Hint=
+    Name=23043D0438043A0430043B044C043D044B0439041804340435043D0442043804440438043A04300442043E044004
+    ControlSerial=49
+    Caption=
+    HotKey=
+    HAlign=0
+    Mask=
+    Length=50
+    AttachedButtons
+      @@>@eU@&t@,R@&@6@&R%@Y_5@&-@I!8_-"_M
+    End
+    DBSource
+      @@>@e@)@*R@)R@*@&#@(a'@)'E'@9B@3!@-@d!@+!Q_+#_/
+    End
+    OnAttachedButtons
+      @@>@e@Txes_Gt-_d_,@pm_&@9_Dh_MVF_!HCOG_Q@nqf_6@{f@|@j_I@p.Xq_>%_=@&3c@F@h_Y@^X*@b
+      @@K@sd_X^@F_d_e_E@Eg;vi_"@[_<$@E@%_U@c@E_=@=_%@j@e_l@s_S/_K_Z@/d@5@._1@9?_M}@7_/"
+      @@x_$@KW_N"@+@e@8)@5_94_D(Z_i7_*@w_m1@g)@g@)@<@y@Z7@IBs_\_K_,]_1E2@~OZ2{@O,1_U@G@
+      @=#_KGs2@?@Q_2_M@}x@^_LO_Q:@W,_?_\@Y@$@G_C@W@<@~_N_h@mhGU_[@V@HL@2_P_/n@1@P_\_P@
+      @>@d#@v_8@j_N@*@Jf@\<_T_b)@u@pc@'@%_=:@;_W-_#@U_*h_X$@[_)$n@F_j?_#@m@2_g@n@s65l@
+      @~z@'<Vx/@G_K_8F=_._8@b@vX@H_2+@'_:@'>L_-p_K.]ya_&@;@56@v_T<_kf_c_C@q_*_*_^>_9@}_
+      @dK@%@i_R#9[^@\_C_B_,r|@{@m\o@R/_&@L_[@,a6@p_F@r_-@=_8_Rh@k4@T@wIi@W@n@h@)A@'@]@:
+      @Y_<U@9@V_Z@}@V(F@.@L_V@7_X_S@?@m_'@f_CB_P0~@-@w@]qo_+o_8zM@z@l_F_38_G@S_H@h@q@C@
+      @<_MP;_P\_<_B_"ct_Z?@d_c<_V}6@D@Z@a_^@Xr@h_?C@?gX_1@r_9_l_m@,_^@s@H_Y@:f_%@f@X>7_
+      @Hf@9p_g_HM@{_B@v_I@1_Y@1Y@B@iUV@i_4@o@%@o/@M$\_=@D*@',@)[_g_b@,@y_J_6@<*_K@yS:_
+      @k-_-_J@v_Tg_X@txY![@(_K}@t[_F_\@>@$_0_:_&:U_T_g/@5S@k_Q_l_E_Z_8_=@tM-@d_X3_QYy@F
+      @mc_b_)@q@55k@%@WU_2_K_e@}@i,_h@O@x@hW_e@v@g8O@8@*@Fh_R@D@A@L@e@)_:@7_=_F_'@:_>A_
+      @G_)9@E_Gf@N;@v,r_i_*tG,_L_/@Ar@}^e@}q_(_U@1@e#_Q_g_%@=_._F@dP_d_$@,~E@,A@|_l*@Sn
+      @~_>3@s@$_M'_7_+@s_/_i;@d@&nNx$_<_._X_R_a0f@o_2_V
+    End
+  End
+  Object LABEL
+    LayerName=4D00610069006E00
+    Left=15
+    Top=265
+    Width=150
+    Height=15
+    Font=440065006600610075006C0074002C00200038002C0020004200
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=50
+    Caption=14043E043F043E043B043D043804420435043B044C043D043E04350420003F043E043B0435043A00
     HAlign=2
     VAlign=0
   End

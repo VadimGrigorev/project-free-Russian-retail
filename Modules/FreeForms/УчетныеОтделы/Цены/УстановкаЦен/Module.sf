@@ -192,7 +192,9 @@ Function УстановитьЦенуПоТипуЦен(зН,ТипЦен,Цен
   Фл:=0;
   If Ц.Find("@Parent,ТипЦен",зН,ТипЦен) Then
     If Ц.Status()=1 Then
-      Ц.Mark(0);
+      Ц.Mark(0,,зН);
+    Else
+      зН.SetTrigger(1);
     EndIf;
   Else
     Ц.New();

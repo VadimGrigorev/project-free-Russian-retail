@@ -701,7 +701,9 @@ Function PrintReceipt(спНастройки)
           аДрайвер.Summ1Enabled:=0;
           аДрайвер.PaymentTypeSign:=ФлСпособРасчета;
           аДрайвер.PaymentItemSign:=1;//Товар
-          аДрайвер.DivisionalQuantity:=?(aTab.Номенклатура.флВесовойТовар,1,0);
+          If ФФД12 Then
+            аДрайвер.DivisionalQuantity:=0;
+          EndIf;
           аДрайвер.MeasureUnit:=0;
           If аДрайвер.FNOperation()<>0 Then
             Raise "(2)FNOperation: "+аДрайвер.ResultCodeDescription;
@@ -731,7 +733,7 @@ Function PrintReceipt(спНастройки)
             EndIf;
             
             If аДрайвер.FNOperation()<>0 Then
-              Raise "(2)FNOperation: "+аДрайвер.ResultCodeDescription;
+              Raise "(3)FNOperation: "+аДрайвер.ResultCodeDescription;
             EndIf;            
             If ФФД12 Then
               аДрайвер.BarcodeHex:=ТабИСМП.Поле1;

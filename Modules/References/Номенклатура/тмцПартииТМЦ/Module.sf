@@ -59,7 +59,7 @@ Function СопоставитьШтрихкод(Данные)
   б.Parent(аП);
   б.Name:=Trim(Данные);
   б.Коэффициент:=1;
-  б.Save();
+  б.Save(,,аП);
 EndFunction
 
 

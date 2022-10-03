@@ -70,6 +70,9 @@ EndFunction
 
 Function OnAfterElementSave()
   aEl:=Form.Object;
+  If aEl.isFolder() Then
+    Exit;
+  EndIf;
   Form.оРМ.Parent:=aEl;
   Form.оОбмен.Parent:=aEl;
   Form.оУсловияПродаж.Parent:=aEl;
@@ -82,6 +85,10 @@ EndFunction
 
 Function OnBeforeElementSave()
   aEl:=Form.Object;
+  
+  If aEl.isFolder() Then
+    Exit 1;
+  EndIf;
   
   If aEl.Склад.Selected()=0 Then
     Message("Для корректной работы программы необходимо выбрать склад, закрепленный за магазином!","!");

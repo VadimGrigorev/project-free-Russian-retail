@@ -79,7 +79,7 @@ Object FORM
     Font=440065006600610075006C0074002C0020003800
     Color=FF000005
     AnchorType=13
-    Flags=136
+    Flags=8
     Hint=
     Name=3E041E0431043E044004430434043E04320430043D0438043504
     ControlSerial=11
@@ -157,10 +157,10 @@ Object FORM
     End
     HeaderColumnsData
       @T#S#R#R#R#R#R#T#T#R#TR#TR#TR#####@3CdKCdWCdVC###R#"R#R#R#R#R#R#R#R#R#S#T#SRRRR#T
-      @VU#cGwG@(G@*G@-GzG@(GxGvG@'G~G{GfC~G@#G~GfC@$GvGyGvG}G~G@'G####cGwG@(G@*G@-GzG@(
-      @GxGvG@'G~G{G##DC|CwCECwCtCyCwC|CtCxCC}CvCtCxCC}CxCEC#R#"R#R#S#R#S#S#R#R#R#S#T#
-      @SRRRR#SZW#fGvGwG@(G@1G{G{GfC@$G{G@+G@,G@(G####fGvGwG@(G@1G{G{GaG{G@+G@,G@(G##DC|
-      @CwCECwCtCyCwC|CtCxCC}CvCtCyCxCxCCEC#R#
+      @TS#cGwG@(G@*G@-GzG@(GxGvG@'G~G{GfC~G@#G~GfC@$GvGyGvG}G~G@'G####cGwG@(G@*G@-GzG@(
+      @GxGvG@'G~G{G##DC|CwCECwCtCyCwC|CtCxCC}CvCtCxCC}CxCEC#R#"R#R#S#R#S#S#R#R#R#R#T#
+      @SRRRR#TRZ#fGvGwG@(G@1G{G{GfC@$G{G@+G@,G@(GfCnCzG@#G@9GfC@$GvGyGvG}G~G@'G@(GxGoC#
+      @###fGvGwG@(G@1G{G{GaG{G@+G@,G@(G##DC|CwCECwCtCyCwC|CtCxCC}CvCtCyCxCxCCEC#R#
     End
   End
   Object LABEL

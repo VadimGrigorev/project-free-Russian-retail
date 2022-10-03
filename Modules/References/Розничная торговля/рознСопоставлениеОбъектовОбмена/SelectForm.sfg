@@ -110,6 +110,27 @@ Object FORM
       @_<6_Z@2_:@E@sZE@&@u_a:@+_*oB?_=@g_<@=_f~_M_m_#@m'@f_Q_iU_X_7F_H@)_8&@F/_*@R@Ii_A
       @_C]x_l@Z@y@c_Nc@A@4u_2@(_&@G@T_E_m&-@{_bc
     End
+    OnAttachedButtons
+      @@>@e@vy_Ks_>t5b0_e_4_/_/k_J=_h_-D@U@<@2R]_F@v@f@Lp@&_A@'@(@CD4Vr_2R@G@P_j_e@E_S_
+      @&_"_Iz+C_<V_8@A_9_(_S]_S@C_S_2_!@*oT@boNY@>H@8H_K_Q@t@eoD_*@r_$_/_E@~_?@*g@A@o@5
+      @_F@>0q_>@>@,@*@M@W_F@oH@z@P@S0@3@(\@W_W_#_i;s}_**q4@c@#4f/z15_$@J_K1_F>_'@0@X_6@
+      @Q_>V:_X^|@M_+@B$_I@z_U_-@80@5@O_G;@#@G@x_3_b@G^d-s_Q*_^_F@Y_S@SZ_*@r_BX@Y@g_>_"@
+      @G@s_E_T@Tg_1_=_/@d_L@t,@}_A=T45_#g@y@8/@g_l!_W_Z@l_E0_Q@v@[_O_bp@4@F-_G<R@D*@[@0
+      @_i@;_P3:_W@%@l\%$2@)_A@2_(G@]a_L@^a@/@U@E@7@-_,@T_S@y@C_3@Dl@dh_T_]_G@(k_P@|=_e@
+      @I_<p_)_30h@F@M_f@tE@%US@)_[@cE_/^!j#q_R_#.C(j_(h_X@n@}@[@#_V@s@b@=_0?MW@6y@|@D@k
+      @_B"@v_aru@*@v_S@U@|@y@YzY_L@f_)g0}_2_%J_F@G@C_X_%@E@4U_[_;@7_L@d@=@SU@j@*_&_0U_i
+      @_b@]U@zj@4_b_/rj_N@4@*_9_&_R@w=F_X@._"MR@=@T_4@c@Ha<iyIj@,@d_I@p@7@q@%_K_D@SE_d
+      @_l@Da[@$_-/_EC_Q_5_T-M_Z@Gb_%_R_+ST_N_?@w@x_7@1_E_&_2?@sm@p@q@^_QOe@MW_E_R_'_f@W
+      @W@)_(@?@=U_D_F_W@:@/_)_lv@-x@-_L{ri6@(y@m@e!_f@._$_5_F@a@di?@V@R_f@7@dS'@h.@C@~@
+      @&@v_i@-SY_i@U@#_8@6[_&@G_g@;@rA_5Y_Z@R@C@l@K@8+@h*@gw_X@Wx@U@6_h@X_)_S_'@x@"@[@z
+      @^@NyE@Y_N_82@hr@q_R_g_'@a_1_3_A@uq_$e_R@M_7_c:@a_F_.@^_dg@23_^@/@-_b@w@=@Dvh\@L@
+      @N@L_K@[:@q_e@LP_m@f_L@:_1l_e2_C@\@"l$]@6#@K[_;I_DK.[@H@V@b_GN_5@9n_U@I@g@^_kp@b_
+      @K5_g@pZ_k@L@|_?_+@A@q{@6_c_f@.O@97@re0;_Y@S@;_$@I@V@Fg@%_c3$_k@p@Cd.@~@YY@y_C@E
+      @_F@W8_^@Y_&@i_6?@{@#_#_%@T@~@M_F@r~@t@[@dq_[_Y7_im_:3_V_Y7*@R@D@q<_/@k@}z_d@{_F_
+      @Tj_D@7@|3_&@f@;x@2_M$@A@|_ik_]@c_H~@j_G_K@v_N_*[_Q=_P:@:=@M_k_2_Uc_f0_ltbq_/@/@9
+      @_;>_4_mT_\@}*_dr_Q4@a=_6)@u@U_Pd@$u_e:_j@hd_9@6@-@"_3@;@:@hn@s_m@Fa_I_+@S_F_)_A@
+      @w@D0_?_?@9@QP@gd]@)@5_B@^@u_[_[_mS@7PC@fQ_E@[E_;_eQ@Z_7R@l
+    End
     HeaderColumnsData
       @T#S#R#R#R#R#R#T#T#R#TR#TR#TR#####@3CdKCdWCdVC###R#"R#R#R#R#R#R#R#R#R#S#SRR#SRR#S
       @RR#]G@(GzG####@-CdWCdLCdMC##DC|CwCECwCtCyCyC}CtCvCtCyCxCyCyCEC#R#"R#R#S#R#R#S#R#
@@ -117,7 +138,7 @@ Object FORM
       @CwCtCyCyC}CtCvCtCyCxCyCzCEC#R#"R#R#S#R#S#S#R#R#R#S#T#TWR#SRR#UG@'G@-G@,G@*G{G@'G
       @@'G~GGfC@"G@(GzG####UG@'G@-G@,G@*G{G@'G@'G~GG]G@(GzG##DC|CwCECwCtCyCyC}CtCvCtC
       @yCxCyC|CEC#R#"R#R#S#R#R#S#R#R#R#R#T#SRRR#TYS#cGwG@4G{G@"G@,G####cGwG@4G{G@"G@,G#
-      @RERdSEREEEdT#DC|CwCECwCtCyCyC}CtCvCtCyCxCyC{CEC#R#
+      @RERdSEREEEdUEREEEdTEREEE#DC|CwCECwCtCyCyC}CtCvCtCyCxCyC{CEC#R#
     End
   End
   Object BUTTON

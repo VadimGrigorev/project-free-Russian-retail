@@ -30,9 +30,9 @@ Function ПриПодбореНаценок(Эл,TabNum)
     aEl.Процент:=-100;
   EndIf;
   If (TabNum<>1)And(TabNum<>2) Then
-    OpenObject(aEl,0,0);
+    OpenObject(aEl,0,0,Form.Object);
   Else
-    aEl.Save();
+    aEl.Save(,,Form.Object);
     If TabNum=1 Then
       Form.TabManual.Reload();
     Else

@@ -5,11 +5,6 @@
 
 Function РедактироватьСтроку(Номер)
   aEl:=Form.Object;
-  If Trim(aEl.ПрефиксУдаленнойБазы)<>"" Then
-    Box("Докуметы, являющиеся результатом обмена, не подлежат редактированию!",Q_STOP);
-    Exit;
-  EndIf;
-  
   aList:=List.Create();
   aList.Add(aEl,"Документ");
   aList.Add(Номер,"Номер");

@@ -379,7 +379,7 @@ Function глЗапретитьИзменениеДокумента(aEl,Тихо
   If pos("DB.DOC.",TypeStr(aEl))=0 Then
     Exit 1;
   EndIf;
-  If ((Trim(aEl.ПрефиксУдаленнойБазы)<>"")Or(aEl.ФлагОбмена=9))And(not глРаботаетРобот) Then
+  If (aEl.ФлагОбмена=9)And(not глРаботаетРобот) Then
     If Тихо=0 Then
       Box("Документы, выгруженные из удаленной базы, изменяются только на месте (после чего автоматически попадают в центральную)!",Q_STOP);
     ElseIf Тихо=1 Then
@@ -673,14 +673,14 @@ Function глПроверкаРазрешенияРедактирования(aE
     EndIf;
   EndIf;
   
-  If (ФлФорма=0)And(Trim(aEl.ПрефиксУдаленнойБазы)<>"") Then
-    If (not глРаботаетРобот)Or(not глПользователь.общиеАдминистратор) Then
-      If not ФлБезФормы Then
-        Form.DisableControls(1);
-      EndIf;  
-      Exit 0;
-    EndIf;
-  EndIf;
+  //If (ФлФорма=0)And(Trim(aEl.ПрефиксУдаленнойБазы)<>"") Then
+  //  If (not глРаботаетРобот)Or(not глПользователь.общиеАдминистратор) Then
+  //    If not ФлБезФормы Then
+  //      Form.DisableControls(1);
+  //    EndIf;  
+  //    Exit 0;
+  //  EndIf;
+  //EndIf;
   
   If (aEl.ФлагОбмена=9)And(not глРаботаетРобот) Then
     If not ФлБезФормы Then
