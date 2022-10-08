@@ -1,0 +1,227 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var ТекПапка Export;//=Вид
+
+Function Изменения(Фл)
+  Form.IsChanged(1);
+  Form.bSave.isDisabled:=1-Фл;
+EndFunction
+
+Function ЕслиИзменения()
+  If Form.IsChanged() Then
+    If AskQuestion("Вы действительно хотите выйти из папки, теряя все изменения по сопоставлению?",Q_QUESTION+Q_YESNO,R_YES)=R_NO Then
+      Exit 0;
+    EndIf;
+  EndIf;
+  Form.IsChanged(0);
+  Exit 1;
+EndFunction
+
+Function НайденРодитель(Вид,ВнешнийКод2,ByRef аРодитель)
+  //ВнешнийКод2: <Вид><#31><+ если папка><Код><#30><Полный код и вид родителя> -- вид родителя присутствует только, если родителей больше 1
+  If Struct.Ref(Вид).Parents.Count()=0 Then
+    Exit 1;
+  EndIf;
+  TearStr(ВнешнийКод2,Chr(30));
+  ВнешнийКод:=TearStr(ВнешнийКод2,Chr(30));
+  If Pos(Chr(31),ВнешнийКод)=0 Then
+    If Struct.Ref(Вид).Parents.Count()<>1 Then
+      Exit 0;
+    EndIf;
+    ВнешнийКод:=Struct.Ref(Вид).Parents(1).Name+Chr(31)+ВнешнийКод;
+    ВидРод:=Struct.Ref(Вид).Parents(1).Name;
+  Else
+    ВидРод:=ВнешнийКод;
+    ВидРод:=TearStr(ВидРод,Chr(31));
+  EndIf;
+  ВнешнийКод2:=ВнешнийКод+?(ВнешнийКод2<>"",Chr(30)+ВнешнийКод2);
+  Протокол:=Form.оПротокол.Value;
+  
+  бЭл:=Ref.рознСопоставлениеОбъектовОбмена;
+  Result:=бЭл.FindEx(3,,"~(@Parent=Протокол)And(ВнешнийКод=ВнешнийКод2)And(not isEmpty(Объект))");
+  If Result Then
+    аРодитель:=бЭл.Объект;
+  EndIf;
+EndFunction  
+
+Function Сохранить()
+  MainTab:=Form.MainTab.Value;
+  aTot:=MainTab.Size();
+  If Form.IsChanged()=0 Then
+    Exit;
+  EndIf;
+  оПротокол:=Form.оПротокол.Value;
+  BeginTransaction();
+  Try
+    MainTab.Select();
+    aNum:=0;
+    While MainTab.Next() Do
+      If IsEmpty(MainTab.элЭлемент) Then
+        Continue;
+      EndIf;
+      aEl:=MainTab.элЭлемент;
+      ВнешнийКод:=aEl.ВнешнийКод;
+      ВнешнийКод2:=aEl.ВнешнийКод;
+      Вид:=TearStr(ВнешнийКод,Chr(31));
+      ФлГруппа:=?(Left(ВнешнийКод,1)="+",1,0);
+      If MainTab.элСопоставление=1 Then
+        аРодитель:=0;
+        If not НайденРодитель(Вид,aEl.ВнешнийКод,аРодитель) Then
+          Message("Ошибка поиска родителя "+aEl.ВнешнийКод+", элемент не будет сохранен!","!");
+          Continue;
+        EndIf;
+        аЭл:=DB("Ref."+Вид);
+        аЭл.New(ФлГруппа);
+        If глЕстьРеквизитСправочника("Name",Вид) Then
+          аЭл.Name:="...Синхронизация...";
+        EndIf;  
+        If Struct.Ref(Вид).Parents.Count()>0 Then
+          аЭл.Parent(аРодитель);
+        EndIf;
+        аЭл.Save(0,0,2);
+      ElseIf not IsEmpty(MainTab.элСопоставление) Then
+        аЭл:=MainTab.элСопоставление;
+      EndIf;
+      бЭл:=Ref.рознВременнаяТаблицаОбъектовОбмена;
+      If бЭл.Find("~(@Parent=оПротокол)And(ВнешнийКод=ВнешнийКод2)And(Режим<100)") Then
+        бЭл.Объект:=аЭл;
+        бЭл.Save();
+      EndIf;
+      бЭл:=Ref.рознСопоставлениеОбъектовОбмена;
+      If not бЭл.Find("~(@Parent=оПротокол)And(ВнешнийКод=ВнешнийКод2)") Then
+        бЭл.New();
+        бЭл.Parent(оПротокол);
+        бЭл.Объект:=аЭл;
+        бЭл.ВнешнийКод:=ВнешнийКод2;
+        бЭл.Save(0,0,2);
+      ElseIf бЭл.Объект<>аЭл Then
+        бЭл.Объект:=аЭл;
+        бЭл.ВнешнийКод:=ВнешнийКод2;
+        бЭл.Save(0,0,2);
+      EndIf;
+      aTot:=aTot-1;
+      aNum:=aNum+1;
+    EndDo;
+  Finally
+    If IsTransactionActive() Then
+      CommitTransaction();
+    EndIf;
+  EndTry;
+
+  Form.bSave.isDisabled:=1;
+  Message("Было сохранено "+aNum+" сопоставлений","I");
+  Form.IsChanged(0);
+  Exit aTot;
+EndFunction
+
+
+Function ПодобратьВарианты(Эл,аРодитель,Вид,ВнешнийКод)
+  //<Вид><#31><+ если папка><Код><#30><Полный код и вид родителя> -- вид родителя присутствует только, если родителей больше 1
+  ВнешнийКод:=TearStr(ВнешнийКод,Chr(31));
+  ФлГруппа:=?(Left(ВнешнийКод,1)="+",1,0);
+  СпВар:=List.Create();
+  aEl:=DB("Ref."+Вид);
+  
+  //По наименованию
+  If (not isEmpty(Meta.Ref(Вид).Props("Name")))And(Trim(Эл.Name)<>"") Then
+    СпВар:=aEl.Load(0,"~(Name=Эл.Name)"+?(not IsEmpty(аРодитель),"And(@Parent=аРодитель)")+?(ФлГруппа,"And(@IsFolder=1)"));
+    For i:=1 To СпВар.Size() Do
+      СпВар.SetName(i,Str(СпВар[i])+", "+СпВар[i].Code);
+    EndDo;
+  EndIf;
+  
+  Exit СпВар;
+EndFunction
+
+
+Function ОбновитьТаблицу(флНачало=0,ТекЭлемент="")
+  MainTab:=Form.MainTab.Value;
+  ТекСтолбик:=MainTab.SelectedColumn;
+  If ТекЭлемент="" Then
+    If MainTab.SelectedLine>0 Then
+      ТекЭлемент:=MainTab["Наименование",MainTab.SelectedLine];
+    Else
+      ТекЭлемент:="";
+    EndIf;
+  EndIf;
+  оПротокол:=Form.оПротокол.Value;
+  
+  Form.IsChanged(0);
+  MainTab.Lock();
+  Try
+    MainTab.ClearLines();
+    If оПротокол.Selected()=0 Then
+      Exit;
+    EndIf;
+    
+    If ТекПапка="" Then
+      //Загрузка всех видов
+      ТЗ:="зВид:=Ref.рознВременнаяТаблицаОбъектовОбмена.Вид;
+      |Condition Ref.рознВременнаяТаблицаОбъектовОбмена.@Parent=оПротокол;
+      |Condition (Ref.рознВременнаяТаблицаОбъектовОбмена.Режим<100)And(IsEmpty(Ref.рознВременнаяТаблицаОбъектовОбмена.Объект))And(Ref.рознВременнаяТаблицаОбъектовОбмена.Данные<>"""");
+      |Group зВид;";
+      З:=Query.Create();
+      aTab:=З.Execute(ТЗ,2);
+      aTab.Select();
+      While aTab.Next() Do
+        MainTab.AddLine("Наименование",aTab.зВид);
+        MainTab.Icon(MainTab.CurLine,"Icon",98);
+      EndDo;
+    Else
+      MainTab.AddLine("Наименование",ТекПапка);
+      MainTab.Icon(MainTab.CurLine,"Icon",99);
+      MainTab.BackgroundColor(MainTab.CurLine,,_CLR_BTNFACE);//"Наименование"
+      aList:=Ref.рознВременнаяТаблицаОбъектовОбмена.Load(0,"~(@Parent=оПротокол)And(Режим<100)And(IsEmpty(Объект))And(Вид=ТекПапка)And(ВнешнийКод<>"""")And(Данные<>"""")");
+      For i:=1 To aList.Size() Do
+        aEl:=aList[i];
+        //Для элементов с родителями, убедимся, что родитель выбран
+        //<Вид><#31><+ если папка><Код><#30><Полный код и вид родителя> -- вид родителя присутствует только, если родителей больше 1
+        ВнешнийКод:=aEl.ВнешнийКод;
+        Вид:=TearStr(ВнешнийКод,Chr(31));
+        аРодитель:=0;
+        If not НайденРодитель(Вид,aEl.ВнешнийКод,аРодитель) Then
+          Continue;
+        EndIf;
+        
+        //Ищем доп. реквизиты
+        Стр:=aEl.Данные;
+        Стр:=TearStr(Стр,Chr(2));
+        TearStr(Стр,Chr(1));
+        TearStr(Стр,Chr(1));
+        TearStr(Стр,Chr(1));
+        TearStr(Стр,Chr(1));
+        TearStr(Стр,Chr(1));
+        Стр:=TearStr(Стр,Chr(1));//Доп. информация
+        
+        ВнешнийКод:=ReplaceCharacters(ВнешнийКод,Chr(30)+Chr(31),"/@");
+        
+        MainTab.AddLine("Наименование,ВнешнийКод,элЭлемент,ДополнительнаяИнформация",aEl.Name,ВнешнийКод,aEl,Стр);
+        MainTab.Icon(MainTab.CurLine,"Icon",122);
+        
+        //Варианты
+        MainTab.элВарианты:=ПодобратьВарианты(aEl,аРодитель,Вид,aEl.ВнешнийКод);
+        MainTab.оВар:=?(MainTab.элВарианты.Size()=1,MainTab.элВарианты[1],?(MainTab.элВарианты.Size()=0,"",""+MainTab.элВарианты.Size()+" вариантов"));
+      EndDo;
+    EndIf;
+    
+    If isEmpty(ТекЭлемент) Then
+      If MainTab.Size()>0 Then
+        MainTab.SelectedLine:=1;
+      EndIf;  
+    ElseIf MainTab.FindAndGoto(ТекЭлемент,,"Наименование")>0 Then
+      MainTab.SelectedLine:=MainTab.CurLine;
+    ElseIf MainTab.Size()>0 Then
+      MainTab.SelectedLine:=1;
+    EndIf;
+    If флНачало Then
+      MainTab.SelectedColumn:=2;
+    ElseIf ТекСтолбик>0 Then
+      MainTab.SelectedColumn:=ТекСтолбик;
+    EndIf;
+    Form.bSave.isDisabled:=1;
+  Finally
+    MainTab.Unlock();
+  EndTry;
+EndFunction

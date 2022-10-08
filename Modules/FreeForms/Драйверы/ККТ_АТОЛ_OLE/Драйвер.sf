@@ -89,11 +89,7 @@ Function DriverConnect(спНастройки)
         If аДрайвер.writeDateTime()<>0 Then
           Стр:="Время в ККТ сильно отличается от времени компьютера (на "+Abs(GetPeriod(ТекДата,ТекДата0,5) div 1000)+" с.), однако изменить время не удалось ("+
             аДрайвер.errorDescription+"), рекомендуется изменить время в ККМ вручную!";
-          If IsExecutingInSeparateProcess Then
-            Result:=Chr(1)+Стр;
-          Else
-            Box(Стр,Q_WARNING);
-          EndIf;
+          Box(Стр,Q_WARNING);
         EndIf;
       EndIf;
     EndIf;
@@ -660,13 +656,20 @@ Function PrintReceipt(спНастройки)
       EndIf;
     
       //Закрытие чека
-      аДрайвер.closeReceipt;
+      If IsExecutingInSeparateProcess Then
+        аСтарый:=InterProcessServerTimeout(0);
+      EndIf;
+      Try
+        аДрайвер.closeReceipt;
+      Finally
+        If IsExecutingInSeparateProcess Then
+          InterProcessServerTimeout(аСтарый);
+        EndIf;
+      EndTry;
       While аДрайвер.checkDocumentClosed()<>0 Do
-        If not IsExecutingInSeparateProcess Then
-          If AskQuestion("Потеря связи с ККТ или ФН при закрытии документа. Описание ошибки: "+аДрайвер.errorDescription+". Попытайтесь исправить ошибку и нажмите повторить "+
-              "или нажмите отмену, если исправить ошибку не удается (в этом случае, чек может быть отменен)!",Q_WARNING+Q_RETRYCANCEL)=R_RETRY Then
-            Continue;
-          EndIf;
+        If AskQuestion("Потеря связи с ККТ или ФН при закрытии документа. Описание ошибки: "+аДрайвер.errorDescription+". Попытайтесь исправить ошибку и нажмите повторить "+
+            "или нажмите отмену, если исправить ошибку не удается (в этом случае, чек может быть отменен)!",Q_WARNING+Q_RETRYCANCEL)=R_RETRY Then
+          Continue;
         EndIf;
         Break;
       EndDo;        
@@ -686,10 +689,8 @@ Function PrintReceipt(спНастройки)
       EndIf;
       If not аДрайвер.getParamBool(аДрайвер.LIBFPTR_PARAM_DOCUMENT_PRINTED) Then
         While аДрайвер.continuePrint<0 Do
-          If not IsExecutingInSeparateProcess Then        
-            If AskQuestion("Невозможно напечатать чек. Ошибка: "+аДрайвер.errorDescription+"! Не продолжать печать (нет) или повторно попытаться напечатать (да)?",Q_QUESTION+Q_YESNO)=R_YES Then
-              Continue;
-            EndIf;
+          If AskQuestion("Невозможно напечатать чек. Ошибка: "+аДрайвер.errorDescription+"! Не продолжать печать (нет) или повторно попытаться напечатать (да)?",Q_QUESTION+Q_YESNO)=R_YES Then
+            Continue;
           EndIf;
           Break;
         EndDo;

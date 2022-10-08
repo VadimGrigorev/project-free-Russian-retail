@@ -92,10 +92,6 @@ Function OnOpen()
   If isEmpty(Param) Then
     Exit;
   EndIf;
-  If DBVar.ЦентральнаяБаза=1 Then
-    Message("Обработка не предназначена для запуска в центральной базе!","!");
-    Exit;
-  EndIf;
 
   КДата:=BegOfDay(Date());
   НДата:=BegOfMonth(КДата-93);

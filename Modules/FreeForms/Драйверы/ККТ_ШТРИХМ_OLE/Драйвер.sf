@@ -133,22 +133,14 @@ Function DriverConnect(спНастройки)
           If аДрайвер.SetDate()<>0 Then
             Стр:="Время в ККТ сильно отличается от времени компьютера (на "+Abs(GetPeriod(ТекДата,ТекДата0,5) div 1000)+" с.), однако изменить время не удалось, возможно требуется закрыть смену и войти в режим продавца снова! "+
               "Ошибка установки даты в ККМ: "+аДрайвер.ResultCodeDescription;
-            If IsExecutingInSeparateProcess Then
-              Result:=Chr(1)+Стр;
-            Else
-              Box(Стр,Q_WARNING);
-            EndIf;
+            Box(Стр,Q_WARNING);
           Else
             аДрайвер.TimeStr:=GetTime(Date());
             аДрайвер.Time:=аДрайвер.TimeStr;
             If аДрайвер.SetTime()<>0 Then
               Стр:="Время в ККТ сильно отличается от времени компьютера (на "+Abs(GetPeriod(ТекДата,ТекДата0,5) div 1000)+" с.), однако изменить время не удалось, возможно требуется закрыть смену и войти в режим продавца снова! "+
                 "Ошибка установки времени в ККМ: "+аДрайвер.ResultCodeDescription;
-              If IsExecutingInSeparateProcess Then
-                Result:=Chr(1)+Стр;
-              Else
-                Box(Стр,Q_WARNING);
-              EndIf;
+              Box(Стр,Q_WARNING);
             EndIf;
           EndIf;
         EndIf;
@@ -390,6 +382,21 @@ EndFunction
 //СуммаЗакрытияАванса -- при операции закрытия аванса (11), сумма указывает на часть суммы документа, которая ушла на закрытие аванса
 //ЭлектроннаяСумма+ДругаяБезналичнаяСумма должны быть меньше или равны параметру Сумма
 Function PrintReceipt(спНастройки)
+
+  Function _ЗакрытьЧек(аДрайвер)
+    Result:=0;
+    If IsExecutingInSeparateProcess Then
+      аСтарый:=InterProcessServerTimeout(0);
+    EndIf;
+    Try
+      Exit аДрайвер.FNCloseCheckEx()=0;
+    Finally
+      If IsExecutingInSeparateProcess Then
+        InterProcessServerTimeout(аСтарый);
+      EndIf;
+    EndTry;
+  EndFunction
+
   ФлОтменитьЧек:=0;
   Try
     аДрайвер:=спНастройки["Драйвер"];
@@ -825,11 +832,11 @@ Function PrintReceipt(спНастройки)
     
     Try
       //Закрытие чека
-      If аДрайвер.FNCloseCheckEx()<>0 Then
+      If not _ЗакрытьЧек(аДрайвер) Then
         While 1 Do
           If аДрайвер.ResultCode=-1 Then
-            If _Or(IsExecutingInSeparateProcess,AskQuestion("Отсутствует связь с кассовой машиной! Исправьте соединение и нажмите ОК или нажмите отмену для отмены закрытия чека!",Q_QUESTION+Q_OKCANCEL)=R_CANCEL) Then
-              Raise ?(IsExecutingInSeparateProcess,"FNCloseCheckEx: Отсутствует связь с кассовой машиной","FNCloseCheckEx: Чек был отменен оператором");
+            If AskQuestion("Отсутствует связь с кассовой машиной! Исправьте соединение и нажмите ОК или нажмите отмену для отмены закрытия чека!",Q_QUESTION+Q_OKCANCEL)=R_CANCEL Then
+              Raise "FNCloseCheckEx: Чек был отменен оператором";
             EndIf;
             аДрайвер.Beep;
             If аДрайвер.ResultCode=0 Then
@@ -838,7 +845,7 @@ Function PrintReceipt(спНастройки)
                 Raise "GetShortECRStatus: "+аДрайвер.ResultCodeDescription;
               EndIf;
               If аДрайвер.ECRMode=8 Then
-                If аДрайвер.FNCloseCheckEx()<>0 Then
+                If not _ЗакрытьЧек(аДрайвер) Then
                   If аДрайвер.ResultCode=-1 Then
                     Continue;
                   Else
@@ -862,13 +869,13 @@ Function PrintReceipt(спНастройки)
           Break;
         EndIf;
         If аДрайвер.ECRAdvancedMode=1 Then //Нет бумаги, печать не начиналась
-          If _Or(IsExecutingInSeparateProcess,AskQuestion("В ККМ отсутствует бумага для печати. Вставьте кассовую ленту и нажмите ОК или нажмите отмену для отмены закрытия чека!",Q_QUESTION+Q_OKCANCEL)=R_CANCEL) Then
-            Raise ?(IsExecutingInSeparateProcess,"ECRAdvancedMode: Отсутствует бумага для печати","ECRAdvancedMode: Чек был отменен оператором");
+          If AskQuestion("В ККМ отсутствует бумага для печати. Вставьте кассовую ленту и нажмите ОК или нажмите отмену для отмены закрытия чека!",Q_QUESTION+Q_OKCANCEL)=R_CANCEL Then
+            Raise "ECRAdvancedMode: Чек был отменен оператором";
           EndIf;
         ElseIf аДрайвер.ECRAdvancedMode=2 Then //Нет бумаги во время печати
           While 1 Do //Ожидание вставки бумаги
-            If _Or(IsExecutingInSeparateProcess,AskQuestion("В ККМ закончилась бумага для печати во время печати чека. Вставьте кассовую ленту и нажмите ОК или нажмите отмену для отмены закрытия чека (не рекомендуется)!",Q_QUESTION+Q_OKCANCEL)=R_CANCEL) Then
-              Raise ?(IsExecutingInSeparateProcess,"(2)ECRAdvancedMode: Отсутствует бумага для печати","(2)ECRAdvancedMode: Чек был отменен оператором");
+            If AskQuestion("В ККМ закончилась бумага для печати во время печати чека. Вставьте кассовую ленту и нажмите ОК или нажмите отмену для отмены закрытия чека (не рекомендуется)!",Q_QUESTION+Q_OKCANCEL)=R_CANCEL Then
+              Raise "(2)ECRAdvancedMode: Чек был отменен оператором";
             EndIf;
             If аДрайвер.GetShortECRStatus()<>0 Then
               Raise "(3)GetShortECRStatus: "+аДрайвер.ResultCodeDescription;

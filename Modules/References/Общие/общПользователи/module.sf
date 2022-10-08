@@ -69,13 +69,21 @@ Function OnBeforeElementSave()
   
   aEl.ПринтерПоУмолчанию:=Form.ОснПринтер.Value.Get(Form.ОснПринтер.Value.SelectedLine);
   
-  If СтароеРабочееМесто<>aEl.РабочееМесто Then
-    глЗагрузитьДрайверы();
-  EndIf;
-  
   If СтарыйШтрифтПоУмолчанию<>aEl.стрШрифтПоУмолчанию Then
     If aEl=глПользователь Then
       GlobalDefaultSystemFont(aEl.стрШрифтПоУмолчанию);
+    EndIf;
+  EndIf;
+  
+  If aEl=глПользователь Then
+    If СтароеРабочееМесто<>aEl.РабочееМесто Then
+      глЗагрузитьДрайверы();
+    EndIf;
+    
+    If глПользователь.Магазин.Selected()<>0 Then
+      MainWindowCaption("Розница - "+глПользователь.Магазин);
+    Else
+      MainWindowCaption("Розница");
     EndIf;
   EndIf;
   
