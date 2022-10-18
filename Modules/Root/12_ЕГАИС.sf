@@ -3080,7 +3080,11 @@ Function глМаркиЗарегистрироватьДокумент(зДок
       Else
         аЭл.флСостояние:=?(Режим=1,0,?(Режим<>2,2,3));
       EndIf;
-      аЭл.Save(,,аПартия);
+      If аПартия.IsLocked()=0 Then
+        аЭл.Save(,,аПартия);
+      Else
+        аЭл.Save();
+      Endif;
     EndIf;
     Exit аЭл;
   EndFunction
@@ -3254,7 +3258,11 @@ Function глМаркиЗарегистрироватьДокумент(зДок
           зЭл.Folder(элЯщик);
         EndIf;
         If Режим=5 Then
-          зЭл.Save(,,аТемп.Партия);
+          If аТемп.Партия.IsLocked()=0 Then
+            зЭл.Save(,,аТемп.Партия);
+          Else
+            зЭл.Save();
+          Endif;
         Else
           зЭл.Save();
         EndIf;
@@ -3294,7 +3302,11 @@ Function глМаркиЗарегистрироватьДокумент(зДок
           зЭл.Folder(элЯщик);
         EndIf;
         If Режим=5 Then
-          зЭл.Save(,,аТемп.Партия);
+          If аТемп.Партия.IsLocked()=0 Then
+            зЭл.Save(,,аТемп.Партия);
+          Else
+            зЭл.Save();
+          EndIf;
         Else
           зЭл.Save();
         EndIf;
@@ -3456,8 +3468,10 @@ EndFunction
 
 Function OnSystemStart()
   //Запуск отдельной задачи-потока обмена с ЕГАИС
-  If _And(ProgramMode()=1,глТипОтдельногоПроцесса="",DBVar.ЗапускатьЗадачуЕГАИСВВизуальномКлиенте=1) Then
+  If _And(ProgramMode()=1,глТипОтдельногоПроцесса="",not IsSlowConnection(),DBVar.ЗапускатьЗадачуЕГАИСВВизуальномКлиенте=1) Then
     глСервисныйПоток:=Mutex.ExecuteFunctionInSeparateThread("глФункцияСервисногоПотока",0);
+  ElseIf IsSlowConnection() Then
+    Message("Для медленных подключений сервисный поток для выполнения заданий и обмена с ЕГАИС не будет запущен!","I");
   EndIf;  
 EndFunction
 
