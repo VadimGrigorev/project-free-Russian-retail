@@ -25,6 +25,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=8
   LoadModes=0
+  CompileModule=
   Object TABLE
     LayerName=4D00610069006E00
     Left=5
@@ -54,17 +55,18 @@ Object FORM
       @@>@e_a@)l@*_3@+l@+_;@,!!+@]"@v
     End
     OnAfterNewElementCreated
-      @@>@e@Txqo_.d1@f_.@e%0@I@i8S_2+@0q@3lq@c@mA@.@\_B7_j(@I6%@v_N(_l@D_K@d@3@c@oqy_-@
-      @}]@Z_E@b_e_J_9@oP@;@b_3p_%_^J@hT@\@=:_O_eP_Q:_mQ@y:_N@D_/@p@8@5:0_NmqT_Y@.!<@0g
-      @_:@:@uY_\#_c@m@t@r_h@O_d@}&_m)_$I@>z_O_2@OV1*W@HA@\LV2_eFe@2!@R@'@g@y{4@t_3_d@=@
-      @W_,@w_H]@z@"_h@r@g_G_9_X*@}.o@W_8_I]_%@R@%@w@D_'@1_U6@6@>_=@{W@X_c@u@(x_^'_5@s8
-      @@O1i_C_h@w_C_J@]O_T{@^g_>D@F@Z@i_)_O@a_8_O_/r_/_79;_6@MC+tQ@#u@3@k@X_P@;@h_P$_F_
-      @*_5<zr_g_Q@N_%_h@y!_f=8@p_/_;@6@^@z_%?@jCm_Li_\@{6O@bq@#f_6_Z_G@P@W@?$@1@=bx@a_'
-      @~_V_9@Np_9_P@:@H_"^W@$&_J@J@T)}@^@q@A@y_9^_.k_SH_J4@F@0Iwa(@e_3H@sq_l^_,-6_&_B@J
-      @_D_.&@V@*b@x&@^2V@h@H_4L@RT@^_!@f@6S@J8@14y_7@fgxa@n@*@hUJxl_Cx@i@<:_NS_d&z_[_"_
-      @G2@._,@-_K\2@v_&_&_X@AW_*e_bg@:@P@;@*@7@=@5@0@<_Wc_P,@p_hKk@{@/@k@9r@e_M@U@zG_l@
-      @.@jj_c@2_KO_ArRi_W_h_^M_._%@D_W2_G_e@G@u_1_d@#_]_L@L@M_Q;@z?@W_m@wh@;@%_*@k_[?_d
-      @_P;_k_"_^@8_A_3_V_1_1_b(@t@/@i@q
+      @@>@e@Tx@#@1_Gd1_H@N@D+%~)VQ_0_e@ad_!@L5_4@Y_je@Y;_&X@[_l@Hfv~@.@f@W@m_b_[@=@,s
+      @@{Nm@RZ_i@<@~_"]U_&@p@w@:@+O<@b_3Y@?@Y@?@W6@E_m_3@n_j_/_mQ@u._jU_f@5_Q@ti_H@O@
+      @ZUK@:@uC_Bf_i_F_>@\_9@'@L_V@*@k_$'_\rW@M@D@U_D_e@>_d_k_[_L_U_.4@/']@/@*9_-_[F@J_
+      @[;M_0@8_-~g_X3]cj%@t_^_X_F@(@/_S\@y@Z@h@6H_?2z@M@.@g@E@vI_f_Qb_+_&|@x@G_.m@2@BD@
+      @d~_1@m@'@#M@|@$_+g54@t@B@a_i|@U@i@%{\@oi_cHg@E_:@zJ_k_/r_/@S|9_6_)C+@XQ_Kw@3@v@P
+      @x@?@F_3E@}_*@Z@B_X_'_^_&0@;.@yf_L_a@"_'3,_._I_/_V@1h@MF@J@\_+L_d@}@*V@;@PN@A@,>C
+      @_ab_d_)cx@a_'@(_c_kC@Z@g@C_D_N@3r@T@1_,_i_d}@K_7oxw@u@7:2@i_^1_[@Pc_"_9@}_:"I@8@
+      @O@2_W@F@<@yd_1@P_AB_d@._6EM_S@~_R@{@K_R<R_E@-_<_PT@{/_CU@>@7Ru_c_H@?h_Ywn_d6@J~@
+      @L_jd&@0{_+@h_N@"@._g@$_%>@j_B@Cr@v3_<_h_&_6@s{_Q.@k>@jn@so_a_i@B@9@,_"_lu@E@l@ts
+      @@8P_:q@:_0@PU^X_!_/@h@2_A@.@h_Y_:]_$Up_<@j_)_j_5R_[_7@0@m_daB@t@\@D{=@u_3@y@C@K@
+      @5+_PQM_<@$Y@.@r_i'@-L@T_lY_a=_Ks@N@?_$@|_$A!@3_2RQ@H_<_2_h_G_)hk@q_2_Hr_)f_9@X_1
+      @@]_2sq@x_X_'@ZQ_^_I_Z2@|4_EP_Z_/@W@p_d_Z3SYz_K_G@F"@"_b@w_L
     End
     OnBeforeEditCell
       @@>@e@Txq@5_>d1@D@N[CCCP@6@t_M_?n@n_g@.O]r_YZ<@~Gn@q_g_T@foeB@j5_<D_,_*_S_8In_=@

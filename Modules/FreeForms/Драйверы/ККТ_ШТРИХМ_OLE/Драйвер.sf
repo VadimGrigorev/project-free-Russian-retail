@@ -14,7 +14,7 @@ Function DriverInit(спНастройки)
     Стр:=аДрайвер.DriverVersion();
     Стр:=TearStr(Стр,".");
     If Number(Стр)<5 Then
-      Exit "Неверная версия драйвера! Должна быть не менее 5!";
+      Exit "Неверная версия драйвера! Должна быть не менее 5, рекомендуется не менее 5.17!";
     EndIf;
     спНастройки["Драйвер"]:=аДрайвер;
   Except
@@ -594,6 +594,8 @@ Function PrintReceipt(спНастройки)
         "КИЗ имеет в базе Сервера СКЗКМ статус не совместимый с запрашиваемым изменением",
         "В списке вложения обнаружены ошибки");
         
+      аДрайвер.FNMarkingClearBuffer();
+        
       ТабИСМП.Select();
       While ТабИСМП.Next() Do
         //Преобразование в hex
@@ -610,6 +612,7 @@ Function PrintReceipt(спНастройки)
         //4 -Часть товара, подлежащего обязательной маркировке средством идентификации, возвращена
         //255 -Статус товара, подлежащего обязательной маркировке средством идентификации, не изменился
         аДрайвер.ItemStatus:=?((аТип0=2)Or(аТип0=5),3,1);
+        аДрайвер.CheckItemMode:=0;
         аДрайвер.DivisionalQuantity:=0;
         //1023: для марок упаковки при продаже единицы может записываться как "1/x", где x -- количество в упаковке
         If аДрайвер.FNCheckItemBarcode2()<>0 Then
@@ -617,6 +620,9 @@ Function PrintReceipt(спНастройки)
         EndIf;
         Фл:=аДрайвер.CheckItemLocalResult;
         Фл2:=аДрайвер.KMServerErrorCode;
+        If аДрайвер.FNAcceptMarkingCode()<>0 Then
+          Raise "FNAcceptMarkingCode: "+аДрайвер.ResultCodeDescription;
+        EndIf;
         If (Фл=2)or(Фл2>1) Then
           If Фл=2 Then
             Фл:=Max(аДрайвер.CheckItemLocalError,0);

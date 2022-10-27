@@ -26,6 +26,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=11
   LoadModes=0
+  CompileModule=
   Object TABLE
     LayerName=4D00610069006E00
     Left=5

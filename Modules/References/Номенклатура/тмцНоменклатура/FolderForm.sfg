@@ -27,6 +27,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=42
   LoadModes=0
+  CompileModule=
   Object GROUPBOX
     LayerName=4D00610069006E00
     Left=5
@@ -161,82 +162,6 @@ Object FORM
   Object BEVEL
     LayerName=4D00610069006E00
     Left=15
-    Top=115
-    Width=465
-    Height=10
-    Font=440065006600610075006C0074002C0020003800
-    Color=00000000
-    AnchorType=11
-    Flags=65544
-    Hint=
-    Name=
-    ControlSerial=23
-    Shape=0
-    Style=0
-  End
-  Object EDITBOX
-    LayerName=4D00610069006E00
-    Left=300
-    Top=142
-    Width=180
-    Height=20
-    Font=440065006600610075006C0074002C0020003800
-    Color=FF000005
-    AnchorType=11
-    Flags=65544
-    Hint=
-    Name=4004310411043004370430041A043B043E043D04380440043E04320430043D0438044F0421044204400443043A044204430440044B04
-    ControlSerial=24
-    Caption=
-    HotKey=
-    HAlign=0
-    Mask=
-    Length=0
-    AttachedButtons
-      @@>@eU@&t@,R@&@6@&R%_>_5@&_T_+@&@K_-U%@|@'@C!@7!%^
-    End
-    DBSource
-      @@>@e@)@*R@)R@*@&#@(aB_6)l;!@zC@WV(_^@a9!K@[#@Q
-    End
-    OnAttachedButtons
-      @@>@e@Tyq@5_>d1@f_.@e@WZD_cj_F4@\n@)_&m4_X_D@P@33)@/@)@q_#E@.e)@jz@ki_V_:_S_8_G@;
-      @_NZj@sNY_&_W_g@>_a_R_8_!Q@D@r_Pz@8@?_+_ay@w_Q@p@C@^<K_PQs_Z_\_Y@$@A_^n@o\_>C_J@\
-      @j;_T~@^_D.@~I_$@,;_N@}_;S_d_2@y@D@T@p@D@E@I@Z)IEq@z@V@=D|_PS@Ew@e@g_OW@V@A@5@7D@
-      @v_L8_+Ui_'YZ_&_?%@g4_'K@u.@#@Sy@owhP@H_M_$^g@#@D@?m_/@~@n@?]Fw@Fbdx@t_1Nz_/3_MO@
-      @yn1@3_"@Mn_Oq_HG|_$"s@V@O@~_m|_co@?M@3@e@H_B_l@^_\@D!_>@=@O_=_Y@F@O~T@;_g._A+-@*
-      @_/@0_A'.@]$_/@5@-@{;_.@T_8@]@d_+_2+@z@h@'@=_-)w@w@#_X@S@C_!@7@5:@v_P@d_j#_h@1_L_
-      @[j@E@i[@zI@A"_7G@(5Z@r^_"K_d@z~@]@S~@c_"@s@d_i@4_B@s@a@yw@n_[@c_>@P@?_2_b@w@\@(@
-      @X@v@h_S_J_._Y@u_&S@3@,b@A_5b?@RiM_4_2_3_W@?_3_%w_:e@qA@O@|_L_9@rG_;&@|_Ap=@W<_i_
-      @NH@l_\7@\_:@4@~<(&6_Y_h_d(_7_I@)@{@E@Ja@N@ko@P@b@gu@D@M_._^@M_VL_9@q_k_m@/_^@s2]
-      @@nf_F@f@z:_!_#G@9F_h_9U@{_R_??_Z_7@1]@Bd._c@*_'_U@^_O@vd@La[_O_'@K_D_0@,_$@FU_#
-      @_J_G@:}_(@'g:_I6@K@fw_<6@z,KI!['_)@|/@9@}@r_O@/@O@h@<U_R_L_a5@t"_'_Y_l_E_9_8_-@|
-      @@16X@t@R}@%_-_a@n_j_L@Du_KJ@r@Ce_9#@F_K_6@"P_PE_)@E@,_Z_F<8&@{cD_a2xZ_MO@0W_F_I
-      @;@i@tg@<_A@7_Y_RR@,_8$@uq@f,@V@5_B@q_J@[6_h@?ZG_>&_S_9@,@i@m@+@V_V:d_Y"_S]_B@#@M
-      @q_*@]@5_N@5@6_.@X_.@0p_A@S^M66_O_Z@J@#@:_g@U@#@#_.@K_k@v2j_%@f_e_m@i@P@Cl_PQ1a@
-      @'_B@Dbv@F_2@x_'@(@0@nV_]@3_[M]_Ym@I/@M@B->@'@Ac@jko}_6#\_$_-@f@g@lso@u_C@a@3_C_G
-      @[_&@0>@<_i@F_A4_Kg
-    End
-  End
-  Object LABEL
-    LayerName=4D00610069006E00
-    Left=10
-    Top=145
-    Width=285
-    Height=15
-    Font=440065006600610075006C0074002C00200038002C0020004200
-    Color=FF00000F
-    AnchorType=9
-    Flags=8
-    Hint=
-    Name=
-    ControlSerial=25
-    Caption=230434042E0020003104300437043004200034043B044F0420003A043E043F04380440042E00200041044204400443043A044204430440044B0420003F043E0434043F0430043F043E043A043A00
-    HAlign=2
-    VAlign=0
-  End
-  Object BEVEL
-    LayerName=4D00610069006E00
-    Left=15
     Top=170
     Width=465
     Height=10
@@ -341,26 +266,6 @@ Object FORM
       @f@K4_Z@q@7_0&@-_b_\Ri_7@Q@M@].YN@mz@=n0@\V_M@gyw'_V@f_W_j_a@b_3f@*@n[_.@SS@V@2_
       @0@fgKkE_8@a0@~QM@:Ahv@w6zb@~@O:@A^|[N6_9_k@^](_e@tv?Wg@SS_-/0^@7g@O@PH4@/@t_8_J@
       @ka\V@A@;_5@%_F_:_m_G_Ek@G@C_\_f!_3@^D>
-    End
-  End
-  Object CHECKBOX
-    LayerName=4D00610069006E00
-    Left=20
-    Top=125
-    Width=465
-    Height=15
-    Font=440065006600610075006C0074002C0020003800
-    Color=FF00000F
-    AnchorType=9
-    Flags=8
-    Hint=
-    Name=44043B041E0431043D043E0432043B044F0442044C04180437041F04350440043804440435044004380439043D044B044504110430043704
-    ControlSerial=41
-    Caption=1E0431043D043E0432043B044F0442044C0420004D043B0435043C0435043D0442044B0420004D0442043E04390420003F0430043F043A043804200032042000460435043D044204400430043B044C043D043E0439042000310430043704350420003F043E0420004004300441043F043804410430043D0438044E04200028003F043504400438043E04340438044704350441043A0438042900
-    HotKey=
-    HAlign=2
-    DBSource
-      @@>@e@)@*R@)R@*@&#@(aB_6)l;!@z2@J[x=!K_7#@W
     End
   End
 End

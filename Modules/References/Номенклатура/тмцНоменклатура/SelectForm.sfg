@@ -26,8 +26,9 @@ Object FORM
     @@p@8@~C0_Ji@n@\@NDr_[@7n_S_Q*_h_K_i_NT@{@-@g@l@Ay@Z_H@YORA_MIA_Cw_2Q@=_d2;
   End
   OnTimerInterval=0
-  MaxControlSerial=10
+  MaxControlSerial=11
   LoadModes=0
+  CompileModule=
   Object TABLE
     LayerName=4D00610069006E00
     Left=5
@@ -205,6 +206,33 @@ Object FORM
       @V@6_cV@#_d@3_\@+H@aS0@XCH_[@f_&s_kf_g@u_V._h@>H@=@u}'@l_b_#Gb_Nn_4_V_M"Q_0_m^_K_
       @k_M_Q@UG]@'@%:@)@$GK_Z@q@I@+_9_*_I@^q@q_J_1@*_#M[_5@;@osvTU_Y|@{@(_%/@:_2[7wcE_O
       @_[>_jk@7u_Y,#_d@+@1
+    End
+  End
+  Object BUTTON
+    LayerName=4D00610069006E00
+    Left=710
+    Top=295
+    Width=20
+    Height=20
+    Font=440065006600610075006C0074002C0020003800
+    Color=00000000
+    AnchorType=12
+    Flags=2
+    Hint=
+    Name=
+    ControlSerial=10
+    Caption=
+    HotKey=46003300
+    Picture=0
+    OnClick
+      @@>@e@;@Yss_-d1_0_K@'rH@$_j!@m_b%*@0eMq@zBG@W1dP_J_/@J2@Sj@Lh_]_i_i_GO@FD_<V_&U_i
+      @@,_d_8@d@f@g_W@"wO_A_>_&@$_c@mY&@sJ@{@wG@]}_K@4@u@T_8_D@),_?_0_B@3@*[_<_D@s_P@g_
+      @^>_NW@W'l@Z@B@P@n7_E@v._,>g(_1%@d~_6_2+@u_8b"@P_Y@c@\_,_>$m@Cr@i-@MM@]@)_K@g>@Jw
+      @_A@H@l@-@-\_B@XP_3Q@l_.@/@<_h@9<@9@<@E_9b_c@0@(1@pJ_.@9@?.@t@q@s@]_*_m@qS@5_\@n@
+      @~v@+]_m@S_"_g_?@I_T@c@D@ha_B+@2@w*@<@w@5_J_:i_W@Qxw_f,_k_=p$_:@z_+@w_\b^@<@I@Q?_
+      @F@4@C_:@L_%@Y_CA@z_"@P@m@&U@\_UT_!"@Eh@N@)Tk_m@,7_(G@d_J@k.@1_0{m@a@-+@E*?@k@8_K
+      @@5_Y0_A@jk_!@A_.@#_KgaU_K_k_I@B@(G_f<_?_4_M@D_L_Y_V@*_H_U&@]@n_*4_\@\_k@}@Q@/h@*
+      @8_a[xz[@&/@&@3_^n@w_[_H_m$@wf@T+a@D@0_7_(@s_N_X_B0>@X@"_/
     End
   End
 End

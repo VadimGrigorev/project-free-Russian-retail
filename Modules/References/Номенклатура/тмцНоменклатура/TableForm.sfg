@@ -23,6 +23,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=11
   LoadModes=0
+  CompileModule=
   Object TABLE
     LayerName=4D00610069006E00
     Left=5
@@ -269,7 +270,7 @@ Object FORM
     Height=20
     Font=440065006600610075006C0074002C0020003800
     Color=00000000
-    AnchorType=9
+    AnchorType=12
     Flags=2
     Hint=
     Name=

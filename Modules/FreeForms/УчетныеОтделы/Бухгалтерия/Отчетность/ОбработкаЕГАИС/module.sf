@@ -4096,6 +4096,154 @@ Function ПоказатьПростойОтвет(Имя,Текст)
   Тч.Show(Текст,,1);
 EndFunction
 
+//Тб: НоменклатураЕГАИС (сумма свойств из таблицы остатков),Списать (количество в единицах ЕГАИС)
+Function ВыполнитьСписаниеПоТаблицеСписанияРег2(Тб,флПоказатьОтвет=1,ByRef РегИдСписания="")
+  оМагазин:=Form.оМагазин.Value;
+  оРегИд:=оМагазин.КодТочкиЕГАИС;
+  Идент:="СПИСАНИЕ2_"+FormatDate(Date(),"YYYYmmddhhttss");
+  пДата:=пДата2(Date());
+
+  //TypeWriteOff: "Пересортица", "Недостача", "Уценка", "Порча", "Потери", "Проверки", "Арест", "Иные цели", "Реализация", "Производственные потери"
+  Стр="<?xml version=""1.0"" encoding=""UTF-8""?>"+_NEWLINE+
+    "<ns:Documents Version=""1.0"""+_NEWLINE+
+    "xmlns:xs=""http://www.w3.org/2001/XMLSchema"""+_NEWLINE+
+    "xmlns:ns=""http://fsrar.ru/WEGAIS/WB_DOC_SINGLE_01"""+_NEWLINE+
+    "xmlns:pref=""http://fsrar.ru/WEGAIS/ProductRef_v2"""+_NEWLINE+
+    "xmlns:oref=""http://fsrar.ru/WEGAIS/ClientRef_v2"""+_NEWLINE+
+    "xmlns:awr=""http://fsrar.ru/WEGAIS/ActWriteOffShop_v2"""+_NEWLINE+
+    "xmlns:ce=""http://fsrar.ru/WEGAIS/CommonEnum"">"+_NEWLINE+
+    "<ns:Owner><ns:FSRAR_ID>"+оРегИд+"</ns:FSRAR_ID></ns:Owner><ns:Document><ns:ActWriteOffShop_v2><awr:Identity>"+Идент+"</awr:Identity>"+_NEWLINE+
+    "<awr:Header><awr:ActNumber>"+Идент+"</awr:ActNumber><awr:ActDate>"+FormatDate(Date(),"YYYY-mm-dd")+"</awr:ActDate><awr:TypeWriteOff>Реализация</awr:TypeWriteOff></awr:Header>"+
+    "<awr:Content>"+_NEWLINE;
+  
+  Тб.Select();
+  While Тб.Next() Do
+    //НоменклатураЕГАИС,Списать
+    //НоменклатураЕГАИС: НоменклатураЕГАИС+Chr(1)+ЕмкостьКрепостьКодАП+Chr(1)+КонтрагентИННКодЕГАИС+Chr(1)+КодЕГАИС;
+    КодЕГАИС:=Тб.НоменклатураЕГАИС;//пИНН+"@"+пКПП+"@"+пКодЕГАИСКонтрагент+"@"+пКонтрагент;
+    НоменклатураЕГАИС:=TearStr(КодЕГАИС,Chr(1));
+    ЕмкостьКрепостьКодАП:=TearStr(КодЕГАИС,Chr(1));//пЕмкость+"@"+пКрепость+"@"+пКодАП+"@"+флИмпорт+"@"+пУпаковка;
+    КонтрагентИННКодЕГАИС:=TearStr(КодЕГАИС,Chr(1));
+    КодЕГАИС:=TearStr(КодЕГАИС,Chr(1));
+    
+    пИНН3:=TearStr(КонтрагентИННКодЕГАИС,"@");
+    пКПП3:=TearStr(КонтрагентИННКодЕГАИС,"@");
+    пПрКодЕГАИС:=TearStr(КонтрагентИННКодЕГАИС,"@");
+    пКонтрагент:=TearStr(КонтрагентИННКодЕГАИС,"@");
+    пЕмкость:=Number(TearStr(ЕмкостьКрепостьКодАП,"@"));
+    пКрепость:=Number(TearStr(ЕмкостьКрепостьКодАП,"@"));
+    пКодАП:=TearStr(ЕмкостьКрепостьКодАП,"@");
+    флИмпорт:=Number(TearStr(ЕмкостьКрепостьКодАП,"@"));
+    пУпаковка:=Number(TearStr(ЕмкостьКрепостьКодАП,"@"));
+  
+    If флИмпорт=0 Then
+      пПроизводитель:="<pref:Producer>"+?(пКПП3<>"","<oref:UL>","<oref:FL>")+"<oref:INN>"+пИНН3+"</oref:INN>"+?(пКПП3<>"","<oref:KPP>"+пКПП3+"</oref:KPP>")+"<oref:ClientRegId>"+пПрКодЕГАИС+"</oref:ClientRegId>"+_NEWLINE+
+          "<oref:FullName>"+EncodeXMLString(пКонтрагент)+"</oref:FullName>"+
+          "<oref:ShortName>"+EncodeXMLString(Left(пКонтрагент,64))+"</oref:ShortName>"+
+          "<oref:address><oref:Country>643</oref:Country><oref:RegionCode>"+Left(пИНН3,2)+"</oref:RegionCode><oref:description>Адрес</oref:description></oref:address>"+?(пКПП3<>"","</oref:UL>","</oref:FL>")+"</pref:Producer>"+_NEWLINE;
+    ElseIf флИмпорт=1 Then
+      //TODO: 643
+      пПроизводитель:="<pref:Producer><oref:FO><oref:ClientRegId>"+пПрКодЕГАИС+"</oref:ClientRegId>"+_NEWLINE+
+          "<oref:FullName>"+EncodeXMLString(пКонтрагент)+"</oref:FullName>"+
+          "<oref:ShortName>"+EncodeXMLString(Left(пКонтрагент,64))+"</oref:ShortName>"+
+          "<oref:address><oref:Country>643</oref:Country><oref:description>Адрес</oref:description></oref:address></oref:FO></pref:Producer>"+_NEWLINE;
+    Else
+      //TODO: 643
+      пПроизводитель:="<pref:Producer><oref:TS><oref:ClientRegId>"+пПрКодЕГАИС+"</oref:ClientRegId>"+_NEWLINE+
+          "<oref:FullName>"+EncodeXMLString(пКонтрагент)+"</oref:FullName>"+
+          "<oref:ShortName>"+EncodeXMLString(Left(пКонтрагент,64))+"</oref:ShortName>"+ //<oref:TSNUM></oref:TSNUM>
+          "<oref:address><oref:Country>643</oref:Country><oref:description>Адрес</oref:description></oref:address></oref:TS></pref:Producer>"+_NEWLINE;
+    EndIf;
+
+    пЛ:="<pref:Capacity>"+Trim(FormatNumber(пЕмкость,0,"",4))+"</pref:Capacity>";
+    If пУпаковка=0 Then
+      пЛ:="";
+    EndIf;
+    СтрПродукт:="<pref:Type>АП</pref:Type>"+_NEWLINE+
+         "<pref:FullName>"+EncodeXMLString(НоменклатураЕГАИС)+"</pref:FullName>"+_NEWLINE+
+         "<pref:AlcCode>"+Trim(КодЕГАИС)+"</pref:AlcCode>"+пЛ+"<pref:AlcVolume>"+Trim(FormatNumber(пКрепость,0,"",3))+"</pref:AlcVolume>"+_NEWLINE+
+         "<pref:ProductVCode>"+пКодАП+"</pref:ProductVCode><pref:UnitType>"+?(пУпаковка=1,"Packed","Unpacked")+"</pref:UnitType>"+_NEWLINE+
+         пПроизводитель;
+    
+    Стр:=Стр+"<awr:Position><awr:Identity>"+Тб.CurLine+"</awr:Identity><awr:Product>"+СтрПродукт+_NEWLINE+
+      "</awr:Product><awr:Quantity>"+Тб.Списать+"</awr:Quantity></awr:Position>";
+  EndDo;
+  Стр:=Стр+"</awr:Content></ns:ActWriteOffShop_v2></ns:Document></ns:Documents>";
+    
+  СпОтвет:=List.Create();
+  If not ВыполнитьЗапросЕГАИС(Стр,"opt/in/ActWriteOffShop_v2",5,1,СпОтвет) Then
+    Exit 0;
+  EndIf;
+  аКодОтвета:=СпОтвет.GetByName("Результат");
+  аКодОтвета:=UpperCase(Replace(аКодОтвета,"-",""));
+  If аКодОтвета="" Then
+    Message("Внутренняя ошибка ответа (ответ пустой) (3)!","!");
+    Exit 0;
+  EndIf;
+  
+  //Ожидаем ответ сервера
+  Result:=1;
+  стрУдалить:="";
+  Try
+    СтрРезультат:="";
+    Индекс:=0;
+    Фл:=0;
+    While 1 Do
+      Фл:=ЦиклОжиданияОтветаНаЗапрос(аКодОтвета,СтрРезультат,Индекс);
+      If not Фл Then
+        Continue;
+      EndIf;
+      
+      If Pos("<Conclusion>Rejected</Conclusion>",СтрРезультат)>0 Then
+        Message("Сервер отклонил документ списания!","!");
+        Тч:=Text.Create();
+        Тч.AddString(СтрРезультат);
+        Тч.Show("Результат",,1);
+        стрУдалить:=аКодОтвета;
+        Result:=0;
+        Exit;
+      ElseIf (Pos("<Conclusion>Accepted</Conclusion>",СтрРезультат)>0)And(Pos("<OperationResult>Rejected</OperationResult>",СтрРезультат)>0) Then  
+        If флПоказатьОтвет Then
+          Тч:=Text.Create();
+          Тч.AddString(СтрРезультат);
+          Тч.Show("Результат - Ошибка",,1);
+        EndIf;
+        РегИдСписания:="";
+        If Pos("<RegID>",СтрРезультат)>0 Then
+          TearStr(СтрРезультат,"<RegID>");
+          РегИдСписания:=TearStr(СтрРезультат,"</RegID>");
+        EndIf;
+        стрУдалить:=аКодОтвета;
+        Break;
+      ElseIf (Pos("<Conclusion>Accepted</Conclusion>",СтрРезультат)>0)And(Pos("<OperationResult>Accepted</OperationResult>",СтрРезультат)>0) Then  
+        If флПоказатьОтвет Then
+          Тч:=Text.Create();
+          Тч.AddString(СтрРезультат);
+          Тч.Show("Результат - Успешно",,1);
+        EndIf;
+        РегИдСписания:="";
+        If Pos("<RegID>",СтрРезультат)>0 Then
+          TearStr(СтрРезультат,"<RegID>");
+          РегИдСписания:=TearStr(СтрРезультат,"</RegID>");
+        EndIf;
+        стрУдалить:=аКодОтвета;
+        Break;
+      EndIf;
+      Фл:=0;
+    EndDo;  
+  Finally
+    If not ВыполнитьЗапросЕГАИС(стрУдалить,"opt/in/",8,1) Then
+      Exit;
+    EndIf;
+  EndTry;  
+    
+  If not Фл Then
+    Message("Не удалось получить ответ сервера или внутренняя ошибка (3)!","!");
+    Exit 0;
+  EndIf;
+  
+  Exit 1;
+EndFunction
 
 Function ВыполнитьСписаниеПоТаблицеСписания(Тб,флПоказатьОтвет=1,ByRef РегИдСписания="")
   оМагазин:=Form.оМагазин.Value;
@@ -4981,7 +5129,13 @@ Function ВывестиОтчетОстаткам(Файл1,Файл2,флТип
     EndIf;
     
     Тб:=aList.GetByName("Тб");
-    ВыполнитьСписаниеПоТаблицеСписания(Тб);
+    Тб2:=aList.GetByName("Тб2");
+    If Тб.Size()>0 Then
+      ВыполнитьСписаниеПоТаблицеСписания(Тб);
+    EndIf;
+    If Тб2.Size()>0 Then
+      ВыполнитьСписаниеПоТаблицеСписанияРег2(Тб2);
+    EndIf;
     Exit;
   EndIf;
 EndFunction

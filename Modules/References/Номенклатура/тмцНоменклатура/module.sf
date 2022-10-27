@@ -162,7 +162,7 @@ Function ПоказатьЕдиницы(Эл)
 EndFunction
 
 
-Function СопоставитьШтрихкод(Данные)
+Function СопоставитьШтрихкод(Данные,ФлТолькоНайти=0)
   аН:=0;
   If глНайтиПартиюПоКодуМарки(Данные,аН) Then
     Box("Штрихкод закреплен за маркой, принадлежащей партии ТМЦ "+аН.Parent()+" ("+аН.Parent().Code+")!",Q_INFORMATION);
@@ -174,16 +174,20 @@ Function СопоставитьШтрихкод(Данные)
   Фл:=глНайтиТМЦПоШтрихКоду(Данные,аН);
   If Фл>0 Then
     If аН.DBName()="тмцПартииТМЦ" Then
-      Box("Штрихкод "+Trim(Данные)+" уже зарегистрирован за партией ТМЦ "+аН+" ("+аН.Code+")!",Q_WARNING);
+      Box("Штрихкод "+Trim(Данные)+" зарегистрирован за партией ТМЦ "+аН+" ("+аН.Code+")!",Q_WARNING);
       OpenObject(аН,0,1);
       Exit;
     EndIf;
   
     Form.MainTab.PositionOnElement(аН);
-    Box("Штрихкод "+Trim(Данные)+" уже зарегистрирован за ТМЦ "+аН+" ("+аН.Code+")!",Q_WARNING);
+    Box("Штрихкод "+Trim(Данные)+" зарегистрирован за ТМЦ "+аН+" ("+аН.Code+")!",Q_WARNING);
     Exit;
   EndIf;
   If IsEmpty(Form.MainTab.SelectedElement) Then
+    Exit;
+  EndIf;
+  If ФлТолькоНайти Then
+    Box("Штрихкод "+Trim(Данные)+" в базе не найден!",Q_STOP);
     Exit;
   EndIf;
   If Form.MainTab.SelectedElement.isFolder() Then
