@@ -278,7 +278,7 @@ EndFunction
 Function глНайтиТМЦПоШтрихКоду(Штрихкод,ByRef Эл,флТихо=1) Export
   Эл:=0;
   а:=Ref.тмцШтрихкоды;
-  If а.Find("Name",Штрихкод) Then
+  If а.Find("Name,@Status",Штрихкод,0) Then
     Эл:=а.Parent();
     Exit ?(а.Коэффициент=0,1,а.Коэффициент);
   EndIf;

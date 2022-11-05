@@ -1,75 +1,85 @@
-Layer Main
+FormatVersion=1
+Layer 4D00610069006E00
   isVisible=1
   isActive=1
 End
 Object FORM
   FormFlags=1
-  Caption=Административные деления
+  Caption=100434043C0438043D04380441044204400430044204380432043D044B0435042000340435043B0435043D0438044F04
   Width=670
   Height=375
   OnTimerInterval=0
   MaxControlSerial=4
   LoadModes=0
+  CompileModule=
   Object BUTTON
-    LayerName=Main
+    LayerName=4D00610069006E00
     Left=5
     Top=350
     Width=90
     Height=25
-    Font=Default, 8
+    Font=440065006600610075006C0074002C0020003800
     Color=00000000
     AnchorType=12
     Flags=8
     Hint=
     Name=
     ControlSerial=2
-    Caption=Закрыть
+    Caption=170430043A0440044B0442044C04
     HotKey=
     Picture=0
     OnClick
-      @@>@eW_1e+@It1'_L_(_L>_l@+f_V"@"+@3ah@}@ONCQ_j3@o@M@?_8@qs~@O5_A_-_A_e_Q@?@;K_W_O
-      @_l@K@T<}@%@J@r;@'@}_G3@a3@m_U_hO\@BJ@R_i_7h_T(@M@>@]_K-@5ss_=R@Hag_I_I&_l,u_W@+_
-      @5_N@._C@"_:}}Y_Y@j@O@lQ@}<p(
+      @@>@e@#@V_6+_-R1i_[_N@w%_mCo&@3@t1.@v@/@vee@Q_h2_Nf@C5_b_m_,@d@O<*Ug_9_7=@Y=[r@>D
+      @_L@UM_9_#_,@&@K@IO>a_"@"@|z_c_5@]'@v_V@S>Y_V~@UW]_A_g_S4@X_$_3v@B@UG,?_$8@V@Mjj@
+      @p~@{n_(Q@t@\0D@]M@L@^I@O_#V@)_L@+|J@k_k@=@V@M_f@sj@U_+-g-@yg@V8?_3_=@5@A_'@7e@\\
+      @A@j_b<@p
     End
   End
   Object TABLE
-    LayerName=Main
+    LayerName=4D00610069006E00
     Left=5
     Top=5
     Width=665
     Height=340
-    Font=Default, 8
+    Font=440065006600610075006C0074002C0020003800
     Color=FF000005
     AnchorType=15
     Flags=16520
     Hint=
-    Name=MainTab
+    Name=4D00610069006E00540061006200
     ControlSerial=3
-    AttachedButtons=0#0@10001#0###@10003#0###@10004#0###@10006#0###@10007#2###@10012#0###@10028#0###@10026#2###@10031#0###
     HotKey=
     Folders=0
+    AttachedButtons
+      @@>@eU@&t@,R@&@6@&R%@YB@.)_RM@JCf_?9@t@q*zuU@u@k_Rd@g2@c@qC|%@#@v2@J&zuUNH9@l_#8!
+      @s@D3,
+    End
     DBSource
-      @@>@e@)VU@*T_?U@{@&#!&_F"X
+      @@>@e@)@*R@)R@*@&#@(a'E',B,!,@}"X
     End
     Filters
-      @@>@e@9)/@7-*.@,T@*@{@z$!5@f#_?
+      @@>@e@9@&)@,)@'@6%_NtB@R@P_,1@O@39_X9!K\#_?
     End
     InitialSortString
-      @@>@e_ao_7q_A'!&o"@v
+      @@>@e_a@)l@*_3@+l@+_;@,!!+@]"@v
     End
     OnAfterEditCell
-      @@>@e@3@Y_K@1_GR1_2_K$_gA@w@E@{Cc@%_>@ntf'@Dl(@#_E_&_CJ@3_+@7k_N_+_l_(_-@&@)R_!ce
-      @@7@l~_]@V@R@v@:_8@M_&@>@Y4@-:@d_+_B_U@:_h_H{@p@t_C@%_E@p$@N@S_&_k@j_>C@]&_hT@,@7
-      @_V_=_8s_1B_,}LZU@i~O_X+_#_Ti_H_K'_#1@(_3D"_T@)@}@o2_:B@,@9_V,?@l@dQ@|W_f=%@f&_j
-      @K&?@6lh@S_=@\N@?_N_>@8@r@$_m_5@(HKuL_Uo@o!P@+@'@s_\@I&_#o@f@~x_X@6_=_$S_Y@1_=@N@
-      @Cx_MP.df@F&N8_-a[@z)@:5@Nn-_;<_V7_&@3_)@G@O_,N.@y#q_Q@^HY5_m@T@/q*_Xk6_)@i@R-_'@
-      @O@w_QSz_P@j@i@N_f_+@K^J@g,Ln_,@9;i9_ZF@5@X@hD_,@(}ze@h_^_h@>@t_L}t@L9@Z_4_?@8@S_
-      @._Oa#_9@(\g_M_O_N@x@t@%_P_<_Y_1@$@c_)h|@L9@q_-@5-_fj_(@a_k_Lv_:3@+_1.^@k_*n@.C}
-      @@s@Y@V_6@l_X@V@&@g:(_L_R?_j@XL_$_m@W_5G@|@1@~_FQ@5_2@l~_:=_F@^_R_G_F@1@(@XM@N_b_
-      @&7:2_G[P@^_9'_\_K@O_9@vW>_E_S_R@O@}@~_a_>@${@J_6<@(@^o!@Y~w_lz_i@I_'@|_7M@k@%@U@
-      @NE_(@6<6.d@Zc_8Zz_M_V@Zm_?@<_,_B@T@Z_1?@^_[_Z*@h@7@Ek_(_?@>@7@k@/(C!aT@b@a_Ch_Cb
-      @%:@>x@<Ex@m@7A@x?xU@E@^y#c@im_-A@+_*,@S@r@CJ-9_7}@W_e@I@2@j_'@W:4m@<F6?_Y5@s@zO
-      @@0@t_I_H@B_%_[@N_9@4_<@~_i@-@J_HP@u@(_l.@y@z_l_?
+      @@>@e@\y_K@5_>d-_d_.aC_]R**@K@K_3_^@}n@y@ocf@|@mm@d@*Op@#<*H_J,O@n@4g@1@X_f_a_g_
+      @Xo_=_jL)@f@s@e@D_!_[_a@-@h_G@oXG_bdC_k@ia@v_U@PH@}@k._dS@mO@]e@-Vv@)@+_OYw@#@+@r
+      @@L_%@I@*M@Jf6@q/@}@X@8B_"@&_i?@t@s@F(q8@c@H_^C_&@n)@#_j@MZ<f_^@'@5t!@R!_i@V@y@)_
+      @i%\_)_(0_E@\@O@)@e@=,@p*@2@3@;@Hw(v@K@Z@U_^@y@h#@He@U_X:wF@g@4L@T_\.&_8@9@A'7_F_
+      @bz@8@}wNb_'W_du@s@-%@CQ_7@8_b2@<?_N@]@|r@[o}_H._Y_+_R>O_,_aO|@#C_R@'S@%I_\_^1eE
+      @@f@)@589@7_+@e@]_f_2_c)F@^@,r~vSM@xi_E_G"s'_g@I_)E_"'@Y@)I_"_C~(@7T_j@%@H@Co_*@G
+      @_H@.|_X_aj@40FL{_E@Y@Q_fv_k@0b@]@*_+W_m!q@[_N@O_?@;O_>B@+_#Q@?_g_=G@+@]@RJ@%m@:@
+      @w@[_Zz_)@/~_T@h@H@Q@H_O~_b:@QI_P@}g@,_b@B@R@U_A\ta_,_-_e@U@n_&@a@F_Z_=@R_*x_k@9
+      @C_!Q_c@q@{_1_[@Q_O_1@8@N@^@=_jf@0@.d;)@]s_;@/@Ej@8UE@"d_%@[@4@U_<_0z@T@+_8@\@E_$
+      @/VmE_.@S_#@;%@7@p"_]o_H@[@z_i@5p=@=@P@?@{G8_]@o_b)_)_[_U@e_R_;@4_\7@4_\_k'_g@Rp@
+      @cW@D@^*@}3@VWN_C@y_E@ZI_f@wR@h@S_m@O2_.@Y@B_d?X,_D@6V@hp_Xg_fr@yU_L@BI@=@6@C_9t@
+      @)a_:_Y:W@9_^4_FGD@x_,_S._Z_K_L_b@u@,_8_k@)n=U_I@b_;@?@?_b_X@tU_4_'@t_#_:_L4l_"x_
+      @<>@C_W9@$@J_c_)\@X@U@b@j@kg_/R<@9_7_B@"@0_(g@K_4_6@m8_T@hh_J@x@\_9j@g@r_jH|_>g@
+      @D@)@?@z@ATr_=@$T_3@L@h&_W1b@^_U@C_S_l_O@^@k@%xB@f_4_[_D@]@#X8_b5\@:@*D@D6_N@B@c@
+      @8@>~_M@y_7_.$@0_'_2_"_2@|U@F@^@]@gL_^L$@bQ_2Z_Ly_X@?{_%_)@E<@x*_k@]@F_0_h_U%@X{@
+      @I@q@C_B@m@x_V@s_^A@>f_U@"
     End
     HeaderColumnsData
       @T#S#R#R#R#R#R#T#T#R#TR#TR#TR#####@3CdKCdWCdVC###R#"R#R#R#R#R#R#R#S#R#S#SRR#SRR#S

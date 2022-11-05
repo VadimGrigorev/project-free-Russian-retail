@@ -7,36 +7,39 @@ Object FORM
   FormFlags=1
   Caption=12044B0431043504400438044204350420004204400435043104430435043C044B043904200034043E043A0443043C0435043D044204
   Width=630
-  Height=315
+  Height=335
   OnOpen
-    @@>@e_I{}@1_Gd1@g@N@DL_bO_;t_Fhm@%@(_3CKz_Y_F@]@5IW_)n@1_^vnl@9@}'IK@P$_Y_*_[Y@|@
-    @{/orL@')5@l@)@=@,_S_i_d@d_E@#_g@G/@.hY_#@E_<G@g'_Ytq_A@\@J@t@p@2@+@s@j_V@k_QJ@J;
-    @@s@sN_bXy2_Y=@C_e_\_X_Ki@V@T@g@I@8_<PiD_D_#L@yy_;@8_M@5t6_e@Y@&_]_T2@A_F@y_C_M_
-    @<wQ_U&_D>_;@cLkN@S1@S@)@U@U_f@=^@KD@(Y@&@x@t@]@V@*DjA@5@S@31_:_[a_\L_-@0(U@q@q@D
-    @h_Y_>O@f_<&@T_]_'@nK>_M@Ek_CTk$_%@a@O@/_5@q@o_ezh_*m@S@/@Wi[_=@|YJ0@t_W_O@L6L@Q@
-    @~L-@s'@h?@A@a@'*@e=_,@7F$@c]_G>@%@Rs_L@=@N_W~@WZ@1U@c@G_Q@T_2@'@G_e,_D@p_b:_g_'
-    @@p(_'_8_/@=?@\@b&@cS@g@R@Bq9@/]U@|a_X@s_T}1_c@.@^_?@XY@N@+~@z@U@/U@,E@(_J@t@W'_
-    @#@[E@~@=JN@s9_Y@kQ@B_)@:P@2_4_=@"_:@]x@._,_6z@5@r_lm[@|@L8U@<@*H_MN@V@mIQ?&_4@3@
-    @8@T_aN_B@H@x@z=}UEs@\@H_f@=3:@7@x&P@?@"qW@%@7_!_7_"M@$a@%_G?N~s@D@K_mtD@{?@N@gb
-    @6_b_Z@RH@C&@b=d_I*@0@1@S_S@=@}_*@i@o@,@(ck@+_IE4[L_i_OZ@9_#@Q@Q@\J@rW_$(@1@y+_j
-    @.^O@b@D@P@"_P@5@IJUh@4"_]3JU_H@J@q_UD@E@n@3_F@M@5O_R@-@s@3_hj@S9@u@h@p_'@|T@>@T_
-    @"^_h@:_9p@5_(F_OQ_e_8b@Fk^_%9_aC_R_*p@L@p_1@*@+_a'@9\@[_c_0@B@8T@A_HIM_F@]_P@U{@
-    @.@)*_B@k@Nj_V_=6z_M1ya_.@|@R@Q_X_+@h@=_Bc@q_0@.@K@=_l@r@o_:@Z?5@^_(_6@\_A_F_d@u
-    @q@'_09@Cr@U_U@p@e@w@S@,_3_Z@[@<@4_U@7_O@|sAg_W_>"_a,um_"_"@*Y@T_2_K_/_#T@k}_b@x_
-    @F_Vlm+O_K@Jr_P@:@B@GY_[;_"_^@E._i_9#@J@e_D_:fIFU?_6P@9@N@f@2@M_i@e_,P_j_WT@o_'@(
-    @'^_O4_E_QH9]_09@,@'@+x_B@E@<@+_Y@-{_B_9@m@uz_W_]@~_k_bb_#@c@~_7_&_),cU@8TW2_c(_)
-    @_T@w@q.j_7@w>\0_._h@nk@C,@e_O9_NL@a_[u_,{@C+@;Q_m$@#_N@O@/_W@*AE_g<@/_9V8_<K~@b_
-    @,@0@q@r{@87@8@fU{@U@d@}_=@k@2_N@)@IaD@O_8_K_9@d@aW@h@zE@y_X@t_g+@)0@U\!_-_[tA@F_
-    @I@f@k_I_2c@Pw@.T_1@$@9h._b@:_\_k=|@U@7_[_LYh@x@L_mf_$h@2_B_(_N@D_K@w3@f@z_G,_3@A
-    @I@D_'/@}7@'j<@q,{@2_%>@C@L_l&@5@s_a@K
+    @@>@e_I{_G@4_Fd1@f@N@D@s_?_"l@T@kX@7_=8@W@8S/P%R@=@YB@4y@R_^vyu_FFOLmLf@m_!@%_KU@
+    @|'_G_D@"@R5@rfX_J_I_E[@-_:_X_7_Fk@:h>_%_2_c@Z@4_\@5t@S+@s@q@2@".@+Kw@~y>O:xv@?@
+    @\d@5}@n_<@U_._d!_*_4_l@D_b|_TmK(_Yp_+@J@LM@N@z=~/_X._5_O@g2N@g_Ies6_Oi|V_?o@A"@<
+    @k@}@j@{@H2j_\_RSk_X@1Pf;_)o9Q@s_59_4@K@VH@g9_GB@$_K]_L_Q@Ky-M_3@rg@>@3_=$@#_<W@
+    @;_]_md@D\_0@Dd@=@{j$_%@a_\@/_5@u@{_i@[j_*m@S@/t@I_N@m{@5t3@l_99_:@xt~j_a_-@y@k+@
+    @y@/@i@N:@,_+_47=D@i_$_a_#a_B_Na_f.@6_I*3k@3la@y_'@=[@}_\@C@T_]b@Dd^A_U*sg@z>@?@
+    @+@,@g@,@S_S_L@$1j@A@e@b}P@<@$_bp@P_h6@}U_V_?@#_.V@v|_2@+E@,_,@)_=_ICG@6_4'_d_J@z
+    @@y_3@)_!@J_)_A_O@n@)@'m@[j@Az@*@N@o_H@.W@o_VA6Uo@>S@)z_N@V@8k@A@Y@(@X@Y_Dj_[@7@
+    @$_0H_\W@]O[_>@7y@/@P@DO@Y2_eH_+G@P@t@uj:@-_4@A_W@(_A9@1_G_+@O_B_>v_S@y@5@Rk_B_O_
+    @D_AI@N_Jg_<@KQQ@YO@q_G_._J_V_N_m,_FA@z@p@MT_l6]_W2@X@Ow@<^@VE_"@RM@v|@P@S_F@W_&@
+    @^@J@?_L@5_OcC@t_:@W@J_f_c_L@+)_:6B_J!@+@O_&_S@;[@V@h@.@V_d@&)_E@b@0@Vb4E@A_gU_:
+    @@Ay'@>n@ks_2_7@:_aG;@F_%_Y_V_W_"_0@k@U[IC_i@/L_7@d@l_E%_Y@$@J_[@z_P/_C_G@y_C_L_
+    @f_*@uK_X@P_<@,@z}6@/{@k_:[@$@c@k_A@m@L@N_/_J_$@Q@,G@N_6_+_;I/{@VO_7K_M_C@O_;@/@z
+    @@??z@f@4uU_F_3_,C_l_W_3@h;^_][_\<@b4_b_k@<@C'@V@C@g@qq@r@}@U_?@]@s]~7&9@Js_cP@D@
+    @^@="jU@m@]P@t_O_^_#@'@#@]_e@j_c@r@H_g@~@q@m_G_&v_i_._l@=h@9G@.u@3@~@pJ@L@o{_7,[
+    @@R@h@&_8W_Ze@g_[R?@d@&1@^_]M_K@?_9@S_&v4(@q_&g_Hk-_d@'@%@[[_EWU_L6@%lq_Z@'@4A@9@
+    @ai@(i@+@v@-{_B@A@<@+@v@\@[_A@0_8_9_Y_gy@Ba_$_7@-@[$]U@6@U@]_M_c<_Jc@5@r+j_7@w_V]
+    @_(_k_hO@V_f'Z@-C_/@;Rc@i_?|_]b_?_(_g0@:*EP_&s/S@Z_K_Tjp_O"@f@I]_>_6@M@I@AG@-P_[@
+    @9_R_5@E@lTO_3H^_2@t2@E_K_,_a^_5_[_j_a@%@-_<G@\@*.S_H@l@t_:_N@pY@F[N@4_8_[_6a_h_O
+    @_1b@V_[_/_E6P_'@0@,@A/@U_j@3b@W_"_Q@B_hS@|@8@>_J_f@1@/(]@Na@;_+@z@rjy@QO_Dk,_l@E
+    @_g_h_f@D_l3_YH_)>Q@z@x_%@q_C@pt@x#@[@D_K_3:_ZW_j_F_Tq_3@s@k@y@?_[_R_HQ@c@;@kU@<@
+    @;#}@hj@|@9m@1_M@-@}@T_H@8@*p_"_(_[@U_*@S3U@r
   End
   OnTimerInterval=0
-  MaxControlSerial=9
+  MaxControlSerial=11
   LoadModes=0
+  CompileModule=
   Object BUTTON
     LayerName=4D00610069006E00
     Left=5
-    Top=285
+    Top=305
     Width=95
     Height=30
     Font=440065006600610075006C0074002C0020003800
@@ -62,7 +65,7 @@ Object FORM
   Object BUTTON
     LayerName=4D00610069006E00
     Left=105
-    Top=285
+    Top=305
     Width=95
     Height=30
     Font=440065006600610075006C0074002C0020003800
@@ -85,7 +88,7 @@ Object FORM
   Object TABLE
     LayerName=4D00610069006E00
     Left=5
-    Top=50
+    Top=70
     Width=625
     Height=230
     Font=440065006600610075006C0074002C0020003800
@@ -181,7 +184,7 @@ Object FORM
   Object LABEL
     LayerName=4D00610069006E00
     Left=135
-    Top=30
+    Top=50
     Width=495
     Height=15
     Font=440065006600610075006C0074002C00200038002C00200042002C00200030003000300030003000300046004600
@@ -198,7 +201,7 @@ Object FORM
   Object LABEL
     LayerName=4D00610069006E00
     Left=10
-    Top=30
+    Top=50
     Width=120
     Height=15
     Font=440065006600610075006C0074002C00200038002C0020004200
@@ -227,6 +230,53 @@ Object FORM
     ControlSerial=8
     Caption=3C001704300433043E043B043E0432043E043A043E00
     HAlign=0
+    VAlign=0
+  End
+  Object LABEL
+    LayerName=4D00610069006E00
+    Left=135
+    Top=30
+    Width=495
+    Height=15
+    Font=440065006600610075006C0074002C00200038002C00200042002C00200030003000300030003000300046004600
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=3F041C04300433043004370438043D04
+    ControlSerial=9
+    Caption=3C001D043504200037043004340430043D043E00
+    HAlign=0
+    VAlign=1
+    OnClick
+      @@>@e@f@[_:@53u1_2_*@N[@b@>_a@&@S_<@\@ZF@[#'_&&@=@'oSC_0@A_;<S@M|@S@T@]XOH_B_*_J_
+      @:_'@+_YP@]|_8_R_]_J@dA_K_g_9_7<@<@~@t_"~@0@m@5\_AI@Dy@m_S@0}@,@zGX_!@j@n_X*_*@#@
+      @R@[@z_"_Y_3/_;@<@v@U_Y/_K@o_'@H@m@J@*0_*_D@A_B@{@)@dB@=@K"@OS@B_:_he@^_6v@E_KB_U
+      @_FMz#_9)m=@2DGB_'@*[@A@7@=%@-W!@)@*q_I_Caq_b@b_3A_4_S@Y=H_%_=|@-_%_;n_C_HU@2A%@V
+      @5@"@-@<d@u_)q[A@7@A@*@g@;_1_$@w_1c|Y_c@U_5_k_?@I9@;G@0_4_W_^@$@%@WN$@x@O@5@uA|@v
+      @_?0@YS@c@Z_+Y_*_:Wi@B@L_)(f@7@4_=@\ot_R@e@9_bq_W@oT@6r_;_A_L_P@\@a_+@:_K?_._Z&@1
+      @Q@:@z_\@B@v@9_\D@Can]@y^0_I_i_*@"E>_N@%@*@a@l-@z_I_"/@$g_Xa_9_I_<@-@&@F|@9O1A@(@
+      @;|_-@r_N_:_3@k_X@7@+@4t@,@s@r~@b;_J_cns^@l@E_UW@\2_6_$@p_b_g_:P_:@;@u_[_'[_S_c
+      @@"R@%,_R@1@L@=@)_I@PUV@JO_(@8@}@Ie@U@?@B_/@kr_:|@z_g=_df@~_kO5@|@[v@xI_X@3r_.Oy@
+      @qT@g_k@U~@w@w@F_G@b_i@1@f@N@/]_0@,@?@-_/_*S@F;_lS@8@P_*@fK_$@}_._X@=_B_e@d_4_3I@
+      @v\@d@=@%_*!7!@i@d
+    End
+  End
+  Object LABEL
+    LayerName=4D00610069006E00
+    Left=10
+    Top=30
+    Width=120
+    Height=15
+    Font=440065006600610075006C0074002C00200038002C0020004200
+    Color=FF00000F
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=10
+    Caption=1C04300433043004370438043D043A00
+    HAlign=2
     VAlign=0
   End
 End

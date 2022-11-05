@@ -11,6 +11,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=5
   LoadModes=0
+  CompileModule=
   Object TABLE
     LayerName=4D00610069006E00
     Left=5
@@ -25,7 +26,7 @@ Object FORM
     Name=4D00610069006E00540061006200
     ControlSerial=1
     HotKey=
-    Folders=0
+    Folders=1
     AttachedButtons
       @@>@eU@&t@,R@&@6@&R%@YB@.)_RM@JCf_?)@t@qSzu4@u@k@,|iq@z@Q@c$@?j@.@k@M|_I@&)7e8W@(
       @@y_+L@0@M_0@"@)5A$!_'@S8_F
@@ -42,11 +43,9 @@ Object FORM
     HeaderColumnsData
       @T#S#R#R#R#R#R#T#T#R#TR#TR#TR#####@3CdKCdWCdVC###R#"R#R#R#R#R#R#R#R#R#S#SRR#SRR#S
       @RR#]G@(GzG####@-CdWCdLCdMC##DC|CwCECwCtCwCwCwCtCvCtC|CxCwC#R#"R#R#S#R#R#S#R#R#R#
-      @S#T#SRRRR#SWT#bGvG~G@$G{G@'G@(GxGvG@'G~G{G####@8CdICdUCdMC##DC|CwCECwCtCwCwCwCtC
-      @vCtC|CxCxC#R#"R#R#S#R#S#S#R#R#R#R#T#SRRRR#SUS#tG@*GtCfC@#G~G@0G@(G####tG@*G^G~G@
-      @0G@(GfG{GvG@#G~G}GvG@0G~GG#RERdSEREEEdTEEEE#DC|CwCECwCtCwCwCwCtCvCtCCzCCEC#R#
-      @"R#R#S#R#S#S#R#R#R#R#T#SRRRR#SSW#jG~G@#G~GvG@#G####jG~G@#G~GvG@#G#RERdSEREEEdTEE
-      @EE#DC|CwCECwCtCwCwCwCtCvCtCC{CwCEC#R#
+      @S#T#SRRRR#TSS#bGvG~G@$G{G@'G@(GxGvG@'G~G{G####@8CdICdUCdMC##DC|CwCECwCtCwCwCwCtC
+      @vCtC|CxCxC#R#"R#R#S#R#S#S#R#R#R#R#T#SRRRR#SZZ#tG@*GtCfC@#G~G@0G@(G####tG@*G^G~G@
+      @0G@(G##DC|CwCECwCtCwCwCwCtCvCtCCzCCEC#R#
     End
   End
   Object BUTTON

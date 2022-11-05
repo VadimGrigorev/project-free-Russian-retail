@@ -25,6 +25,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=9
   LoadModes=0
+  CompileModule=
   Object BUTTON
     LayerName=4D00610069006E00
     Left=5
@@ -83,13 +84,8 @@ Object FORM
     HeaderColumnsData
       @T#S#R#R#R#R#R#T#T#R#TR#TR#TR#####@3CdKCdWCdVC###R#"R#R#R#R#R#R#R#R#R#S#SRR#SRR#S
       @RR#]G@(GzG####@-CdWCdLCdMC##DC|CwCECwCtCyCCtCvCtC{C~C#R#"R#R#S#R#R#S#R#R#R#S#T#
-      @SRRRR#TRR#bGvG~G@$G{G@'G@(GxGvG@'G~G{G####@8CdICdUCdMC##DC|CwCECwCtCyCCtCvCtC{C
-      @C#R#"R#R#S#R#S#S#R#R#R#R#T#SRRRR#SSV#SG@'GvG@#G~G@,G~G@"GvG####iG@)G@*GSG@'GvG@
-      @#G~G@,G~G@"GvG#RERdSEREEEdTEEEE#DC|CwCECwCtCyCCtCvCtCwCwC{CEC#R#"R#R#S#R#S#S#R#
-      @R#R#R#T#SRRRR#SSX#hG@(G@*GyG@(GxG@5GGfC@)G@*G{GzG@+G@,GvGxG~G@,G{G@#G@6G####hG@
-      @(G@*GyG@(GxG@5GGeG@*G{GzG@+G@,GvGxG~G@,G{G@#G@6G#RERdSEREEEdTEEEE#DC|CwCECwCtCy
-      @CCtCvCtCwCwCxCEC#R#"R#R#S#R#S#S#R#R#R#R#T#SRRRR#SRZ#TG@-G@/GyGvG@#G@,G{G@*G####
-      @TG@-G@/GyGvG@#G@,G{G@*G#RERdSEREEEdTEEEE#DC|CwCECwCtCyCCtCvCtC~C~CEC#R#
+      @SRRRR#WU[#bGvG~G@$G{G@'G@(GxGvG@'G~G{G####@8CdICdUCdMC##DC|CwCECwCtCyCCtCvCtC{C
+      @C#R#
     End
   End
   Object MACRO

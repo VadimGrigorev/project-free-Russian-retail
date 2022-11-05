@@ -208,13 +208,21 @@ Object FORM
     Font=440065006600610075006C0074002C00200038002C00200042002C00200030003000300030003800300030003000
     Color=FF00000F
     AnchorType=9
-    Flags=8
+    Flags=2056
     Hint=
     Name=4204210443043C043C0430041D0430043B04380447043D044B043504220435043A0441044204
     ControlSerial=4
     Caption=210443043C043C04300420003D0430043B04380447043D044B043C0438043A00
     HAlign=2
     VAlign=0
+    OnClick
+      @@>@e@#@W_<n_.d1i_[_.@D3_j%C_h@*C@o@/C;_F@oWKyn@r@E@J_!&@~@0d@l_f_g@g@#_]@nN@|U@9
+      @_R_Z@+@=_i_V_W@$_[@c_Wy_:_F@.@xh_S_5@#_&@:_Q@L@xaG{_X@L4_A_P@H{@4@a7_Z@j_(@&>_^5
+      @T@K@"@7@w_b_3_$_[_'@K(@N:@UG@?_P@7@e_k@zK_i;v@>fx_f_7C@+_?F@s@6_#F@I_i@FA=_-@v@,
+      @@>_7@f_U|k_%u@t0_(Kw_Ow_T@K@\_i@K)b_"_T{_#@-~_^_J@5@}@B_Y@}@i_F_<@=_'_hN_lhq_I_U
+      @@H_*@>@(@{y@l@xl~@,@h@.vDZ@2@b_l_;@v_4>_F7@Y_N_\@q8_3'7@}$_Q;@Y_a9a@T_Oq@F"_5@}S
+      @_Q
+    End
   End
   Object BEVEL
     LayerName=4D00610069006E00
@@ -410,13 +418,20 @@ Object FORM
     Font=440065006600610075006C0074002C00200038002C00200042002C00200030003000300030003800300030003000
     Color=FF00000F
     AnchorType=9
-    Flags=8
+    Flags=2056
     Hint=
     Name=4204210443043C043C0430041A043004400442043004220435043A0441044204
     ControlSerial=13
     Caption=210443043C043C0430042000310430043D043A043E04320441043A043E04390420003A043004400442043E0439043A00
     HAlign=2
     VAlign=0
+    OnClick
+      @@>@e@#@W_,n$e1h_WtI_,A_\@}@AT@yH@Z_+_V@Y@*@Z_X@M)e@k_K@imd@T_%@i@t_f_g_):_]Dgss_
+      @*@wP@,@,@i@H_Z_b@o@n@$_b@m@v/_5@:@w_L_F@nM@x_'_\@S@"@z8_9x@Z@N_)@7g_"@60_Y&_Wc_:
+      @CE_36@9@n_2/_)_c;?>_RZ@]_P@zI@r_e_6@,_X<l_MKu_M@|@K@[m@Z@r_-_M@Y@O_Z@F@;@:@O_"@c
+      @_O@z@:@%_2\_=@~~_(_Wy@DWb@Lr}_,I_/@I_E@G@0_8o_*t>@}_C@Q_>@g_%_O_(@-_U0@0_9@f_Z_g
+      @@Lk\]W_hp@m@n_e@HHI@k_.@U_ZY_A@M_H@j@3C[/0@A@M@2@'u]x_;@O=v_bVm@=_j"@{_SS2
+    End
   End
   Object LABEL
     LayerName=4D00610069006E00

@@ -121,6 +121,9 @@ Function Видимость()
   MainTab:=Form.ControlByName("MainTab").Value;
   MainTab.Column("Партия").isVisible:=флВидимостьПартий;
   MainTab.Column("Партия").isReadonly:=1-глПользователь.бухБухгалтер;
+  Form.СуммаБезналичногоВозврата.isInvisible:=aEl.КодОперации<>Enum.коВозвратОтПокупателя.ВозвратРозничный;
+  Form.тСуммаБезналичногоВозврата.isInvisible:=aEl.КодОперации<>Enum.коВозвратОтПокупателя.ВозвратРозничный;
+  Form.СуммаБезналичногоВозврата.isDisabled:=not глПользователь.общиеАдминистратор;
 EndFunction
 
 Function OnAfterChangeOperationCode()
@@ -158,6 +161,16 @@ Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПара
       EndIf;
     EndIf;
   EndIf;
+  
+  aTab:=aEl.LineParts("Номенклатура");
+  If aEl.КодОперации=Enum.коВозвратОтПокупателя.ВозвратРозничный Then
+    Сумма:=aTab.Sum("Сумма");
+    дОплаты:=глНайтиПодчиненныйПоВиду(aEl,"РКО",-1);
+    aEl.СуммаБезналичногоВозврата:=?(IsEmpty(дОплаты),Сумма,Max(0,Сумма-дОплаты.СуммаВзаиморасчетов));
+  Else
+    aEl.СуммаБезналичногоВозврата:=0;
+  EndIf;
+  
   
   If aEl.ДокОснование.Selected()<>0 Then
     If BegOfMonth(aEl.ДокОснование.DocDate)<>BegOfMonth(aEl.DocDate) Then

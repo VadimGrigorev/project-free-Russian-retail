@@ -78,7 +78,7 @@ Function ПолучитьНомерДокумента(зДок)
   //ZZ -- тип документа
   Нум:=спТипыДокументов.Find(зДок.DBName());
   Нум:=?(Нум=0,спТипыДокументов.Size()+1,Нум);
-  Exit Str(Нум)+Right(GetYear(зДок.DocDate),2)+Right("000000"+Number(Mid(зДок.DocNum,4)),6);
+  Exit Str(Нум)+Right(GetYear(зДок.DocDate),2)+Right("000000"+Number(Mid(зДок.DocNum,5)),6);
 EndFunction
 
 Function ОбновитьВремяЗапуска(Ид)
