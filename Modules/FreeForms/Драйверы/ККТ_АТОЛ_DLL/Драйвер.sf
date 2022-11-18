@@ -325,6 +325,7 @@ Function DriverConnect(спНастройки)
     aHandle:=спНастройки["АТОЛУказатель"];
     спПеременные:=спНастройки["АТОЛПеременные"];
     СтрДоп:=спНастройки["ДопУстановки"];
+    Ини:=0;
     If not isEmpty(СтрДоп) Then
       Ини:=Ini.Create();
       Ини.AddFromString(СтрДоп);
@@ -347,7 +348,9 @@ Function DriverConnect(спНастройки)
     If аДрайвер.libfptr_open(aHandle)<>0 Then
       Exit "Ошибка открытия ККМ "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
     EndIf;
-    спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0"));
+    спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=?(IsEmpty(Ини),0,Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0")));
+    спНастройки["FFDVersion"]:=?(IsEmpty(Ини),"",Number(Ини.GetData("FFDVersion","")));
+    
     
     //Исправление текущей даты и времени в ККМ -- Атол не дайет возможности исправить дату и время программно
     ТекДата0:=Date();
@@ -623,17 +626,23 @@ Function PrintReceipt(спНастройки)
     EndIf;    
     
     //Версия ФФД
-    аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_FN_DATA_TYPE"],спПеременные["LIBFPTR_FNDT_FFD_VERSIONS"]);
-    аДрайвер.libfptr_fn_query_data(aHandle);
-    ФФД12:=0;
-    ФФД11:=0;
-    Try
-      ФФД12:=(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_FFD_VERSION"])>=120)And(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION"])>=120);
-      ФФД11:=(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_FFD_VERSION"])>=110)And(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION"])>=110);
-      ФФД10:=(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_FFD_VERSION"])<105)Or(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION"])<105);
-    Except
-      ФФД10:=1;
-    EndTry;
+    If not IsEmpty(спНастройки["FFDVersion"]) Then
+      ФФД12:=Number(спНастройки["FFDVersion"])>=120;
+      ФФД11:=Number(спНастройки["FFDVersion"])>=110;
+      ФФД10:=Number(спНастройки["FFDVersion"])<105;
+    Else
+      аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_FN_DATA_TYPE"],спПеременные["LIBFPTR_FNDT_FFD_VERSIONS"]);
+      аДрайвер.libfptr_fn_query_data(aHandle);
+      ФФД12:=0;
+      ФФД11:=0;
+      Try
+        ФФД12:=(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_FFD_VERSION"])>=120)And(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION"])>=120);
+        ФФД11:=(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_FFD_VERSION"])>=110)And(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION"])>=110);
+        ФФД10:=(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_FFD_VERSION"])<105)Or(аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION"])<105);
+      Except
+        ФФД10:=1;
+      EndTry;
+    EndIf;
     аТип0:=спНастройки["ТипЧека"];
     If (аТип0<>10)And(аТип0<>13)And(ФФД12) Then
       аДрайвер.libfptr_cancel_marking_code_validation(aHandle);

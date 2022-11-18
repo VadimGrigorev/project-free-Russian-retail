@@ -106,7 +106,7 @@ Function OnBeforeElementSave()
     Message("Выбранный склад уже закреплен за другим магазином!","!");
     Exit 0;
   EndIf;
-  If Trim(aEl.КПП)="" Then
+  If _And(Trim(aEl.КПП)="",aEl.ЮрЛицо.Selected()<>0,Length(aEl.ЮрЛицо.ИНН)<>12) Then
     Message("Для корректной работы программы необходимо выбрать КПП адреса магазина!","!");
     Exit 0;
   EndIf;  

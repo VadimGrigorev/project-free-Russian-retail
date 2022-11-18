@@ -54,6 +54,7 @@ Function DriverConnect(спНастройки)
   Try
     аДрайвер:=спНастройки["Драйвер"];
     СтрДоп:=спНастройки["ДопУстановки"];
+    Ини:=0;
     If not isEmpty(СтрДоп) Then
       Ини:=Ini.Create();
       Ини.AddFromString(СтрДоп);
@@ -76,7 +77,8 @@ Function DriverConnect(спНастройки)
     If аДрайвер.open()<>0 Then
       Exit "Ошибка открытия ККМ "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
     EndIf;
-    спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0"));
+    спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=?(IsEmpty(Ини),0,Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0")));
+    спНастройки["FFDVersion"]:=?(IsEmpty(Ини),"",Number(Ини.GetData("FFDVersion","")));
     
     //Исправление текущей даты и времени в ККМ -- Атол не дайет возможности исправить дату и время программно
     ТекДата0:=Date();
@@ -316,17 +318,23 @@ Function PrintReceipt(спНастройки)
     EndIf;
     
     //Версия ФФД
-    аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_FN_DATA_TYPE,аДрайвер.LIBFPTR_FNDT_FFD_VERSIONS);
-    аДрайвер.fnQueryData();
-    ФФД12:=0;
-    ФФД11:=0;
-    Try
-      ФФД12:=(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_FFD_VERSION)>=120)And(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION)>=120);
-      ФФД11:=(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_FFD_VERSION)>=110)And(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION)>=110);
-      ФФД10:=(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_FFD_VERSION)<105)Or(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION)<105);
-    Except
-      ФФД10:=1;
-    EndTry;
+    If not IsEmpty(спНастройки["FFDVersion"]) Then
+      ФФД12:=Number(спНастройки["FFDVersion"])>=120;
+      ФФД11:=Number(спНастройки["FFDVersion"])>=110;
+      ФФД10:=Number(спНастройки["FFDVersion"])<105;
+    Else
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_FN_DATA_TYPE,аДрайвер.LIBFPTR_FNDT_FFD_VERSIONS);
+      аДрайвер.fnQueryData();
+      ФФД12:=0;
+      ФФД11:=0;
+      Try
+        ФФД12:=(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_FFD_VERSION)>=120)And(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION)>=120);
+        ФФД11:=(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_FFD_VERSION)>=110)And(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION)>=110);
+        ФФД10:=(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_FFD_VERSION)<105)Or(аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DEVICE_MAX_FFD_VERSION)<105);
+      Except
+        ФФД10:=1;
+      EndTry;
+    EndIf;
     аТип0:=спНастройки["ТипЧека"];
     If (аТип0<>10)And(аТип0<>13)And(ФФД12) Then
       аДрайвер.cancelMarkingCodeValidation();

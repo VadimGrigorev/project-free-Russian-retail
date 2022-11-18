@@ -97,6 +97,13 @@ Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПара
     EndIf;
   EndIf;
   
+  If (aEl.Склад.Магазин.Selected()<>0)And(aEl.СкладПолучатель.Магазин.Selected()<>0) Then
+    If aEl.Склад.Магазин.ЮрЛицо<>aEl.СкладПолучатель.Магазин.ЮрЛицо Then
+      Message("Запрещено перемещать между складами магазинов, принадлежащих разным юр. лицам!","!");
+      Exit 0;
+    EndIf;
+  EndIf;
+  
   aTab:=aEl.LineParts("Номенклатура");
   Фл:=1;
   aTab.Select();
