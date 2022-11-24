@@ -13,6 +13,9 @@ Function глКорректностьСуммыМаркетинга(aEl,Обща
     If ОбщаяСумма<=0 Then
       Exit 1;
     EndIf;
+    If aEl.СтатьяМаркетинга.Selected()=0 Then
+      Exit 1;
+    EndIf;
   EndIf;
   
   aTab:=aEl.LineParts("МаркетингПоставщиков");

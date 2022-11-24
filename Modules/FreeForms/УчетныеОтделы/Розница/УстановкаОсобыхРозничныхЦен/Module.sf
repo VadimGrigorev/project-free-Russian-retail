@@ -39,6 +39,7 @@ Function OnExecute(СпУстановки)
   aList.SetByName("ТипЦен",аТипЦен);
   aList.SetByName("ТипЦен0",бТипЦен);
   aList.SetByName("Номенклатура",Сп2);
+  aList.SetByName("Магазин",глПользователь.Магазин);
   
   LoadModule(1,"Modules\FreeForms\УчетныеОтделы\Цены\УстановкаЦен",aList,0,"Module","Form");
   Form.Close(0);  

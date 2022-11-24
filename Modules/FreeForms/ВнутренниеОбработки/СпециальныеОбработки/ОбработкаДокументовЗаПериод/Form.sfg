@@ -26,8 +26,9 @@ Object FORM
     @_b@.@q_k_L_O_7@K@t_$@nN_U;_U_:@]_l@5@>_1@o@{@;@NF_j\@h_I_^-5@D_'_U_cA@>"_W_*
   End
   OnTimerInterval=0
-  MaxControlSerial=35
+  MaxControlSerial=36
   LoadModes=0
+  CompileModule=
   Object GROUPBOX
     LayerName=4D00610069006E00
     Left=5
@@ -121,7 +122,7 @@ Object FORM
       @@>@eU@&t@,R@&@6@&R%_>_5@&_T_+@&@I_-Uf_N"!@.@&%0
     End
     DBSource
-      @@>@e@)@*R@)R@*@&#@(aBX%@|"/@w"@%
+      @@>@eU@(_;@)R@&@&@*R@)R@*@&#@(aBX%@|"=Z"_[
     End
     OnAttachedButtons
       @@>@e_0xq@5_>d1@f_.@e@W_#@6_V@j3@4_/@j@\+@z_a_<'_&@<=@d5f_F~#_Z)~1f@q@\l@X_f_g_'Y
@@ -427,7 +428,7 @@ Object FORM
       @@>@eU@&t@,R@&@6@&R%_>_5@&_T_+@&@I_-Uf_N"!@.@&%0
     End
     DBSource
-      @@>@e@)@*R@)R@*@&#@(a'4'oB,!,_/"[
+      @@>@eU@(_;@)R@&@&@*R@)R@*@&#@(a'4'oB,!9P"_4
     End
     OnAttachedButtons
       @@>@e_0x_,r_Gd1@f_.@eL_c_=4v0%_?$lV@zg#@r@T@f_DH@j@/!o@3_[y,@v@s@s#@Pt@r@h_K_e@,_
@@ -462,5 +463,20 @@ Object FORM
     Caption=2E0440042E0020003B04380446043E043A00
     HAlign=2
     VAlign=0
+  End
+  Object MACRO
+    ModuleName=4D006F00640075006C00650073005C004D006100630072006F0073005C001E0442044704350442044B042000380420003E0431044004300431043E0442043A0438045C001D0430044104420440043E0439043A0438042E00730066006700
+    LayerName=4D00610069006E00
+    Left=195
+    Top=360
+    Width=100
+    Height=25
+    Font=440065006600610075006C0074002C0020003800
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=35
   End
 End

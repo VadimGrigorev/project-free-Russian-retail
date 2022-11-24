@@ -33,6 +33,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=34
   LoadModes=0
+  CompileModule=
   Object GROUPBOX
     LayerName=4D00610069006E00
     Left=530
@@ -439,12 +440,11 @@ Object FORM
     HotKey=
     Picture=0
     OnClick
-      @@>@e@#@Wso_.t1_/_SRI_,@dI0G_/@R@L@0@Z@(VX@oq;x@mz_*dP@(@B1_m55_*_*_*^@j3@<@-_K_
-      @X_)@?]:@0@qk@D@q_<@d@$_b@u{i\z_N_F_$o@%_&_^%N_4@bE_A@&_V_$@-@:U_e@ba_M_i_:0@&jR8
-      @_H_6a@<_N(_K_,@=+w5@9@6_XD_b@E_$*@?"@Z_g@QJ_<@/@&_^R4@rh_M@e_T_?_"_Sr@j_G@0@Qj_O
-      @w_Y@1Q_/_(_B@A_=v,@6@r@5@"@v_\@Z@0@i@>@N_iv@t<@Dv@v_+W_A@B_L@U@C_6'U@}_S@&@V_V-N
-      @Z@~\@:_e@%@0@8@t?@EM@s@[>@,_,_O"_A@O_ELZ_T@<@t_U@*_)@:_7_W_4H@<_"@O$@|@Dcz@%_0@h
-      @@ZAq_eU@Z
+      @@>@e@3@Wqs_-d1@M_K_.@BT_]_R@bVam@I_;@YxL|@.@r?xb@E$"/j@l@P*_m@h@-_C@V%@(X@|@|_i_
+      @9_7@|U]_;d@1@D@q_A_&@$@~_A@d3@#M@9_O_=@\A@#@B@Q@x_D,I@0_\_$@%^I~_#o_Z._W@"_[@j-u
+      @j_?@\?]_a_5s_T@HR@J|_N_2@g_/_D_"X@+@%@k5_)_2LZOn:@93y1@4@zd_m_((f_T@0'@l@;@%@^_%
+      @@O_!_;@pX_F@/@P_K_U_+x@B_R_4_Aw@s(@}@v_h_%@k@4_3]@;@CMt;_D,@p@*@+c@]@g1@g[A_b_0c
+      @@3_#@pS_J@'_N@cr@8_V_S@7_5_m_$@L_[B@=W_g_W_])<_CO!
     End
   End
   Object CHECKBOX

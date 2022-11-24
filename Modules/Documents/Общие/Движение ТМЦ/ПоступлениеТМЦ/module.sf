@@ -134,7 +134,7 @@ Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПара
     Exit 0;
   EndIf;
 
-  If (aEl.Склад.Selected()<>0)And(not глПользователь.общиеАдминистратор) Then
+  If (aEl.Склад.Selected()<>0)And(not глПользователь.общиеАдминистратор)And(not глПользователь.общиеКорректировкаСкладскихОстатков) Then
     If aEl.Склад.Магазин<>глПользователь.Магазин Then
       Box("Вам запрещено создавать документы для выбранного склада!",Q_STOP);
       Exit 0;
