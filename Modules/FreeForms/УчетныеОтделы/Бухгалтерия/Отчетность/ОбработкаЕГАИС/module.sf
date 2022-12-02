@@ -469,7 +469,6 @@ Function ВыполнитьЗапросПоОстаткам(спУстановк
   Прокси:="";
   оСервер:=глРазделитьАдресИПрокси(оСервер,Прокси);
   ТипОтчета:=спУстановки["ТипОтчета"];
-  ФлТолькоРегистр2:=ТипОтчета=4;
   
   Каталог:="Temp\ЕГАИС\";
   File.CreateDirectory(Каталог);
@@ -1154,6 +1153,7 @@ EndFunction
 
 Function ОбновитьСтатусыРеализаций()
   оМагазин:=Form.оМагазин.Value;
+  оЮЛ:=Form.оМагазин.Value.ЮрЛицо;
   оРегИд:=оМагазин.КодТочкиЕГАИС;
   глОчиститьСтарыеПакетыЕГАИС(оРегИд);
   
@@ -1319,7 +1319,7 @@ Function ОбновитьСтатусыРеализаций()
         EndIf;
         
         If ФлТекущий Then
-          оРеализации.ТекстОтвета:=СтрТекст;
+          оРеализации.текстОшибка:=СтрТекст;
           оРеализации.тОшибка:="Доступно входящее сообщение";
         EndIf;  
         
@@ -1611,7 +1611,7 @@ Function ОбновитьСтатусыРеализаций()
         EndIf;
         
         If ФлТекущий Then
-          оРеализации.ТекстОтвета:=СтрТекст;
+          оРеализации.текстОшибка:=СтрТекст;
           оРеализации.тОшибка:="Доступно входящее сообщение";
         EndIf;  
 
@@ -2305,11 +2305,9 @@ Function ВыгрузитьДокументы(Тб,флПакетная,ФлНа
         Continue;
       EndIf;
       
-      зАД:=зДок.АдресДоставки.адСсылка;
       зК:=зДок.Контрагент;
-      
-      If Trim(зАД.УникальныйИдентификатор2)="" Then
-        Message("Для адреса "+зАД+" контрагента "+зК+" ("+зК.Code+") не указан регистрационный код ЕГАИС! Проставьте уникальный код, чтобы продолжить выгрузку!","!");
+      If Trim(зК.КодТочкиЕГАИС)="" Then
+        Message("Для контрагента "+зК+" ("+зК.Code+") не указан код точки ЕГАИС!","!");
         Continue;
       EndIf;
       //ТС
@@ -2322,6 +2320,12 @@ Function ВыгрузитьДокументы(Тб,флПакетная,ФлНа
       ФлЭтоВозврат:=зДок.DBName()="ВозвратПоставщику";
       ФлБылВозврат:=0;
       ТВыгружаемыеМарки:=глМаркиЗагрузитьДокумент(зДок,,1);
+      ТВыгружаемыеМарки.AddColumn("Справки");
+      ТВыгружаемыеМарки.Select();
+      While ТВыгружаемыеМарки.Next() Do
+         ТВыгружаемыеМарки.Справки:=ТВыгружаемыеМарки.Партия.ЕГАИСКодСправок;
+      EndDo;
+      ТВыгружаемыеМарки.Sort("Справки+,Ящик+");
       
       //Учитываем возвраты
       If not ФлЭтоВозврат Then
@@ -2418,9 +2422,6 @@ Function ВыгрузитьДокументы(Тб,флПакетная,ФлНа
       
       пКПП2:=Trim(зК.ИНН);
       пИНН2:=TearStr(пКПП2,"/");
-      If Trim(зАД.КПП)<>"" Then
-        пКПП2:=Trim(зАД.КПП);
-      EndIf;
       If (Trim(пКПП2)<>"")And(Length(Trim(пКПП2))<>9) Then
         Message("Неверный КПП покупателя для документа "+зДок+"!","!");
         Continue;
@@ -2465,8 +2466,7 @@ Function ВыгрузитьДокументы(Тб,флПакетная,ФлНа
       
       Стр:=FormatDate(Date(),"YYYYmmddhhttss");
       Идент:=?(ФлЭтоВозврат,"ВЗВ_","")+зДок.DocNum+"_"+GetYear(ДатаДокумента)+"_"+Стр;
-      СтрАдрес:=Trim(зДок.АдресДоставки.адСсылка.Грузополучатель);
-      СтрАдрес:=?(СтрАдрес="",Str(зДок.АдресДоставки.адСсылка),СтрАдрес);      
+      СтрАдрес:=Trim(зДок.АдресДоставки);
       
       флЮрЛицо:=пКПП<>"";
       флЮрЛицо2:=пКПП2<>"";
@@ -2483,7 +2483,7 @@ Function ВыгрузитьДокументы(Тб,флПакетная,ФлНа
           "<oref:ShortName>"+EncodeXMLString(Left(зДок.ЮрЛицо.Name,64))+"</oref:ShortName>"+_NEWLINE+
           "<oref:address><oref:Country>643</oref:Country><oref:RegionCode>"+Left(пИНН,2)+"</oref:RegionCode><oref:description>"+EncodeXMLString(зДок.ЮрЛицо.ФактАдрес)+"</oref:description></oref:address>"+?(флЮрЛицо,"</oref:UL>","</oref:FL>")+"</wb:Shipper>"+_NEWLINE+
           
-          "<wb:Consignee>"+?(флЮрЛицо2,"<oref:UL>","<oref:FL>")+"<oref:INN>"+пИНН2+"</oref:INN>"+?(пКПП2="","","<oref:KPP>"+пКПП2+"</oref:KPP>")+"<oref:ClientRegId>"+Trim(зАД.УникальныйИдентификатор2)+"</oref:ClientRegId>"+_NEWLINE+
+          "<wb:Consignee>"+?(флЮрЛицо2,"<oref:UL>","<oref:FL>")+"<oref:INN>"+пИНН2+"</oref:INN>"+?(пКПП2="","","<oref:KPP>"+пКПП2+"</oref:KPP>")+"<oref:ClientRegId>"+Trim(зК.КодТочкиЕГАИС)+"</oref:ClientRegId>"+_NEWLINE+
           "<oref:FullName>"+EncodeXMLString(зК.ПолнНаименование)+"</oref:FullName>"+_NEWLINE+
           "<oref:ShortName>"+EncodeXMLString(Left(зК.ПолнНаименование,64))+"</oref:ShortName>"+_NEWLINE+
           "<oref:address><oref:Country>643</oref:Country><oref:RegionCode>"+Left(пИНН2,2)+"</oref:RegionCode><oref:description>"+EncodeXMLString(зК.ФактАдрес)+"</oref:description></oref:address>"+?(флЮрЛицо2,"</oref:UL>","</oref:FL>")+"</wb:Consignee>"+_NEWLINE+
@@ -2516,7 +2516,7 @@ Function ВыгрузитьДокументы(Тб,флПакетная,ФлНа
           "<oref:ShortName>"+EncodeXMLString(Left(зДок.ЮрЛицо.Name,64))+"</oref:ShortName>"+_NEWLINE+
           "<oref:address><oref:Country>643</oref:Country><oref:RegionCode>"+Left(пИНН,2)+"</oref:RegionCode><oref:description>"+EncodeXMLString(зДок.ЮрЛицо.ФактАдрес)+"</oref:description></oref:address>"+?(флЮрЛицо,"</oref:UL>","</oref:FL>")+"</wb:Shipper>"+_NEWLINE+
           
-          "<wb:Consignee>"+?(флЮрЛицо2,"<oref:UL>","<oref:FL>")+"<oref:INN>"+пИНН2+"</oref:INN>"+?(пКПП2="","","<oref:KPP>"+пКПП2+"</oref:KPP>")+"<oref:ClientRegId>"+Trim(зАД.УникальныйИдентификатор2)+"</oref:ClientRegId>"+_NEWLINE+
+          "<wb:Consignee>"+?(флЮрЛицо2,"<oref:UL>","<oref:FL>")+"<oref:INN>"+пИНН2+"</oref:INN>"+?(пКПП2="","","<oref:KPP>"+пКПП2+"</oref:KPP>")+"<oref:ClientRegId>"+Trim(зК.КодТочкиЕГАИС)+"</oref:ClientRegId>"+_NEWLINE+
           "<oref:FullName>"+EncodeXMLString(зК.ПолнНаименование)+"</oref:FullName>"+_NEWLINE+
           "<oref:ShortName>"+EncodeXMLString(Left(зК.ПолнНаименование,64))+"</oref:ShortName>"+_NEWLINE+
           "<oref:address><oref:Country>643</oref:Country><oref:RegionCode>"+Left(пИНН2,2)+"</oref:RegionCode><oref:description>"+EncodeXMLString(зК.ФактАдрес)+"</oref:description></oref:address>"+?(флЮрЛицо2,"</oref:UL>","</oref:FL>")+"</wb:Consignee>"+_NEWLINE+
@@ -2539,6 +2539,7 @@ Function ВыгрузитьДокументы(Тб,флПакетная,ФлНа
       EndIf;  
   
       аВыгруженоСтрок:=0;
+      aTab:=зДок.LineParts("Номенклатура");
       ТДок:=aTab.Copy();
       ТДок.Group("Номенклатура","Количество,Сумма");
       аСтр:=0;
@@ -2724,18 +2725,40 @@ Function ВыгрузитьДокументы(Тб,флПакетная,ФлНа
         
         стрМарки:="";
         стрЯщики:="";
-        If _And(ТВыгружаемыеМарки<>0,ТВыгружаемыеМарки.FindAndGoto(Справки,,"Справки")>0,зПрт.флМарочныйУчет=1) Then
-          спИспЯщики:="";
-          стрМарки:="<ce:MarkInfo>"+ОтформатироватьМарки(ТВыгружаемыеМарки.Марки,спИспЯщики)+"</ce:MarkInfo>";
-          стрЯщики:=ОтформатироватьЯщики(ТВыгружаемыеМарки.Ящики,спИспЯщики);
+        If _And(ТВыгружаемыеМарки<>0,зПрт.флМарочныйУчет=1) Then
+          //[<ce:boxnum>Ящик родитель</ce:boxnum><ce:bl>]<ce:boxnum>Ящик</ce:boxnum><ce:boxnum>Ящик</ce:boxnum>[</ce:bl>]...
+          спИспЯщики:=List.Create();
+          ТВыгружаемыеМарки.CopyTo(спИспЯщики,,,"Ящик","Справки",Справки);
+          спИспЯщики.Group();
+          For i:=1 To спИспЯщики.Size() Do
+            If спИспЯщики[i]<>"" Then
+              AppendStringToBufferedString(стрЯщики,"<ce:boxnum>"+спИспЯщики[i]+"</ce:boxnum>");
+            EndIf;
+          EndDo;
           If стрЯщики<>"" Then
             стрЯщики:="<wb:boxInfo><wb:boxtree>"+стрЯщики+"</wb:boxtree></wb:boxInfo>"+_NEWLINE;
           EndIf;  
-        EndIf;
+          
+          //<ce:boxpos>[<ce:boxnumber>Ящик</ce:boxnumber>]<ce:amclist><ce:amc>Марка</ce:amc><ce:amc>Марка</ce:amc></ce:amclist></ce:boxpos>...
+          Ящик:=0;
+          While ТВыгружаемыеМарки.FindAndGoto(Справки,,"Справки")>0 Do
+            If Ящик<>Trim(ТВыгружаемыеМарки.Ящик) Then
+              Ящик:=Trim(ТВыгружаемыеМарки.Ящик);
+              AppendStringToBufferedString(стрМарки,?(стрМарки<>"","</ce:amclist></ce:boxpos>")+"<ce:boxpos>"+?(Ящик<>"","<ce:boxnumber>"+Ящик+"</ce:boxnumber>")+"<ce:amclist>");
+            EndIf;
+            If ТВыгружаемыеМарки.Марка<>"" Then
+              AppendStringToBufferedString(стрМарки,"<ce:amc>"+ТВыгружаемыеМарки.Марка+"</ce:amc>");
+            EndIf;
+            ТВыгружаемыеМарки.Справки:="";
+          EndDo;
+          If стрМарки<>"" Then
+            стрМарки:="<ce:MarkInfo>"+стрМарки+"</ce:amclist></ce:boxpos></ce:MarkInfo>";
+          EndIf;
+        EndIf
         
         аВыгруженоСтрок:=аВыгруженоСтрок+1;
         Стр:=Стр+"<wb:Position><wb:Identity>"+аСтр+"</wb:Identity><wb:Product><pref:Type>АП</pref:Type>"+_NEWLINE+
-          "<pref:FullName>"+EncodeXMLString(зН.ПолнНаименование)+"</pref:FullName><pref:ShortName>"+EncodeXMLString(Left(зН.Name,64))+"</pref:ShortName>"+_NEWLINE+
+          "<pref:FullName>"+EncodeXMLString(зН.Name)+"</pref:FullName><pref:ShortName>"+EncodeXMLString(Left(зН.Name,64))+"</pref:ShortName>"+_NEWLINE+
           "<pref:AlcCode>"+Trim(зПрт.ЕГАИСКодНоменклатуры)+"</pref:AlcCode>"+пЛ+"<pref:AlcVolume>"+Trim(FormatNumber(пКреп,0,"",3))+"</pref:AlcVolume>"+_NEWLINE+
           "<pref:ProductVCode>"+зАПКОД+"</pref:ProductVCode><pref:UnitType>"+?(ФлНеПак=0,"Packed","Unpacked")+"</pref:UnitType>"+_NEWLINE+
           пПроизводитель+"</wb:Product><wb:Quantity>"+аКоличество+"</wb:Quantity><wb:Price>"+Trim(FormatNumber(пЦ,0,"",2))+"</wb:Price>"+_NEWLINE+
@@ -4826,7 +4849,7 @@ EndFunction
 
 
 //флТип: 0 -- полные остатки
-//       1 -- вызов отчета по списанию партий
+//       1 -- вызов отчета по списанию/продаже партий
 //       2 -- отчет по регистру 2 без сравнения
 //флУстановки: бит 0: не использовать корректировку остатков
 //             бит 1: показывать отчет по корректировке остатков
@@ -4898,7 +4921,7 @@ Function ВывестиОтчетОстаткам(Файл1,Файл2,флТип
         Continue;
       EndIf;
       
-      If ПрошКодЕГАИС<>Таб.КодЕГАИС Then
+      If (ПрошКодЕГАИС<>Таб.КодЕГАИС)Or((IsEmpty(Таб.КодЕГАИС)And(ПрошКодЕГАИС<>Таб.зПартия))) Then
         If Строк>1 Then
           Т.Area(11,Т.Height()-Строк+1,11,Т.Height()-Строк+1).Text:=глФРМЧл(аРазницаОбщая);
           Т.Area(2,Т.Height(),2,Т.Height()-Строк+1).Merge();
@@ -4911,7 +4934,7 @@ Function ВывестиОтчетОстаткам(Файл1,Файл2,флТип
           Т.Area(16,Т.Height(),16,Т.Height()-Строк+1).Merge();
           Т.Area(17,Т.Height(),17,Т.Height()-Строк+1).Merge();
         EndIf;
-        ПрошКодЕГАИС:=Таб.КодЕГАИС;
+        ПрошКодЕГАИС:=?(IsEmpty(Таб.КодЕГАИС),Таб.зПартия,Таб.КодЕГАИС);
         аРазницаОбщая:=0;
         Строк:=0;
       EndIf;
@@ -5019,14 +5042,15 @@ Function ВывестиОтчетОстаткам(Файл1,Файл2,флТип
     аОстОбъем:=0;
     аОстОбъем2:=0;
     ПрошСправки:="";
+    ПрошКодЕГАИС:="";
     
-    Таб.Sort("Справки+,зН+");
+    Таб.Sort("Справки+,КодЕГАИС+,зН+");
     Таб.Select();
     While Таб.Next() Do
       If (Round(Таб.Остаток,3)=0)And(Round(Таб.Остаток2,3)=0)And(Round(Таб.ОстатокЕГАИС,3)=0) Then
         Continue;
       EndIf;
-      If ПрошСправки<>Таб.Справки Then
+      If (ПрошСправки<>Таб.Справки)Or(ПрошКодЕГАИС<>Таб.КодЕГАИС)Or((IsEmpty(Таб.КодЕГАИС)And(ПрошКодЕГАИС<>Таб.зПартия))) Then
         If Строк>1 Then
           Т.Area(11,Т.Height()-Строк+1,11,Т.Height()-Строк+1).Text:=глФРМЧл(аРазницаОбщая);
           Т.Area(2,Т.Height(),2,Т.Height()-Строк+1).Merge();
@@ -5043,6 +5067,7 @@ Function ВывестиОтчетОстаткам(Файл1,Файл2,флТип
           Т.Area(20,Т.Height(),20,Т.Height()-Строк+1).Merge();
         EndIf;
         ПрошСправки:=Таб.Справки;
+        ПрошКодЕГАИС:=?(IsEmpty(Таб.КодЕГАИС),Таб.зПартия,Таб.КодЕГАИС);
         аРазницаОбщая:=0;
         Строк:=0;
       EndIf;

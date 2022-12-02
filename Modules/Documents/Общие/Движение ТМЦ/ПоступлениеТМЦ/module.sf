@@ -60,16 +60,26 @@ Function ОбновитьМаржПрибыль()
   Form.пСуммаМаржПрибыли.Caption:=глФРМ(СуммаМаржПрибыли,"");
 EndFunction
 
-Function ПриИзмененииСклада()
+Function ПриИзмененииСклада(ФлПересчет=1)
   aEl:=Form.Object;
   if Form.IsFullyInitialized() Then
     aTab:=aEl.LineParts("Номенклатура");
     Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,aTab.Size());
   EndIf;  
+  Form.ТипЦен.Value:=aEl.Склад.рзТипЦенПоступления;
   If aEl.Магазин<>aEl.Склад.Магазин Then
     aEl.Магазин:=aEl.Склад.Магазин;
+    If ФлПересчет Then
+      If AskQuestion("Изменился склад и магазин, заполнить графу цена без скидки, исходя из цен поступления выбранного склада?",Q_QUESTION+Q_YESNO,R_YES)=R_YES Then
+        aTab:=aEl.LineParts("Номенклатура");
+        aTab.Select();
+        While aTab.Next() Do
+          Ц0:=глПолучитьОсновнуюЦену(aTab.Номенклатура,aEl.Склад,aEl.DocDate);
+          aTab.ЦенаБезСкидки:=?(Ц0=0,aTab.Цена,Ц0);
+        EndDo;
+      EndIf;
+    EndIf;    
   EndIf;
-  Form.ТипЦен.Value:=aEl.Склад.рзТипЦенПоступления;
 EndFunction
 
 Function OnAfterChangeOperationCode()

@@ -25,6 +25,12 @@ Function DriverDeinit(спНастройки)
 EndFunction
 
 Function DriverConnect(спНастройки)
+  СтрДоп:=спНастройки["ДопУстановки"];
+  Ини:=Ini.Create();
+  Ини.AddFromString(СтрДоп);
+  спНастройки["ПроверятьСертификаты"]:=Number(Ини.GetData("ПроверятьСертификаты","1"));
+  спНастройки["Прокси"]:=Ини.GetData("Прокси","");
+  
   спНастройки["ТекСертификат"]:=0;
 EndFunction
 
@@ -44,7 +50,8 @@ Function CertificatesList(спНастройки)
     аХранилище.Open(2,"My",0);
     For i:=1 To аХранилище.Certificates.Count() Do
       аСерт:=аХранилище.Certificates.Item(i);
-      Таб.AddLine("ИмяСертификата,Идентификатор,ДатаНачала,ДатаОкончания,Рабочий",Trim(аСерт.SubjectName),Trim(аСерт.Thumbprint),Date(аСерт.ValidFromDate),Date(аСерт.ValidToDate),аСерт.IsValid.Result);
+      Таб.AddLine("ИмяСертификата,Идентификатор,ДатаНачала,ДатаОкончания,Рабочий",Trim(аСерт.SubjectName),Trim(аСерт.Thumbprint),Date(аСерт.ValidFromDate),Date(аСерт.ValidToDate),
+        ?(спНастройки["ПроверятьСертификаты"]=1,аСерт.IsValid.Result,2));
     EndDo;
     спНастройки["Сертификаты"]:=Таб;
   Except
@@ -80,7 +87,7 @@ Function CheckCertificate(спНастройки)
     спНастройки["ИмяСертификата"]:=Trim(аСерт.SubjectName);
     спНастройки["ДатаНачала"]:=Date(аСерт.ValidFromDate);
     спНастройки["ДатаОкончания"]:=Date(аСерт.ValidToDate);
-    спНастройки["Рабочий"]:=аСерт.IsValid.Result;
+    спНастройки["Рабочий"]:=?(спНастройки["ПроверятьСертификаты"]=1,аСерт.IsValid.Result,2);
   Except
     Exit "Ошибка выполнения команды: "+PopError();
   EndTry;

@@ -23,7 +23,7 @@ Function OnExecute()
   оДата:=Form.оДата.Value;
   Т:=Form.Таблица.Value;
   Т.SetSourceName("Table");
-  If ФлЗапретУстановкиТиповЦен Then
+  If (ФлЗапретУстановкиТиповЦен)And(not глПользователь.цЦенообразование) Then
     оТЦ:=Form.оТЦ.Value;
     For i:=1 To оТЦ.Size() Do
       If оТЦ.Check(i)>0 Then

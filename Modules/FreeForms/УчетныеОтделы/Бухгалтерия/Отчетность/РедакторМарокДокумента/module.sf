@@ -23,6 +23,8 @@ Var ДокументРедактор Export;
 Var ВыбранныйПринтер Export;
 Var МаксКоличествоВРежимеОднаПартия Export;
 
+Var РедакторНоменклатура Export;
+
 Function СохранитьИОбновитьТекущиеМарки() Forward;
 
 Function ОбновитьИнформацию()
@@ -191,7 +193,7 @@ Function РедакторИнфо()
   Form.оМарки.UpdateValue();
   Стр:=Trim(Form.оМарки.Value);
   Рез:="";
-  If СтрокиРедактор.СтрН.флАлкогольнаяПродукция Then
+  If РедакторНоменклатура.флАлкогольнаяПродукция Then
     Try
       AssertStringValues(Стр,150,_NEWLINE,5);
     Except

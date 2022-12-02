@@ -18,7 +18,7 @@ Function Видимость()
   MainTab.Column("оЦЗ").isVisible:=aEl.Склад.рзТипЦенРеализации.Selected()<>0;
   MainTab.Column("оЦЗ2").isVisible:=aEl.СкладПолучатель.рзТипЦенРеализации.Selected()<>0;
   флВидимостьПартий:=(aEl.Склад.БезПартионногоУчета=0)Or(not aEl.СкладПолучатель.БезПартионногоУчета);
-  MainTab.Column("Партия").isVisible:=Min(флВидимостьПартий,глПользователь.бухБухгалтер);
+  MainTab.Column("Партия").isVisible:=Min(флВидимостьПартий And 1,глПользователь.бухБухгалтер);
   MainTab.Column("Партия").isReadonly:=1-глПользователь.бухБухгалтер;
 EndFunction
 

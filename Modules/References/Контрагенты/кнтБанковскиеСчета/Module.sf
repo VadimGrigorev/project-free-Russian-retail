@@ -72,7 +72,7 @@ Function OnBeforeElementSave()
   
   If IsBlankString(aEl.Name) Then
     Box("Не указано наименование счета!",Q_STOP);
-    Form.Name.SetFocus();
+    Form.cName.SetFocus();
     Exit 0;
   EndIf;
 

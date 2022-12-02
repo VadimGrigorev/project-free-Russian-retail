@@ -476,6 +476,7 @@ Function Принять()
     If оТаб.Вид="НЕ загружать" Then
       Continue;
     EndIf;
+    Form.StatusText(""+оТаб.CurLine+" из "+оТаб.Size());
     пН:=пН+1;
     пД:=оТаб.оД;
     пК:=оТаб.оК;
@@ -488,7 +489,7 @@ Function Принять()
     пСтатус:="ОШИБКА!";
     
     ФлПропустить:=0;
-    If оТаб.Вид="Инкассо" Then
+    If (оТаб.Вид="Инкассо")or(оТаб.Вид="Розн. выручка") Then
       If оТаб.оК.Selected()<>0 Then
         З2.First();
         If З2.ResultTable.LocateAndGoto("зК",оТаб.оК)>0 Then
@@ -538,6 +539,9 @@ Function Принять()
     If оТаб.Вид="Инкассо" Then
       аДок.КодОперации:=Enum.коВыпискаБанкаПриход.Инкассация;
       аДок.ПодотчетноеЛицо:=оТаб.оК;
+    ElseIf оТаб.Вид="Розн. выручка" Then
+      аДок.КодОперации:=Enum.коВыпискаБанкаПриход.РозничнаяВыручка;
+      аДок.ПодотчетноеЛицо:=оТаб.оК;
     Else
       аДок.Контрагент:=оТаб.оК;
       аДок.Договор:=оТаб.оД;
@@ -557,6 +561,23 @@ Function Принять()
   Т.CopyByX("v3",1);
   глПечатнаяФормаОтчета(Т,Param,оЗагол,1);
   File.DeleteFile(Файл);
-  Form.кнЗагрузить.isDisabled:=1;
+  
+  оТаб.Lock();
+  Try
+    aNum:=0;
+    While aNum<оТаб.Size() Do
+      aNum:=aNum+1;
+      оТаб.CurLine:=aNum;
+      If оТаб.Вид="НЕ загружать" Then
+        Continue;
+      EndIf;
+      оТаб.Remove(aNum);
+      aNum:=aNum-1;
+    EndDo;
+  Finally
+    оТаб.UnLock();
+  EndTry;
+  
+  Form.кнЗагрузить.isDisabled:=оТаб.Size()=0;
   Файл:="";
 EndFunction

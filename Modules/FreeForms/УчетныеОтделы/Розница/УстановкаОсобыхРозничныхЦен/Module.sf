@@ -8,30 +8,47 @@ Var бТипЦен Export;
 Function OnExecute(СпУстановки)
   оН:=Form.оН.Value;
   
-  Сп:=List.Create();
-  aEl:=Ref.цНаценкиНаГруппы;
-  aEl.Select("@Parent,флРучная",аТипЦен,1);
-  While aEl.Next() Do
-    зН:=aEl.ГруппаНоменклатуры;
-    Сп.Add(зН);
-  EndDo;
-  Сп:=Ref.тмцНоменклатура.LoadEx(0,1,"","->@ELEMENT",Сп);
-  
-  Сп2:=List.Create();
-  For i:=1 To Сп.Size() Do
-    зН:=Сп[i];
-    If _And(оН.Get(1).Size()>0,Not оН.Get(1).Contains(зН)) Then
-      Continue;
+  If глПользователь.цЦенообразование=1 Then
+    Сп2:=Ref.тмцНоменклатура.LoadEx(0,1,"","~(@ELEMENT IN оН.Get(1))And(@ELEMENT NOT IN оН.Get(2))And(@IsFolder=0)");
+    СпМаг:=Ref.рознМагазины.Load(0,"~(@ELEMENT IN Form.оМг.Value.Get(1))And(@ELEMENT NOT IN Form.оМг.Value.Get(2))");
+    If СпМаг.Size()=0 Then
+      Box("Необходимо выбрать магазин!",Q_STOP);
+      Exit;
     EndIf;
-    If _And(оН.Get(2).Size()>0,оН.Get(2).Contains(зН)) Then
-      Continue;
-    EndIf;
-    Сп2.Add(зН);
-  EndDo;
+    аТипЦен:=List.Create();
+    бТипЦен:=List.Create();
+    For i:=1 To СпМаг.Size() Do
+      аТипЦен.Add(СпМаг[i].ТипЦенРеализации);
+      бТипЦен.Add(СпМаг[i].ТипЦенПоступления);
+    EndDo;
+    аТипЦен.Group();
+    бТипЦен.Group();
+  Else
+    Сп:=List.Create();
+    aEl:=Ref.цНаценкиНаГруппы;
+    aEl.Select("@Parent,флРучная",аТипЦен,1);
+    While aEl.Next() Do
+      зН:=aEl.ГруппаНоменклатуры;
+      Сп.Add(зН);
+    EndDo;
+    Сп:=Ref.тмцНоменклатура.LoadEx(0,1,"","->@ELEMENT",Сп);
+    
+    Сп2:=List.Create();
+    For i:=1 To Сп.Size() Do
+      зН:=Сп[i];
+      If _And(оН.Get(1).Size()>0,Not оН.Get(1).Contains(зН)) Then
+        Continue;
+      EndIf;
+      If _And(оН.Get(2).Size()>0,оН.Get(2).Contains(зН)) Then
+        Continue;
+      EndIf;
+      Сп2.Add(зН);
+    EndDo;
   
-  If Сп2.Size()=0 Then
-    Box("Цены выбранной номенклатуры не могут быть установлены вручную, выберите другую номенклатуру!",Q_STOP);
-    Exit;  
+    If Сп2.Size()=0 Then
+      Box("Цены выбранной номенклатуры не могут быть установлены вручную, выберите другую номенклатуру!",Q_STOP);
+      Exit;  
+    EndIf;
   EndIf;
   
   aList:=List.Create();
@@ -39,7 +56,7 @@ Function OnExecute(СпУстановки)
   aList.SetByName("ТипЦен",аТипЦен);
   aList.SetByName("ТипЦен0",бТипЦен);
   aList.SetByName("Номенклатура",Сп2);
-  aList.SetByName("Магазин",глПользователь.Магазин);
+  //aList.SetByName("Магазин",глПользователь.Магазин);
   
   LoadModule(1,"Modules\FreeForms\УчетныеОтделы\Цены\УстановкаЦен",aList,0,"Module","Form");
   Form.Close(0);  

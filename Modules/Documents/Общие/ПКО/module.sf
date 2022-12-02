@@ -161,6 +161,53 @@ Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПара
     EndIf;
   EndIf;
 
+  //Синхронизация ПКО и СуммаБезналичнойПродажи в реализации
+  //Этот блок должен быть последним в этой процедуре (так как он (вероятно) обрабатывает документ)
+  If _And(aEl.ДокОснование.Selected(),aEl.ДокОснование.DBName()="Реализация",aEl.ДокОснование.КодОперации=Enum.коРеализация.РеализацияРозничная) Then
+    If aEl.ДокОснование.СуммаВзаиморасчетов<aEl.СуммаВзаиморасчетов Then
+      Box("Сумма оплаты розничной продажи не может быть больше суммы розничной продажи!",Q_STOP);
+      Exit 0;
+    EndIf;
+    См:=Round(aEl.ДокОснование.СуммаВзаиморасчетов-aEl.СуммаВзаиморасчетов,2);
+    If Round(aEl.ДокОснование.СуммаБезналичнойПродажи,2)<>См Then
+      аПольз:="";аМаш:="";аВремя:="";
+      bEl:=aEl.ДокОснование;
+      If bEl.Lock(аПольз,аМаш,аВремя)=0 Then
+        Message("Невозможно заблокировать документ "+bEl+", заблокированный пользователем "+аПольз+" на "+аМаш+" в "+аВремя+"!","!");
+        Exit 0;
+      EndIf;  
+    
+      флОк:=0;
+      Buff:=aEl.StoreObjectToBuffer();
+      BeginTransaction();
+      Try
+        bEl.Reload();
+        bEl.СуммаБезналичнойПродажи:=См;
+        If bEl.Status()>1 Then
+          bEl.Publish();
+        Else
+          bEl.Save();
+        EndIf;
+        If (флОбработка)Or(aEl.Status()>1) Then
+          aEl.Publish();
+        ElseIf Form.IsChanged()=1 Then
+          aEl.Save();
+          флОбработатьТекущийДокумент:=1;
+        EndIf;
+        флОк:=1;
+        Exit 2;
+      Finally
+        bEl.Unlock();
+        If флОк Then
+          CommitTransaction();
+        Else
+          aEl.RestoreObjectFromBuffer(Buff);
+          RollbackTransaction();
+        EndIf;
+      EndTry  
+    EndIf;
+  EndIf;
+  
   Exit 1; 
 EndFunction
 
