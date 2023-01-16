@@ -166,7 +166,7 @@ Function Выгрузить()
   EndIf;
   
   Ш:=Text.Create();
-  Ш.Load(Шабл);
+  Ш.Load(Шабл,0);
   
   //@@@HEADER@@@
   //@@@BODY@@@
@@ -248,7 +248,7 @@ Function Выгрузить()
     аНом:=аНом+1;
     
     СчКнт:=?(д.БанковскийСчетКонтрагента.Selected()<>0,д.БанковскийСчетКонтрагента,д.Контрагент.ОсновнойСчет);
-    СпПар.SetByName("DOCNUM",""+Number(Mid(д.DocNum,3)));
+    СпПар.SetByName("DOCNUM",""+Number(Mid(д.DocNum,5)));
     СпПар.SetByName("DOCDATE",""+FormatDate(д.DocDate,"dd.mm.YYYY"));
     СпПар.SetByName("DOCSUM",FormatNumber(д.СуммаВзаиморасчетов,0,"",2));
     СпПар.SetByName("DOCSUMMINUS",Replace(FormatNumber(д.СуммаВзаиморасчетов,0,"",2),".","-"));

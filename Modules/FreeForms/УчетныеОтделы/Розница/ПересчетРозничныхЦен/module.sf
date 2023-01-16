@@ -12,15 +12,38 @@ Function OnExecute()
     Box("Необходимо выбрать номенклатуру!",Q_STOP);
     Exit;
   EndIf;
+  оМг:=Form.оМг.Value.Get(1);
+  оМгНЕ:=Form.оМг.Value.Get(2);
   
-  ТЗ:="зН:=Ref.тмцНоменклатура;
-  |зСтатус:=Ref.тмцНоменклатура.@STATUS;
-  |зПапка:=Ref.тмцНоменклатура.@ISFOLDER;
-  |Condition(зПапка=0);"+
-  ?(Form.оТакжеУдал.Value=0,"Condition(зСтатус=0);","")+
-  "Condition(зН IN оН);
-  |Condition(зН NOT IN оННЕ);
-  |Group зН"+?(Form.оГруппы.Value=1," with folders","")+";";
+  If Form.оСкл.Value=0 Then
+    ТЗ:="зН:=Ref.тмцНоменклатура;
+    |зСтатус:=Ref.тмцНоменклатура.@STATUS;
+    |зПапка:=Ref.тмцНоменклатура.@ISFOLDER;
+    |Condition(зПапка=0);"+
+    ?(Form.оТакжеУдал.Value=0,"Condition(зСтатус=0);","")+
+    "Condition(зН IN оН);
+    |Condition(зН NOT IN оННЕ);
+    |Group зН"+?(Form.оГруппы.Value=1," with folders","")+";";
+  Else
+    СпСклады:=List.Create();
+    аМаг:=Ref.рознМагазины;
+    аМаг.Select("~(@Status=0)And(@ELEMENT IN оМг)And(@ELEMENT NOT IN оМгНЕ)");
+    While аМаг.Next() Do
+      СпСклады.Add(аМаг.Склад);
+    EndDo;
+  
+    КДата:=BegOfDay(Date());
+    ТЗ:="Period From КДата to КДата;
+    |зСтатус:=Storage.ОстаткиТМЦ.Номенклатура.@STATUS;
+    |зН:=Storage.ОстаткиТМЦ.Номенклатура;
+    |зСк:=Storage.ОстаткиТМЦ.Склад;
+    |зКО:=EndTotals(Количество);"+
+    ?(Form.оТакжеУдал.Value=0,"Condition(зСтатус=0);","")+
+    "Condition(зН IN оН);
+    |Condition(зН NOT IN оННЕ);
+    |Condition(зСк IN СпСклады);
+    |Group зН;"+?(Form.оГруппы.Value=1," with folders","")+";";
+  EndIf;
   
   З:=Query.Create();
   З.Execute(ТЗ);
@@ -114,8 +137,13 @@ Function OnExecute()
         If Ц.Find("@Parent,ТипЦен",пН,ТЦ) Then
           If Ц.Status()=1 Then
             Ц.Mark(0,,пН);
-          Else
-            пН.SetTrigger(1);
+          ElseIf not Form.оСимул.Value Then
+            Try
+              пН.SetTrigger(1);
+            Except
+              Message("Невозможно получить доступ к номенклатуре "+пН,"!");
+              Raise PopError();
+            EndTry;
           EndIf;
         Else
           Ц.New();

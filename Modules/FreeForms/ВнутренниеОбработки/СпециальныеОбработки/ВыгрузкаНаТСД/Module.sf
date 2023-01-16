@@ -3,6 +3,7 @@
 //Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 Var спНастройки Export;
+Var ФлСвободныйТСД Export, СвободноеОборудование Export;
 
 Function Доступность()
   Фл:=Form.оОст.Value;
@@ -19,174 +20,189 @@ Function Доступность()
 EndFunction
 
 Function OnExecute()
-  пВид:=Form.пВид.Value.SelectedLine;
-  aTab:=Tab.Create("Элемент,Наименование,Код,Штрихкод,Количество,Цена,ЭтоПапка,КодПапки");
-  If IsEmpty(спНастройки) Then
-    Box("Необходимо выбрать терминал сбора данных для выгрузки!",Q_STOP);
-    Exit;
-  EndIf;
-  If Form.оН.Value[1].Size()+Form.оН.Value[2].Size()+Form.оТГ.Value[1].Size()+Form.оТГ.Value[2].Size()=0 Then
-    Box("Необходимо выбрать по крайней мере один фильтр номенклатуры или товарной группы!",Q_STOP);
-    Exit;
+  If ФлСвободныйТСД Then
+    Assert(not IsDBObject(СвободноеОборудование),"Не выбран элемент оборудования, внутренняя ошибка!");
+    спНастройки:=глЗагрузитьПроизвольныйДрайвер(СвободноеОборудование);
   EndIf;
   
-  If _And(Form.оЦены.Value=1,Form.оТЦ.Value.Selected()=0) Then
-    Box("Необходимо выбрать тип цен для выгрузки цен!",Q_STOP);
-    Exit;
-  EndIf;
-  
-  оН:=Form.оН.Value;
-  оТГ:=Form.оТГ.Value;
-  If Form.оОст.Value=1 Then
-    If (Form.оСк.Value[1].Size()+Form.оСк.Value[2].Size()=0)And(Form.оМг.Value.Selected()=0) Then
-      Box("Необходимо выбрать по крайней мере один фильтр склада или магазина!",Q_STOP);
+  Try
+    пВид:=Form.пВид.Value.SelectedLine;
+    aTab:=Tab.Create("Элемент,Наименование,Код,Штрихкод,Количество,Цена,ЭтоПапка,КодПапки");
+    If IsEmpty(спНастройки) Then
+      Box("Необходимо выбрать терминал сбора данных для выгрузки!",Q_STOP);
       Exit;
     EndIf;
-  
-    КДата:=BegOfDay(Date());
-    НДата:=КДата;
-    ТЗ:="Period From НДата to КДата;
-    |зН:=Storage.ОстаткиТМЦ.Номенклатура;
-    |Condition(зН IN оН.Get(1));
-    |Condition(зН NOT IN оН.Get(2));
-    |зПапка:=Storage.ОстаткиТМЦ.Номенклатура.@IsFolder;
-    |Condition(зПапка=0);
-    |зТГ:=Storage.ОстаткиТМЦ.Номенклатура.ТоварнаяГруппа;
-    |Condition(зТГ IN оТГ.Get(1));
-    |Condition(зТГ NOT IN оТГ.Get(2));
-    |зЮЛ:=Storage.ОстаткиТМЦ.ЮрЛицо;
-    |Condition(зЮЛ IN Form.оЮЛ.Value.Get(1));
-    |Condition(зЮЛ NOT IN Form.оЮЛ.Value.Get(2));
-    |зМг:=Storage.ОстаткиТМЦ.Склад.Магазин;
-    |Condition(зМг=Form.оМг.Value);
-    |зСк:=Storage.ОстаткиТМЦ.Склад;
-    |Condition(зСк IN Form.оСк.Value.Get(1));
-    |Condition(зСк NOT IN Form.оСк.Value.Get(2));
-    |зПартия:=Storage.ОстаткиТМЦ.Партия;
-    |зКл:=EndTotals(Количество);"+
-    ?((пВид=1)or(пВид=3),"Group зН;","Group зПартия;");
-    If Form.оНаличие.Value=0 Then
-      If (пВид=2)or(пВид=4) Then
-        ТЗ:="("+ТЗ+") UNION ALL (
-        |зСтатус:=Ref.тмцПартииТМЦ.@Status;
-        |Condition(зСтатус=0);
-        |зПартия:=Ref.тмцПартииТМЦ;
-        |зН:=Ref.тмцПартииТМЦ.@Parent;
-        |зТГ:=Ref.тмцПартииТМЦ.@Parent.ТоварнаяГруппа;
-        |Condition(зН IN оН.Get(1));
-        |Condition(зН NOT IN оН.Get(2));
-        |Condition(зТГ IN оТГ.Get(1));
-        |Condition(зТГ NOT IN оТГ.Get(2));
-        |зКл:=Sum(0);
-        |Group зПартия;)";
-      Else
-        ТЗ:="("+ТЗ+") UNION ALL (
-        |зН:=Ref.тмцНоменклатура;
-        |зСтатус:=Ref.тмцНоменклатура.@Status;
-        |Condition(зСтатус=0);
-        |зПапка:=Ref.тмцНоменклатура.@isFolder;Condition(зПапка=0);
-        |зТГ:=Ref.тмцНоменклатура.ТоварнаяГруппа;
-        |Condition(зН IN оН.Get(1));
-        |Condition(зН NOT IN оН.Get(2));
-        |Condition(зТГ IN оТГ.Get(1));
-        |Condition(зТГ NOT IN оТГ.Get(2));
-        |зКл:=Sum(0);
-        |Group зН;)";
-      EndIf;
+    If Form.оН.Value[1].Size()+Form.оН.Value[2].Size()+Form.оТГ.Value[1].Size()+Form.оТГ.Value[2].Size()=0 Then
+      Box("Необходимо выбрать по крайней мере один фильтр номенклатуры или товарной группы!",Q_STOP);
+      Exit;
     EndIf;
-    З:=Query.Create();
-    З.Execute(ТЗ);
-  ElseIf (пВид=1)or(пВид=3) Then
-    ТЗ:="зН:=Ref.тмцНоменклатура;
-    |зСтатус:=Ref.тмцНоменклатура.@Status;
-    |Condition(зСтатус=0);
-    |зПапка:=Ref.тмцНоменклатура.@IsFolder;
-    |Condition(зПапка=0);
-    |Condition(зН IN Form.оН.Value.Get(1));
-    |Condition(зН NOT IN Form.оН.Value.Get(2));
-    |зТГ:=Ref.тмцНоменклатура.ТоварнаяГруппа;
-    |Condition(зТГ IN Form.оТГ.Value.Get(1));
-    |Condition(зТГ NOT IN Form.оТГ.Value.Get(2));
-    |Group зН;";
-    З:=Query.Create();
-    З.Execute(ТЗ);
-  Else
-    ТЗ:="зН:=Ref.тмцПартииТМЦ.@Parent;
-    |зСтатус:=Ref.тмцПартииТМЦ.@Status;
-    |Condition(зСтатус=0);
-    |Condition(зН IN оН.Get(1));
-    |Condition(зН NOT IN оН.Get(2));
-    |зТГ:=Ref.тмцПартииТМЦ.@Parent.ТоварнаяГруппа;
-    |Condition(зТГ IN оТГ.Get(1));
-    |Condition(зТГ NOT IN оТГ.Get(2));
-    |зПартия:=Ref.тмцПартииТМЦ;
-    |Group зПартия;";
-    З:=Query.Create();
-    З.Execute(ТЗ);
-  EndIf;
-  
-  ДатаЦены:=Date();
-  While З.Next(1) Do
-    зН:=?((пВид=1)or(пВид=3),З.зН,З.зПартия.Parent());
-    зПозиция:=?((пВид=1)or(пВид=3),З.зН,З.зПартия);
-    пИмя:=?((пВид=1)or(пВид=3),З.зН.Name,З.зН.Name+", "+З.зПартия);
-    пКоличество:=0;
-    пЦена:=0;
     
+    If _And(Form.оЦены.Value=1,Form.оТЦ.Value.Selected()=0) Then
+      Box("Необходимо выбрать тип цен для выгрузки цен!",Q_STOP);
+      Exit;
+    EndIf;
+    
+    Form.StatusText("Выполнение запросов...");
+    оН:=Form.оН.Value;
+    оТГ:=Form.оТГ.Value;
     If Form.оОст.Value=1 Then
-      If (З.зКл<=0)And(Form.оНаличие.Value=1) Then
-        Continue;
+      If (Form.оСк.Value[1].Size()+Form.оСк.Value[2].Size()=0)And(Form.оМг.Value.Selected()=0) Then
+        Box("Необходимо выбрать по крайней мере один фильтр склада или магазина!",Q_STOP);
+        Exit;
       EndIf;
-      пКоличество:=З.зКл;
-    EndIf;  
     
-    If Form.оЦены.Value=1 Then
-      пЦена:=глНайтиЦенуТипаЦен(зПозиция,Form.оТЦ.Value,ДатаЦены);
-    EndIf;
-    
-    If (Form.оВсе.Value=1)And(пВид<3) Then
-      aEl:=Ref.тмцШтрихкоды;
-      aEl.Select("@Parent,@Status,<>Name,Коэффициент",зПозиция,0,"",1);
-      While aEl.Next() Do
-        пШтрихКод:=aEl.Name;
-        aTab.AddLine("Элемент,Наименование,Код,Штрихкод,Количество,Цена,ЭтоПапка,КодПапки",aEl,пИмя,aEl.Code,пШтрихКод,пКоличество,пЦена,0,"");
-      EndDo;
+      КДата:=BegOfDay(Date());
+      НДата:=КДата;
+      ТЗ:="Period From НДата to КДата;
+      |зН:=Storage.ОстаткиТМЦ.Номенклатура;
+      |Condition(зН IN оН.Get(1));
+      |Condition(зН NOT IN оН.Get(2));
+      |зПапка:=Storage.ОстаткиТМЦ.Номенклатура.@IsFolder;
+      |Condition(зПапка=0);
+      |зТГ:=Storage.ОстаткиТМЦ.Номенклатура.ТоварнаяГруппа;
+      |Condition(зТГ IN оТГ.Get(1));
+      |Condition(зТГ NOT IN оТГ.Get(2));
+      |зЮЛ:=Storage.ОстаткиТМЦ.ЮрЛицо;
+      |Condition(зЮЛ IN Form.оЮЛ.Value.Get(1));
+      |Condition(зЮЛ NOT IN Form.оЮЛ.Value.Get(2));
+      |зМг:=Storage.ОстаткиТМЦ.Склад.Магазин;
+      |Condition(зМг=Form.оМг.Value);
+      |зСк:=Storage.ОстаткиТМЦ.Склад;
+      |Condition(зСк IN Form.оСк.Value.Get(1));
+      |Condition(зСк NOT IN Form.оСк.Value.Get(2));
+      |зПартия:=Storage.ОстаткиТМЦ.Партия;
+      |зКл:=EndTotals(Количество);"+
+      ?((пВид=1)or(пВид=3),"Group зН;","Group зПартия;");
+      If Form.оНаличие.Value=0 Then
+        If (пВид=2)or(пВид=4) Then
+          ТЗ:="("+ТЗ+") UNION ALL (
+          |зСтатус:=Ref.тмцПартииТМЦ.@Status;
+          |Condition(зСтатус=0);
+          |зПартия:=Ref.тмцПартииТМЦ;
+          |зН:=Ref.тмцПартииТМЦ.@Parent;
+          |зТГ:=Ref.тмцПартииТМЦ.@Parent.ТоварнаяГруппа;
+          |Condition(зН IN оН.Get(1));
+          |Condition(зН NOT IN оН.Get(2));
+          |Condition(зТГ IN оТГ.Get(1));
+          |Condition(зТГ NOT IN оТГ.Get(2));
+          |зКл:=Sum(0);
+          |Group зПартия;)";
+        Else
+          ТЗ:="("+ТЗ+") UNION ALL (
+          |зН:=Ref.тмцНоменклатура;
+          |зСтатус:=Ref.тмцНоменклатура.@Status;
+          |Condition(зСтатус=0);
+          |зПапка:=Ref.тмцНоменклатура.@isFolder;Condition(зПапка=0);
+          |зТГ:=Ref.тмцНоменклатура.ТоварнаяГруппа;
+          |Condition(зН IN оН.Get(1));
+          |Condition(зН NOT IN оН.Get(2));
+          |Condition(зТГ IN оТГ.Get(1));
+          |Condition(зТГ NOT IN оТГ.Get(2));
+          |зКл:=Sum(0);
+          |Group зН;)";
+        EndIf;
+      EndIf;
+      З:=Query.Create();
+      З.Execute(ТЗ);
+    ElseIf (пВид=1)or(пВид=3) Then
+      ТЗ:="зН:=Ref.тмцНоменклатура;
+      |зСтатус:=Ref.тмцНоменклатура.@Status;
+      |Condition(зСтатус=0);
+      |зПапка:=Ref.тмцНоменклатура.@IsFolder;
+      |Condition(зПапка=0);
+      |Condition(зН IN Form.оН.Value.Get(1));
+      |Condition(зН NOT IN Form.оН.Value.Get(2));
+      |зТГ:=Ref.тмцНоменклатура.ТоварнаяГруппа;
+      |Condition(зТГ IN Form.оТГ.Value.Get(1));
+      |Condition(зТГ NOT IN Form.оТГ.Value.Get(2));
+      |Group зН;";
+      З:=Query.Create();
+      З.Execute(ТЗ);
     Else
-      пКод:="";
-      If пВид<3 Then
-        пШтрихКод:=глПолучитьШтрихкод(зПозиция,0,,1);
-        пКод:=зПозиция.Code+?(пВид=2,"@"+зН.Code);
-      ElseIf пВид=3 Then
-        //N000000008265
-        пШтрихКод:="N"+зПозиция.Code;
-        пКод:=зПозиция.Code;
+      ТЗ:="зН:=Ref.тмцПартииТМЦ.@Parent;
+      |зСтатус:=Ref.тмцПартииТМЦ.@Status;
+      |Condition(зСтатус=0);
+      |Condition(зН IN оН.Get(1));
+      |Condition(зН NOT IN оН.Get(2));
+      |зТГ:=Ref.тмцПартииТМЦ.@Parent.ТоварнаяГруппа;
+      |Condition(зТГ IN оТГ.Get(1));
+      |Condition(зТГ NOT IN оТГ.Get(2));
+      |зПартия:=Ref.тмцПартииТМЦ;
+      |Group зПартия;";
+      З:=Query.Create();
+      З.Execute(ТЗ);
+    EndIf;
+    
+    ДатаЦены:=Date();
+    While З.Next(1) Do
+      Form.StatusText("Подготовка: "+З.ResultTable.CurLine+" из "+З.ResultTable.Size());
+      
+      зН:=?((пВид=1)or(пВид=3),З.зН,З.зПартия.Parent());
+      зПозиция:=?((пВид=1)or(пВид=3),З.зН,З.зПартия);
+      пИмя:=?((пВид=1)or(пВид=3),З.зН.Name,З.зН.Name+", "+З.зПартия);
+      пКоличество:=0;
+      пЦена:=0;
+      
+      If Form.оОст.Value=1 Then
+        If (З.зКл<=0)And(Form.оНаличие.Value=1) Then
+          Continue;
+        EndIf;
+        пКоличество:=З.зКл;
+      EndIf;  
+      
+      If Form.оЦены.Value=1 Then
+        пЦена:=глНайтиЦенуТипаЦен(зПозиция,Form.оТЦ.Value,ДатаЦены);
+      EndIf;
+      
+      If (Form.оВсе.Value=1)And(пВид<3) Then
+        aEl:=Ref.тмцШтрихкоды;
+        aEl.Select("@Parent,@Status,<>Name,Коэффициент",зПозиция,0,"",1);
+        While aEl.Next() Do
+          пШтрихКод:=aEl.Name;
+          aTab.AddLine("Элемент,Наименование,Код,Штрихкод,Количество,Цена,ЭтоПапка,КодПапки",aEl.Parent(),пИмя,aEl.Code,пШтрихКод,пКоличество,пЦена,0,"");
+        EndDo;
       Else
-        //P000000008265000000000009
-        пШтрихКод:="P"+зН.Code+зПозиция.Code;
-        пКод:=зПозиция.Code+"@"+зН.Code;
+        пКод:="";
+        If пВид<3 Then
+          пШтрихКод:=глПолучитьШтрихкод(зПозиция,0,,1);
+          пКод:=зПозиция.Code+?(пВид=2,"@"+зН.Code);
+        ElseIf пВид=3 Then
+          //N000000008265
+          пШтрихКод:="N"+зПозиция.Code;
+          пКод:=зПозиция.Code;
+        Else
+          //P000000008265000000000009
+          пШтрихКод:="P"+зН.Code+зПозиция.Code;
+          пКод:=зПозиция.Code+"@"+зН.Code;
+        EndIf;
+        If not IsEmpty(пШтрихКод) Then
+          aTab.AddLine("Элемент,Наименование,Код,Штрихкод,Количество,Цена,ЭтоПапка,КодПапки",зПозиция,пИмя,пКод,пШтрихКод,пКоличество,пЦена,0,"");
+        EndIf;
       EndIf;
-      If not IsEmpty(пШтрихКод) Then
-        aTab.AddLine("Элемент,Наименование,Код,Штрихкод,Количество,Цена,ЭтоПапка,КодПапки",зПозиция,пИмя,пКод,пШтрихКод,пКоличество,пЦена,0,"");
+    EndDo;
+  
+    Try
+      Стр:=глВыполнитьФункциюДрайвера("DriverConnect",спНастройки);
+      If Стр<>"" Then
+        Raise Стр;
       EndIf;
+      спНастройки["Успешно"]:=0;
+      спНастройки["Позиции"]:=aTab;
+      спНастройки["Очистка"]:=Form.оОчистка.Value;
+      Стр:=глВыполнитьФункциюДрайвера("UploadPositions",спНастройки);
+      If Стр<>"" Then
+        Raise Стр;
+      EndIf;
+      глВыполнитьФункциюДрайвера("DriverDisconnect",спНастройки);
+    Except
+      Message("Ошибка при обмене с драйвером: "+PopError(),"!");
+      Exit;
+    EndTry;
+  Finally
+    If ФлСвободныйТСД Then
+      глВыгрузитьПроизвольныйДрайвер(спНастройки);
+      спНастройки:=0;
     EndIf;
-  EndDo;
-
-  Try
-    Стр:=глВыполнитьФункциюДрайвера("DriverConnect",спНастройки);
-    If Стр<>"" Then
-      Raise Стр;
-    EndIf;
-    спНастройки["Успешно"]:=0;
-    спНастройки["Позиции"]:=aTab;
-    спНастройки["Очистка"]:=Form.оОчистка.Value;
-    Стр:=глВыполнитьФункциюДрайвера("UploadPositions",спНастройки);
-    If Стр<>"" Then
-      Raise Стр;
-    EndIf;
-    глВыполнитьФункциюДрайвера("DriverDisconnect",спНастройки);
-  Except
-    Message("Ошибка при обмене с драйвером: "+PopError(),"!");
-    Exit;
   EndTry;
   
   Message("Выгрузка окончена!","I");

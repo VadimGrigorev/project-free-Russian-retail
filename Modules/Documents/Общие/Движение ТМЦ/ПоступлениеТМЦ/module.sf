@@ -235,3 +235,35 @@ Function OnCreateFromObject()
     EndIf;
   EndIf;
 EndFunction
+
+Function OnUnknownAction(Тип)
+  aEl:=Form.Object;
+  If Тип="Выполнить обмен по текущему магазину..." Then
+    If aEl.Склад.Магазин.Selected()=0 Then
+      Box("Для склада документа не выбран магазин!",Q_STOP);
+      Exit;
+    EndIf;
+    Фл:=0;
+    аМагазин:=aEl.Склад.Магазин;
+    аПротокол:=Ref.рознПротоколыОбменаМагазинов;
+    If аПротокол.Find("@Parent,@Status,ПутьДрайвераОбмена",аМагазин,0,"Modules\FreeForms\ПротоколыОбмена\РаспределеннаяБаза\") Then
+      aList:=List.Create();
+      aList["Команда"]:="Выгрузка всех магазинов";
+      aList["СпМагазины"]:=List.Create(аМагазин);
+      aList["ВизуальныйВызов"]:=1;
+      LoadModule(0,"Modules\FreeForms\ПротоколыОбмена\РаспределеннаяБаза",aList,0,"Module","Form");
+      Фл:=1;
+    EndIf;
+    If аПротокол.Find("@Parent,@Status,ПутьДрайвераОбмена",аМагазин,0,"Modules\FreeForms\ПротоколыОбмена\ФронтолСервер\") Then
+      aList:=List.Create();
+      aList["Команда"]:="Выгрузка всех магазинов";
+      aList["СпМагазины"]:=List.Create(аМагазин);
+      aList["ВизуальныйВызов"]:=1;
+      LoadModule(0,"Modules\FreeForms\ПротоколыОбмена\ФронтолСервер",aList,0,"Module","Form");
+      Фл:=1;
+    EndIf;
+    If not Фл Then
+      Box("Для магазина отсутствуют зарегистрированные подходящие протоколы обмена!",Q_STOP);
+    EndIf;
+  EndIf;
+EndFunction

@@ -203,7 +203,7 @@ Function DownloadPositions(спНастройки)
       аСтрока:=аДок.CurrentItems.Item(i);
       Код:=аСтрока.ProductId;
       Количество:=Number(аСтрока.CurrentQuantity);
-      Штрихкод:=аСтрока.FirstStorageBarcode;
+      Штрихкод:=аСтрока.Товар.Barcode;
       aTab.AddLine("Код,Штрихкод,Количество",Код,Штрихкод,Количество);
     EndDo;
     If Number(спНастройки["НеУдалять"])=0 Then

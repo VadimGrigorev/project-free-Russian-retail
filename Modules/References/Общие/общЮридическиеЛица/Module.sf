@@ -175,3 +175,71 @@ Function СохранитьНастройкиДрайвераПодписи()
   EndIf;
 EndFunction
 
+Function НазначитьТип()
+  Function НазначитьТипРекв(оСуб,ВС)
+    If Trim(ВС.ТипЗначенияЛокальный)="" Then
+      оСуб.SetType("Ref.бухЗначенияСубконто");
+      If _And(not isEmpty(оСуб.Value),оСуб.Value.Parent()<>ВС) Then
+        оСуб.Value:=0;
+      EndIf;
+    Else
+      оСуб.SetType(Replace(Uppercase(ВС.ТипЗначенияЛокальный),"СПРАВОЧНИК","REF"));
+    EndIf;
+  EndFunction
+
+  аСчет:=Form.КомиссияЗаИспользованиеТерминаловСчет.Value;
+  If аСчет.Selected()=0 Then
+    Exit;
+  EndIf;
+  НазначитьТипРекв(Form.КомиссияЗаИспользованиеТерминаловСубконто1,аСчет.ВидСубконто1);
+  НазначитьТипРекв(Form.КомиссияЗаИспользованиеТерминаловСубконто2,аСчет.ВидСубконто2);
+  НазначитьТипРекв(Form.КомиссияЗаИспользованиеТерминаловСубконто3,аСчет.ВидСубконто3);
+EndFunction
+
+Function ОбновитьСчетКомиссии()
+  aEl:=Form.Object;
+  аСчет:=Form.КомиссияЗаИспользованиеТерминаловСчет.Value;
+  If аСчет.Selected()=0 Then
+    Form.КомиссияЗаИспользованиеТерминаловСубконто1.Value:=GetNothing();
+    Form.КомиссияЗаИспользованиеТерминаловСубконто2.Value:=GetNothing();
+    Form.КомиссияЗаИспользованиеТерминаловСубконто3.Value:=GetNothing();
+    Form.тСчет.Caption:="";
+  Else
+    Form.тСчет.Caption:=аСчет.Name;
+  EndIf;
+  
+  If аСчет.ВидСубконто1.Selected()=0 Then
+    Form.тСуб1.Caption:="";
+    Form.тС1.isDisabled:=1;
+    Form.КомиссияЗаИспользованиеТерминаловСубконто1.isDisabled:=1;
+    Form.КомиссияЗаИспользованиеТерминаловСубконто1.Value:=GetNothing();
+  Else
+    Form.тСуб1.Caption:=аСчет.ВидСубконто1.Name;
+    Form.тС1.isDisabled:=0;
+    Form.КомиссияЗаИспользованиеТерминаловСубконто1.isDisabled:=0;
+  EndIf;
+  
+  If аСчет.ВидСубконто2.Selected()=0 Then
+    Form.тСуб2.Caption:="";
+    Form.тС2.isDisabled:=1;
+    Form.КомиссияЗаИспользованиеТерминаловСубконто2.isDisabled:=1;
+    Form.КомиссияЗаИспользованиеТерминаловСубконто2.Value:=GetNothing();
+  Else
+    Form.тСуб2.Caption:=аСчет.ВидСубконто2.Name;
+    Form.тС2.isDisabled:=0;
+    Form.КомиссияЗаИспользованиеТерминаловСубконто2.isDisabled:=0;
+  EndIf;
+  
+  If аСчет.ВидСубконто3.Selected()=0 Then
+    Form.тСуб3.Caption:="";
+    Form.тС3.isDisabled:=1;
+    Form.КомиссияЗаИспользованиеТерминаловСубконто3.isDisabled:=1;
+    Form.КомиссияЗаИспользованиеТерминаловСубконто3.Value:=GetNothing();
+  Else
+    Form.тСуб3.Caption:=аСчет.ВидСубконто3.Name;
+    Form.тС3.isDisabled:=0;
+    Form.КомиссияЗаИспользованиеТерминаловСубконто3.isDisabled:=0;
+  EndIf;
+  НазначитьТип();
+  Exit "";
+EndFunction
