@@ -5,31 +5,32 @@ Layer 4D00610069006E00
 End
 Object FORM
   FormFlags=1
-  Caption=1D0430044104420440043E0439043A043004200041043A0430043D043504400430042000280043004F004D002D003F043E04400442042900
+  Caption=1D0430044104420440043E0439043A04300420003404400430043904320435044004300420001A043B04350432043504400435043D044104
   Width=550
-  Height=140
+  Height=160
   OnOpen
-    @@>@e@fxq@5_Fd1@f_.@eL_Qt@P$@^n@w@BCv,_1_,_0&@2R/@m_3*@w_F@s@^@s@Nxhy@mdD@^_j_m_)
-    @:@x@3b@S_?z@.@T@=_)_J_G@?@|_Zt@Nv_F@&a_<>_lO@0_<@aI_X@'G_X@{_.o@$@&_S@zi2@N_H@L@
-    @;_5b_d_S@O@D@N_K@j_kONPN@D/@yA_Xy@6@zj_\@T@y,1@5u@O_Sd@zF]@L_Q3_l*D3b@l8@&_C@j'0
-    @_e^@It_Q*ks_O@-'_,k_Y)_l*_2G@Y@J;_C@>4@2@R_P@C_[@HYvzO@e@&_/@3x_(@ok_%@n6@D_0_mE
-    @a_;=_:@S_B@Aj,@D@7t_>_<@u@r@?_a@'@=lRO_V_=[_Q@p_"@q(@5t_N_Y@<_3{@5@q-@)?EH@Hi9/_
-    @+_4w=s6_3_$@R_KM@B_]*_jT@u@~D@P@0_%(_6@T_M@6@J_e6_j0_b:@A_l@o@-_'@3W_!@qL_7@s@g
-    @*@$@G_S|:_Q@E@'_R;_Xt_i_E_C_Z_2_D0@>@4_9@6@s{_=_2@Fy_7i_0@g@b@W)@"@M@B@|@=@jNf@*
-    @(@y_k_*@$_$7@w@sx_bU_B*_Y<@~@Y@Z_k@x_>_7y@$_-_D_>@Z_X@s@e@s@n@p2@D_A_!@E_1_Q5q_L
-    @_S|@g_J@b_?@:_Qj_O@-@~@S_/_F&@^?_B@[@R<_S_V@?8;@\@[_(q_L_4_i_U_^k_/Q@~@k_b_O_-_b
-    @@-%@1@BDo5@>&@B@*_%_d"_X@7@ZK_+@m0W_N@~@A_/v_8_O@=@{_UZ_6@oAH@p@b@F0@W@|_+@}_J@
-    @)r@(@*_JC@=@R@-,@s_X_1@~K@I@wMJ@ce_>W@Dex@M@u._kf@2@U@%@*x@Z_e_=@._EJ_c@e@j_=Y_(
-    @0_:d2_b@k_l6_d_%x_j_?@}@1@|@3_7@Q@T_KSz@J@+D@tQ_7_K_OV@X@Z_^@'_)@)@yF_:O@34_d@
-    @\_>@"_S@k@Uk)@v^@E@l_e~@4_I5_K_$gPo_'@v_UI@<:9@e@,@<@"K_S_P@.(+_Xc_MR_0'
+    @@>@e@fxq@5_Fd1@f_.@eL_Qt@P$@^nP_(1@r&_O_D_0W_D@C&~_P%{@3_Ao_AgL@kLvB6G_mc@5@,_CX
+    @Aj@0E@}_1]@%_[_Y_'}_"@rq:@v@z_l_;O_l>@0_=@G@N=@&@n_X@z_6,@g@)8@ygEr_#$_W@ag_X_:2
+    @_i/_*g_i|^|_%=@)A_Yy_\@y_h_\_c@z@R2_[t@I@-@m|@Y@f_,@8*_m12K@h_<,@y@1w@T@B@B?eJ_
+    @a@K@)@i_]w@R1@k_d)_lCs+F8W@w_\H_D/_4_g_J$@x@x@u@cZe@h@q@Ai0@:go_h@M_m(_%@p:@g<~
+    @_U:>_b_0iq{@|_1_dO@K_IG_,@:@qg_S@*r_[@W0@5@"_L_Y@<Jx@5@k-I^dp+@RR@S_+Kt@ed6R_H_0
+    @A5_(_f-@E<@u@\D@P@0_%$_6@~_Q@6@T_eG_j_e_b&@A_l@nk_'@3WX@xL_7_5@g*@$@S_Sd::_*R_a
+    @N@<@k_k_X@0_eI_Dk^@|@-Z_AM_U_O_mL_R@j@k@5I@*%P_(_(_E_&t7*@{@)_D@g@x@^_<_-w@\_^@E
+    @r@:f_&z@v_b@*_m@tV_a@[@^R/_bF_&L@-@0_]W@k@t_Fz_:_#@e@k/@C@J6_T@f_4@2{@wW@E~_4l@u
+    @>@6_]@z_1@e_KZs_:]_C@q@}_T@3+@V_U@p_2@h1_*_;@Q_=@V,_G@hb@uO_Y@PNu_L6_XE_G@~0@&@V
+    @@dpSH_(@p2@x_AE@]@8?@Ft@J@U@|;_b_>_R_?_8_e![@9p_W>_R@*@I_7_P@4_]@2f@\_I_#7@T@i_
+    @W3@Q@4@i_U@Q_)D@0@J@uW_kj@u_,_:U_5_4@B@/@~@u6@Aru_U_&_J@Nk@i)@A@$_mE_d_%x_j<_?@
+    @2x@,YRM._j@U@z@0N4}@E@'_l>@p@U@e@S0_a@#@RG@?@$@'<@8@q@e@,\8y^3@.6_\<_(_C@8_W_1_f
+    @_9>@8}_L@3i_*@y_G@G_,@/@,_2@\-I{]t@L_IxG@*nE@e_2_C@P@E?_d@7G@J_I_E_.@E#_K@8_A_>
   End
   OnTimerInterval=0
-  MaxControlSerial=34
+  MaxControlSerial=35
   LoadModes=0
+  CompileModule=
   Object BUTTON
     LayerName=4D00610069006E00
     Left=100
-    Top=115
+    Top=135
     Width=90
     Height=25
     Font=440065006600610075006C0074002C0020003800
@@ -52,7 +53,7 @@ Object FORM
   Object BUTTON
     LayerName=4D00610069006E00
     Left=5
-    Top=115
+    Top=135
     Width=90
     Height=25
     Font=440065006600610075006C0074002C0020003800
@@ -77,7 +78,7 @@ Object FORM
     Left=5
     Top=5
     Width=545
-    Height=105
+    Height=125
     Font=440065006600610075006C0074002C0020003800
     Color=FF00000F
     AnchorType=9
@@ -159,7 +160,7 @@ Object FORM
     Font=440065006600610075006C0074002C0020003800
     Color=FF00000F
     AnchorType=9
-    Flags=65672
+    Flags=327816
     Hint=
     Name=1104300437043004140430043D043D044B044504
     ControlSerial=31
@@ -228,11 +229,28 @@ Object FORM
     Font=440065006600610075006C0074002C0020003800
     Color=FF00000F
     AnchorType=9
-    Flags=8
+    Flags=262152
     Hint=
     Name=3E041D0435042304340430043B044F0442044C04
     ControlSerial=33
     Caption=1D04350420004304340430043B044F0442044C04200034043E043A0443043C0435043D0442044B0420003804370420003104300437044B042000340430043D043D044B044504200042042E0041042E0034042E0020003F043E0441043B04350420003804450420003704300433044004430437043A0438042000320420003F0440043E043304400430043C043C044304
+    HotKey=
+    HAlign=2
+  End
+  Object CHECKBOX
+    LayerName=4D00610069006E00
+    Left=15
+    Top=105
+    Width=525
+    Height=15
+    Font=440065006600610075006C0074002C0020003800
+    Color=FF00000F
+    AnchorType=9
+    Flags=262152
+    Hint=
+    Name=3E04280442044004380445043A043E0434044B04
+    ControlSerial=34
+    Caption=1F044004380420003F043E04380441043A04350420003D043E043C0435043D043A043B0430044204430440044B042000380441043F043E043B044C0437043E043204300442044C042000480442044004380445043A043E0434044B042C002000300420003D043504200032043D0443044204400435043D043D043804350420003A043E0434044B04
     HotKey=
     HAlign=2
   End

@@ -53,21 +53,24 @@ Function CloseShift(спНастройки)
     If аДрайвер.InitResources()<>0 Then
       Message("Ошибка: "+аДрайвер.ErrorCode+" - "+аДрайвер.ErrorDescription);
     EndIf;
-    аЗапрос.CurrencyCode:=643;
+    аЗапрос.ReceiptData:="Test";//Требуется?
     If спНастройки["ИдентификаторТерминала"]<>"" Then
       аЗапрос.TerminalID:=спНастройки["ИдентификаторТерминала"];
     EndIf;
+    
     Стр:=спНастройки["ОпZОтчет"];
     аЗапрос.OperationCode:=Number(TearStr(Стр,"+"));
     If Стр<>"" Then
       аЗапрос.CommandMode2:=Number(Стр);
     EndIf;
     аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,3600000); 
+    СтрОтчет:=?(аРезультат=0,Str(аОтвет.ReceiptData),"");
+    аЗапрос:=0;
+    аОтвет:=0;
     аДрайвер.FreeResources();
     If аРезультат<>0 Then
       Exit "Ошибка при выгрузке данных в терминал: "+аРезультат+"!";
     EndIf;
-    СтрОтчет:=Str(аОтвет.ReceiptData);
     If _And(Pos("^",СтрОтчет)>0,Pos("^",СтрОтчет)<10) Then
       TearStr(СтрОтчет,"^");
       TearStr(СтрОтчет,"^");
@@ -94,7 +97,7 @@ Function ReportX(спНастройки)
     If аДрайвер.InitResources()<>0 Then
       Message("Ошибка: "+аДрайвер.ErrorCode+" - "+аДрайвер.ErrorDescription);
     EndIf;
-    аЗапрос.CurrencyCode:=643;
+    аЗапрос.ReceiptData:="Test";//Требуется?
     If спНастройки["ИдентификаторТерминала"]<>"" Then
       аЗапрос.TerminalID:=спНастройки["ИдентификаторТерминала"];
     EndIf;
@@ -104,11 +107,13 @@ Function ReportX(спНастройки)
       аЗапрос.CommandMode2:=Number(Стр);
     EndIf;
     аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,3600000); 
+    СтрОтчет:=?(аРезультат=0,Str(аОтвет.ReceiptData),"");
+    аЗапрос:=0;
+    аОтвет:=0;
     аДрайвер.FreeResources();
     If аРезультат<>0 Then
       Exit "Ошибка при выгрузке данных в терминал: "+аРезультат+"!";
     EndIf;
-    СтрОтчет:=Str(аОтвет.ReceiptData);
     If _And(Pos("^",СтрОтчет)>0,Pos("^",СтрОтчет)<10) Then
       TearStr(СтрОтчет,"^");
       TearStr(СтрОтчет,"^");
@@ -164,7 +169,7 @@ Function RegisterTransaction(спНастройки)
     аЗапрос:=CreateOLE("DualConnector.SAPacket");
     аОтвет:=CreateOLE("DualConnector.SAPacket");
     If аДрайвер.InitResources()<>0 Then
-      Message("Ошибка: "+аДрайвер.ErrorCode+" - "+аДрайвер.ErrorDescription);
+      Exit "Ошибка: "+аДрайвер.ErrorCode+" - "+аДрайвер.ErrorDescription;
     EndIf;
     аЗапрос.Amount:=См;
     аЗапрос.CurrencyCode:=643;
@@ -191,8 +196,8 @@ Function RegisterTransaction(спНастройки)
     //61 -- [?] платеж
     //62 -- технический код
     //63 -- технический код
-    //   63 + CommandMode2=20: краткий отчет
-    //   63 + CommandMode2=21: полный отчет
+    //   63 + CommandMode2=20: краткий отчет (часто не работает)
+    //   63 + CommandMode2=21: полный отчет (часто не работает)
     //   63 + CommandMode2=22: копия последнего чека
     //76 -- загрузка ключей
     
@@ -205,81 +210,84 @@ Function RegisterTransaction(спНастройки)
     //53 -- Операция прервана    
     
 
-    If аТипОперации=0 Then
-      Стр:=спНастройки["ОпОплата"];
-      аЗапрос.OperationCode:=Number(TearStr(Стр,"+"));
-      If Стр<>"" Then
-        аЗапрос.CommandMode2:=Number(Стр);
-      EndIf;
-      аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,3600000); 
-      аДрайвер.FreeResources();
-      If аРезультат<>0 Then
-        Exit "Ошибка при выгрузке данных в терминал: "+аРезультат+"!";
-      ElseIf Number(аОтвет.Status())<>1 Then
-        Exit аОтвет.TextResponse+" ("+аОтвет.ResponseCodeHost+")";
-      EndIf;
-      
-      СтрОтчет:=Str(аОтвет.ReceiptData);
-      If _And(Pos("^",СтрОтчет)>0,Pos("^",СтрОтчет)<10) Then
-        TearStr(СтрОтчет,"^");
-        TearStr(СтрОтчет,"^");
-      EndIf;
-      спНастройки["ДополнительнаяИнформация"]:=СтрОтчет;
-    ElseIf аТипОперации=1 Then
-      Стр:=спНастройки["ОпВозврат"];
-      аЗапрос.OperationCode:=Number(TearStr(Стр,"+"));
-      If Стр<>"" Then
-        аЗапрос.CommandMode2:=Number(Стр);
-      EndIf;
-      аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,3600000); 
-      аДрайвер.FreeResources();
-      If аРезультат<>0 Then
-        Exit "Ошибка при выгрузке данных в терминал: "+аРезультат+"!";
-      ElseIf Number(аОтвет.Status())<>1 Then
-        Exit аОтвет.TextResponse+" ("+аОтвет.ResponseCodeHost+")";
-      EndIf;
-      
-      СтрОтчет:=Str(аОтвет.ReceiptData);
-      If _And(Pos("^",СтрОтчет)>0,Pos("^",СтрОтчет)<10) Then
-        TearStr(СтрОтчет,"^");
-        TearStr(СтрОтчет,"^");
-      EndIf;
-      спНастройки["ДополнительнаяИнформация"]:=СтрОтчет;
-    ElseIf аТипОперации=100 Then
-      //Ничего не требуется
-    ElseIf аТипОперации=101 Then
-      //Отменить последнюю успешную операцию
-      Стр:=спНастройки["ОпОтмена"];
-      аЗапрос.OperationCode:=Number(TearStr(Стр,"+"));
-      If Стр<>"" Then
-        аЗапрос.CommandMode2:=Number(Стр);
-      EndIf;
-      iLoop:=0;
-      While 1 Do
-        Sleep(2500);//Иногда терминал не готов, если отмена случилась слишком быстро
-        аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,3600000); 
-        If аРезультат=13 Then
-          iLoop:=iLoop+1;
-          If iLoop=1 Then
-            Continue;
-          EndIf;
+    Try //Обязательное освобождение ресурсов
+      If аТипОперации=0 Then
+        Стр:=спНастройки["ОпОплата"];
+        аЗапрос.OperationCode:=Number(TearStr(Стр,"+"));
+        If Стр<>"" Then
+          аЗапрос.CommandMode2:=Number(Стр);
         EndIf;
-        аДрайвер.FreeResources();
+        аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,3600000); 
         If аРезультат<>0 Then
           Exit "Ошибка при выгрузке данных в терминал: "+аРезультат+"!";
         ElseIf Number(аОтвет.Status())<>1 Then
           Exit аОтвет.TextResponse+" ("+аОтвет.ResponseCodeHost+")";
         EndIf;
-        Break;
-      EndDo;
-      
-      СтрОтчет:=Str(аОтвет.ReceiptData);
-      If _And(Pos("^",СтрОтчет)>0,Pos("^",СтрОтчет)<10) Then
-        TearStr(СтрОтчет,"^");
-        TearStr(СтрОтчет,"^");
+        
+        СтрОтчет:=Str(аОтвет.ReceiptData);
+        If _And(Pos("^",СтрОтчет)>0,Pos("^",СтрОтчет)<10) Then
+          TearStr(СтрОтчет,"^");
+          TearStr(СтрОтчет,"^");
+        EndIf;
+        спНастройки["ДополнительнаяИнформация"]:=СтрОтчет;
+      ElseIf аТипОперации=1 Then
+        Стр:=спНастройки["ОпВозврат"];
+        аЗапрос.OperationCode:=Number(TearStr(Стр,"+"));
+        If Стр<>"" Then
+          аЗапрос.CommandMode2:=Number(Стр);
+        EndIf;
+        аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,3600000); 
+        If аРезультат<>0 Then
+          Exit "Ошибка при выгрузке данных в терминал: "+аРезультат+"!";
+        ElseIf Number(аОтвет.Status())<>1 Then
+          Exit аОтвет.TextResponse+" ("+аОтвет.ResponseCodeHost+")";
+        EndIf;
+        
+        СтрОтчет:=Str(аОтвет.ReceiptData);
+        If _And(Pos("^",СтрОтчет)>0,Pos("^",СтрОтчет)<10) Then
+          TearStr(СтрОтчет,"^");
+          TearStr(СтрОтчет,"^");
+        EndIf;
+        спНастройки["ДополнительнаяИнформация"]:=СтрОтчет;
+      ElseIf аТипОперации=100 Then
+        //Ничего не требуется
+      ElseIf аТипОперации=101 Then
+        //Отменить последнюю успешную операцию
+        Стр:=спНастройки["ОпОтмена"];
+        аЗапрос.OperationCode:=Number(TearStr(Стр,"+"));
+        If Стр<>"" Then
+          аЗапрос.CommandMode2:=Number(Стр);
+        EndIf;
+        iLoop:=0;
+        While 1 Do
+          Sleep(2500);//Иногда терминал не готов, если отмена случилась слишком быстро
+          аРезультат:=аДрайвер.Exchange(аЗапрос,аОтвет,3600000); 
+          If аРезультат=13 Then
+            iLoop:=iLoop+1;
+            If iLoop=1 Then
+              Continue;
+            EndIf;
+          EndIf;
+          If аРезультат<>0 Then
+            Exit "Ошибка при выгрузке данных в терминал: "+аРезультат+"!";
+          ElseIf Number(аОтвет.Status())<>1 Then
+            Exit аОтвет.TextResponse+" ("+аОтвет.ResponseCodeHost+")";
+          EndIf;
+          Break;
+        EndDo;
+        
+        СтрОтчет:=Str(аОтвет.ReceiptData);
+        If _And(Pos("^",СтрОтчет)>0,Pos("^",СтрОтчет)<10) Then
+          TearStr(СтрОтчет,"^");
+          TearStr(СтрОтчет,"^");
+        EndIf;
+        спНастройки["ДополнительнаяИнформация"]:=СтрОтчет;
       EndIf;
-      спНастройки["ДополнительнаяИнформация"]:=СтрОтчет;
-    EndIf;
+    Finally
+      аЗапрос:=0;
+      аОтвет:=0;
+      аДрайвер.FreeResources();
+    EndTry;
   Except
     Exit PopError()+_NEWLINE+"Ошибка при выгрузке данных в терминал!";
   EndTry;

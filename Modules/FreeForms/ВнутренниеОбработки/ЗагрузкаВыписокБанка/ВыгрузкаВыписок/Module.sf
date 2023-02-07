@@ -280,15 +280,15 @@ Function Выгрузить()
     СпПар.SetByName("TakerBankBIC",""+Trim(СчКнт.Банк.БИК));
     СпПар.SetByName("TakerBankCorrAcc",""+Trim(СчКнт.Банк.КоррСчет));
     //НДС?
-    //If д.Контрагент.флВыделяетНДС=0 Then
-    //  СпПар.SetByName("TINSUMDESC","без НДС");//в т.ч. НДС(18%) - 2288-14
-    //  СпПар.SetByName("TINDESC","без НДС");
-    //  СпПар.SetByName("TINSUM","");
-    //Else
-    СпПар.SetByName("TINSUMDESC","в т.ч. НДС(20%) "+FormatNumber(д.СуммаВзаиморасчетов*20/120,0,"",2));//в т.ч. НДС(20%) - 2288-14
-    СпПар.SetByName("TINDESC","в т.ч. НДС(20%) "+FormatNumber(д.СуммаВзаиморасчетов*20/120,0,"",2));
-    СпПар.SetByName("TINSUM",""+FormatNumber(д.СуммаВзаиморасчетов*20/120,0,"",2));
-    //EndIf;
+    If д.ЮрЛицо.УчитыватьНДС=0 Then
+      СпПар.SetByName("TINSUMDESC","без НДС");//в т.ч. НДС(18%) - 2288-14
+      СпПар.SetByName("TINDESC","без НДС");
+      СпПар.SetByName("TINSUM","");
+    Else
+      СпПар.SetByName("TINSUMDESC","в т.ч. НДС(20%) "+FormatNumber(д.СуммаВзаиморасчетов*20/120,0,"",2));//в т.ч. НДС(20%) - 2288-14
+      СпПар.SetByName("TINDESC","в т.ч. НДС(20%) "+FormatNumber(д.СуммаВзаиморасчетов*20/120,0,"",2));
+      СпПар.SetByName("TINSUM",""+FormatNumber(д.СуммаВзаиморасчетов*20/120,0,"",2));
+    EndIf;
     If not ДобавитьСекцию(Рез,СпПар,СпСекции,"BODY") Then
       Exit;
     EndIf;

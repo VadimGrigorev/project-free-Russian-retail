@@ -121,7 +121,7 @@ Function ExecuteCommand(спНастройки,iCmd,iStr="",ФлВнутренн
       СтрОшибка:=TranslateFrom(Результат,866);
       TearStr(СтрОшибка,Chr($1C));
       СтрОшибка:=Replace(СтрОшибка,Chr($1C),", ");
-      Raise "Ошибка "+аОшибка+": "+СтрОшибка;
+      Raise "Ошибка "+аОшибка+" (команда "+iCmd+"): "+СтрОшибка;
     EndIf;
   EndIf;
   спОшибки:=спНастройки["_Ошибки"];
@@ -129,7 +129,7 @@ Function ExecuteCommand(спНастройки,iCmd,iStr="",ФлВнутренн
   If IsEmpty(СтрОшибка) Then
     СтрОшибка:="Неизвестная ошибка";
   EndIf;
-  Raise "Ошибка "+аОшибка+": "+СтрОшибка;
+  Raise "Ошибка "+аОшибка+" (команда "+iCmd+"): "+СтрОшибка;
 EndFunction
 
 Function EncodeStringKKT(Стр)

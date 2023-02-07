@@ -134,7 +134,9 @@ Function ИзменитьМаскуИНН(ФлОткрытие=0)
   Стр:=Trim(Form.ИНН.Value);
   Стр:=TearStr(Стр,"/");
   Дл:=Length(Form.ИНН.Value);
-  if aEl.ВидКонтрагента=Enum.ВидыКонтрагентов.ФизЛицо Then
+  If aEl.флИностранныйКонтрагент Then
+    Form.ИНН.Mask:="cccccccccccccccccccc;1;_";
+  ElseIf aEl.ВидКонтрагента=Enum.ВидыКонтрагентов.ФизЛицо Then
     Form.ИНН.Mask:="000000000000;1;_";
     if (Дл>12)Or(Pos("/",Form.ИНН.Value)>0)Or(Trim(Form.ИНН.Value)="") Then
       If not ФлОткрытие Then

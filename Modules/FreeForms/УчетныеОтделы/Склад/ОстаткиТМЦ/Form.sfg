@@ -177,13 +177,13 @@ Object FORM
     Caption=
     HotKey=
     HAlign=0
-    Mask=2100300030002E00300030002E0030003000300030003B0031003B002000
-    Length=10
+    Mask=2100300030002E00300030002E00300030003B0031003B002000
+    Length=8
     AttachedButtons
       @@>@eU@&t@,R@&@6@&R$_>_5@&)!4_?"_!
     End
     DBSource
-      @@>@e@)@*R@,@&#fE'aB,!%_Z!_7
+      @@>@e@)@*R@,@&#fg'aB,!%_T!_6
     End
   End
   Object EDITBOX

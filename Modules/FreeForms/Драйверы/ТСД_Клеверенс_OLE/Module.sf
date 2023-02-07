@@ -12,6 +12,7 @@ Function Принять(ФлБезЗакрытия=0)
   Ини.AddLeaf("БазаДанных",Form.БазаДанных.Value);
   Ини.AddLeaf("ИмяДокумента",Trim(Form.Документ.Value)+" ");
   Ини.AddLeaf("НеУдалять",Str(Form.оНеУдалять.Value));
+  Ини.AddLeaf("Штрихкоды",Str(Form.оШтрихкоды.Value));
   Стр:=Ини.StoreToString("");
   If not ФлБезЗакрытия Then
     Param["Настройки"]:=Стр;

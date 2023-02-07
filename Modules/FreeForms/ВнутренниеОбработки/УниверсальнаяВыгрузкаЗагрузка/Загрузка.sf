@@ -558,7 +558,7 @@ EndFunction
 
 Function ЗагрузитьФайл(ByRef ИмяФайла)
   тФайл:=Text.Create();
-  тФайл.Load(ИмяФайла);
+  тФайл.Load(ИмяФайла,-1);
   If лнКорректироватьСтруктуруXML=1 Then
     Стр:=тФайл.ToString();
     Стр:=ReformatXML(Стр);

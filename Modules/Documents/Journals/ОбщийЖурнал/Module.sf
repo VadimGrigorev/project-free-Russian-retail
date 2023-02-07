@@ -90,7 +90,7 @@ Function ПрименитьУстановки(ФлЗапись=0)
     аМагазин:=спОтбор.GetByName("Магазин");
     Значения:=Значения+",аМагазин";
     nCount:=nCount+1;
-    nCurrent:=6;
+    nCurrent:=7;
     nStr:=глЗаголовокФильтра(аМагазин);
   EndIf;
   If not isEmpty(спОтбор.GetByName("ЮрЛицо")) Then
@@ -98,7 +98,7 @@ Function ПрименитьУстановки(ФлЗапись=0)
     аЮрЛицо:=спОтбор.GetByName("ЮрЛицо");
     Значения:=Значения+",аЮрЛицо";
     nCount:=nCount+1;
-    nCurrent:=7;
+    nCurrent:=6;
     nStr:=глЗаголовокФильтра(аЮрЛицо);
   EndIf;
   If not isEmpty(спОтбор.GetByName("Склад")) Then
