@@ -4,7 +4,8 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, 
+//  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
 
 Function DriverInit(спНастройки)
 EndFunction
@@ -21,6 +22,12 @@ EndFunction
 
 Function DriverDisconnect(спНастройки)
   спНастройки["Соединено"]:=0;
+EndFunction
+
+//Тип запроса в "ТипЗапросаИнформации", поддерживаются: МодельККТ, СерийныйНомерККТ, РегистрационныйНоменККТ, СерийныйНомерФН, ДатаОкончанияФН, ДатаПервогоНеотправленногоДокумента
+//Ответ в "ОтветНаЗапросИнформации". Если запрос не удачный или не поддерживается, ответ -- пустая строка.
+Function DeviceInfo(спНастройки)
+  спНастройки["ОтветНаЗапросИнформации"]:="";
 EndFunction
 
 Function CashDrawerInfo(спНастройки)

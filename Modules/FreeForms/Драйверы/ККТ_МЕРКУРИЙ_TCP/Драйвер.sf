@@ -4,7 +4,8 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, 
+//  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer
 
 //Документация: https://www.incotexkkm.ru/files/kkm/docs/vt-inecrman-exchange.pdf (https://www.incotexkkm.ru/support/inecrman)
 
@@ -195,6 +196,66 @@ Function DriverDisconnect(спНастройки)
     EndIf;
   Except
     Exit PopError()+_NEWLINE+"(3) Невозможно закрыть сессию!";
+  EndTry;
+EndFunction
+
+//Тип запроса в "ТипЗапросаИнформации", поддерживаются: МодельККТ, СерийныйНомерККТ, РегистрационныйНоменККТ, СерийныйНомерФН, ДатаОкончанияФН, ДатаПервогоНеотправленногоДокумента
+//Ответ в "ОтветНаЗапросИнформации". Если запрос не удачный или не поддерживается, ответ -- пустая строка.
+Function DeviceInfo(спНастройки)
+  Try
+    спНастройки["ОтветНаЗапросИнформации"]:="";
+    If спНастройки["Соединено"]<>1 Then
+      Exit;
+    EndIf;
+    СтрЗапрос:=спНастройки["ТипЗапросаИнформации"];
+    
+    If СтрЗапрос="МодельККТ" Then
+      Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""GetCommonInfo""}";
+      СтрОшибка:=ВыполнитьКоманду(спНастройки,Стр);
+      If СтрОшибка<>"" Then
+        Exit "Ошибка получения информации: "+СтрОшибка;
+      EndIf;
+      аДерево:=LoadJSONFromString(Стр,0);
+      спНастройки["ОтветНаЗапросИнформации"]:=аДерево["model"]+", прошивка "+аДерево["programVer"]+" от "+аДерево["programDate"];
+    ElseIf СтрЗапрос="СерийныйНомерККТ" Then
+      Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""GetCommonInfo""}";
+      СтрОшибка:=ВыполнитьКоманду(спНастройки,Стр);
+      If СтрОшибка<>"" Then
+        Exit "Ошибка получения информации: "+СтрОшибка;
+      EndIf;
+      аДерево:=LoadJSONFromString(Стр,0);
+      спНастройки["ОтветНаЗапросИнформации"]:=аДерево["kktNum"];
+    ElseIf СтрЗапрос="РегистрационныйНоменККТ" Then
+      Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""GetRegistrationInfo""}";
+      СтрОшибка:=ВыполнитьКоманду(спНастройки,Стр);
+      If СтрОшибка<>"" Then
+        Exit "Ошибка получения информации: "+СтрОшибка;
+      EndIf;
+      аДерево:=LoadJSONFromString(Стр,0);
+      спНастройки["ОтветНаЗапросИнформации"]:=аДерево["registrationInfo","kkt","regNum"];
+    ElseIf СтрЗапрос="СерийныйНомерФН" Then
+      Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""GetCommonInfo""}";
+      СтрОшибка:=ВыполнитьКоманду(спНастройки,Стр);
+      If СтрОшибка<>"" Then
+        Exit "Ошибка получения информации: "+СтрОшибка;
+      EndIf;
+      аДерево:=LoadJSONFromString(Стр,0);
+      спНастройки["ОтветНаЗапросИнформации"]:=аДерево["fnNum"];
+    ElseIf СтрЗапрос="ДатаОкончанияФН" Then
+      //Не поддерживается
+    ElseIf СтрЗапрос="ДатаПервогоНеотправленногоДокумента" Then
+      Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""GetStatus""}";
+      СтрОшибка:=ВыполнитьКоманду(спНастройки,Стр);
+      If СтрОшибка<>"" Then
+        Exit "Ошибка получения информации: "+СтрОшибка;
+      EndIf;
+      аДерево:=LoadJSONFromString(Стр,0);
+      Стр:=аДерево["fnInfo","unsignedDocs","firstDateTime"];
+      спНастройки["ОтветНаЗапросИнформации"]:=Date(Mid(Стр,9,2)+"."+Mid(Стр,6,2)+"."+Left(Стр,4)+" "+Mid(Стр,12,8));
+      спНастройки["ОтветНаЗапросИнформации"]:=?(IsEmpty(спНастройки["ОтветНаЗапросИнформации"]),"",спНастройки["ОтветНаЗапросИнформации"]);
+    EndIf;
+  Except
+    Exit "Ошибка команды: "+PopError();
   EndTry;
 EndFunction
 

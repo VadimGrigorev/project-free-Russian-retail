@@ -236,7 +236,8 @@ Function Печать(СпУстановки)
     aTab.Select();
     While aTab.Next() Do
       Дата:=aTab.Get(aTab.CurLine,"@DATE");
-      aTab["@ELEMENT"]:=FormatDate(Дата,"YYYYmmddhhttssp")+aTab["@ELEMENT"];//Сортировка по дате потом по коду элемента. Необходима, так как иногда более старые записи попадают вперед
+      //Сортировка по дате потом по коду элемента. Необходима, так как иногда более старые записи попадают вперед
+      aTab["@ELEMENT"]:=FormatDate(Дата,"YYYYmmddhhttssppp")+Right("0000000000"+aTab.CurLine,10);//aTab["@ELEMENT"].DBCode -- для безопасности не будем использовать, и разницы не должно быть
       If Фл And 1<>0 Then
         aTab.День:=BegOfDay(Дата);
       EndIf;  

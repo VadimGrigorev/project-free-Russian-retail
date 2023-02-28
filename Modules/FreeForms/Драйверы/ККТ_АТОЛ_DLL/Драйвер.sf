@@ -4,7 +4,8 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, 
+//  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
 
 //Документация: http://integration.atol.ru/api/
 
@@ -426,6 +427,73 @@ Function OpenCashDrawer(спНастройки)
   EndTry;
 EndFunction
 
+//Тип запроса в "ТипЗапросаИнформации", поддерживаются: МодельККТ, СерийныйНомерККТ, РегистрационныйНоменККТ, СерийныйНомерФН, ДатаОкончанияФН, ДатаПервогоНеотправленногоДокумента
+//Ответ в "ОтветНаЗапросИнформации". Если запрос не удачный или не поддерживается, ответ -- пустая строка.
+Function DeviceInfo(спНастройки)
+  Var аДрайвер Export, aHandle Export, спПеременные Export;
+
+  Function GetParamString(Тип)
+    Стр:=RepeatStr(" ",1024);
+    Размер:=аДрайвер.libfptr_get_param_str(aHandle,Тип,Стр,Length(Стр));
+    if Размер>Length(Стр) Then
+      Стр:=RepeatStr(" ",Размер);
+      аДрайвер.libfptr_get_param_str(aHandle,Тип,Стр,Length(Стр));
+    EndIf;
+    Exit Стр;
+  EndFunction    
+
+  Function GetParamDate()
+    аГод:=0;
+    аМесяц:=0;
+    аДень:=0;
+    аЧас:=0;
+    аМинута:=0;
+    аСекунда:=0;
+    Дата:=аДрайвер.libfptr_get_param_datetime(aHandle,спПеременные["LIBFPTR_PARAM_DATE_TIME"],аГод,аМесяц,аДень,аЧас,аМинута,аСекунда);
+    Exit Date(Right("0"+аДень,2)+"."+Right("0"+аМесяц,2)+"."+Right(аГод,4)+" "+Right("0"+аЧас,2)+":"+Right("0"+аМинута,2)+":"+Right("0"+аСекунда,2));
+  EndFunction    
+  
+  Try
+    спНастройки["ОтветНаЗапросИнформации"]:="";
+    If спНастройки["Соединено"]<>1 Then
+      Exit;
+    EndIf;
+    аДрайвер:=спНастройки["Драйвер"];
+    aHandle:=спНастройки["АТОЛУказатель"];
+    спПеременные:=спНастройки["АТОЛПеременные"];
+    СтрЗапрос:=спНастройки["ТипЗапросаИнформации"];
+    
+    If СтрЗапрос="МодельККТ" Then
+      аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DATA_TYPE"],спПеременные["LIBFPTR_DT_STATUS"]);
+      аДрайвер.libfptr_query_data(aHandle);
+      спНастройки["ОтветНаЗапросИнформации"]:=GetParamString(спПеременные["LIBFPTR_PARAM_MODEL_NAME"])+", прошивка "+GetParamString(спПеременные["LIBFPTR_PARAM_UNIT_VERSION"]);
+    ElseIf СтрЗапрос="СерийныйНомерККТ" Then
+      аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DATA_TYPE"],спПеременные["LIBFPTR_DT_SERIAL_NUMBER"]);
+      аДрайвер.libfptr_query_data(aHandle);
+      спНастройки["ОтветНаЗапросИнформации"]:=GetParamString(спПеременные["LIBFPTR_PARAM_SERIAL_NUMBER"]);
+    ElseIf СтрЗапрос="РегистрационныйНоменККТ" Then
+      аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_FN_DATA_TYPE"],спПеременные["LIBFPTR_FNDT_REG_INFO"]);
+      аДрайвер.libfptr_fn_query_data(aHandle);
+      спНастройки["ОтветНаЗапросИнформации"]:=GetParamString(1037);//В Атоле нет имени этой переменной
+    ElseIf СтрЗапрос="СерийныйНомерФН" Then
+      аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_FN_DATA_TYPE"],спПеременные["LIBFPTR_FNDT_FN_INFO"]);
+      аДрайвер.libfptr_fn_query_data(aHandle);
+      спНастройки["ОтветНаЗапросИнформации"]:=GetParamString(спПеременные["LIBFPTR_PARAM_SERIAL_NUMBER"]);
+    ElseIf СтрЗапрос="ДатаОкончанияФН" Then
+      аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_FN_DATA_TYPE"],спПеременные["LIBFPTR_FNDT_VALIDITY"]);
+      аДрайвер.libfptr_fn_query_data(aHandle);
+      спНастройки["ОтветНаЗапросИнформации"]:=GetParamDate();
+      спНастройки["ОтветНаЗапросИнформации"]:=?(IsEmpty(спНастройки["ОтветНаЗапросИнформации"]),"",спНастройки["ОтветНаЗапросИнформации"]);
+    ElseIf СтрЗапрос="ДатаПервогоНеотправленногоДокумента" Then
+      аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_FN_DATA_TYPE"],спПеременные["LIBFPTR_FNDT_OFD_EXCHANGE_STATUS"]);
+      аДрайвер.libfptr_fn_query_data(aHandle);
+      спНастройки["ОтветНаЗапросИнформации"]:=GetParamDate();
+      спНастройки["ОтветНаЗапросИнформации"]:=?(IsEmpty(спНастройки["ОтветНаЗапросИнформации"]),"",спНастройки["ОтветНаЗапросИнформации"]);
+    EndIf;
+  Except
+    Exit "Ошибка команды: "+PopError();
+  EndTry;
+EndFunction
 
 Function ShiftInfo(спНастройки)
   Try

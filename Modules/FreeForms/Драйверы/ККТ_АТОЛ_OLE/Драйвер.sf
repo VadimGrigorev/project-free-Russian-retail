@@ -4,7 +4,8 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, 
+//  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
 
 //Документация: http://integration.atol.ru/api/
 
@@ -139,6 +140,49 @@ Function OpenCashDrawer(спНастройки)
     аДрайвер.openDrawer();
   Except
     Exit PopError()+_NEWLINE+"Неудачная попытка открытия денежного ящика!";
+  EndTry;
+EndFunction
+
+//Тип запроса в "ТипЗапросаИнформации", поддерживаются: МодельККТ, СерийныйНомерККТ, РегистрационныйНоменККТ, СерийныйНомерФН, ДатаОкончанияФН, ДатаПервогоНеотправленногоДокумента
+//Ответ в "ОтветНаЗапросИнформации". Если запрос не удачный или не поддерживается, ответ -- пустая строка.
+Function DeviceInfo(спНастройки)
+  Try
+    спНастройки["ОтветНаЗапросИнформации"]:="";
+    If спНастройки["Соединено"]<>1 Then
+      Exit;
+    EndIf;
+    аДрайвер:=спНастройки["Драйвер"];
+    СтрЗапрос:=спНастройки["ТипЗапросаИнформации"];
+    
+    If СтрЗапрос="МодельККТ" Then
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_DATA_TYPE,аДрайвер.LIBFPTR_DT_STATUS);
+      аДрайвер.queryData();
+      спНастройки["ОтветНаЗапросИнформации"]:=аДрайвер.getParamString(аДрайвер.LIBFPTR_PARAM_MODEL_NAME)+", прошивка "+аДрайвер.getParamString(аДрайвер.LIBFPTR_PARAM_UNIT_VERSION);
+    ElseIf СтрЗапрос="СерийныйНомерККТ" Then
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_DATA_TYPE,аДрайвер.LIBFPTR_DT_SERIAL_NUMBER);
+      аДрайвер.queryData();
+      спНастройки["ОтветНаЗапросИнформации"]:=аДрайвер.getParamString(аДрайвер.LIBFPTR_PARAM_SERIAL_NUMBER);
+    ElseIf СтрЗапрос="РегистрационныйНоменККТ" Then
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_FN_DATA_TYPE,аДрайвер.LIBFPTR_FNDT_REG_INFO);
+      аДрайвер.fnQueryData();
+      спНастройки["ОтветНаЗапросИнформации"]:=аДрайвер.getParamString(1037);//В Атоле нет имени этой переменной
+    ElseIf СтрЗапрос="СерийныйНомерФН" Then
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_FN_DATA_TYPE,аДрайвер.LIBFPTR_FNDT_FN_INFO);
+      аДрайвер.fnQueryData();
+      спНастройки["ОтветНаЗапросИнформации"]:=аДрайвер.getParamString(аДрайвер.LIBFPTR_PARAM_SERIAL_NUMBER);
+    ElseIf СтрЗапрос="ДатаОкончанияФН" Then
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_FN_DATA_TYPE,аДрайвер.LIBFPTR_FNDT_VALIDITY);
+      аДрайвер.fnQueryData();
+      спНастройки["ОтветНаЗапросИнформации"]:=Date(аДрайвер.getParamDateTime(аДрайвер.LIBFPTR_PARAM_DATE_TIME));
+      спНастройки["ОтветНаЗапросИнформации"]:=?(IsEmpty(спНастройки["ОтветНаЗапросИнформации"]),"",спНастройки["ОтветНаЗапросИнформации"]);
+    ElseIf СтрЗапрос="ДатаПервогоНеотправленногоДокумента" Then
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_FN_DATA_TYPE,аДрайвер.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS);
+      аДрайвер.fnQueryData();
+      спНастройки["ОтветНаЗапросИнформации"]:=Date(аДрайвер.getParamDateTime(аДрайвер.LIBFPTR_PARAM_DATE_TIME));
+      спНастройки["ОтветНаЗапросИнформации"]:=?(IsEmpty(спНастройки["ОтветНаЗапросИнформации"]),"",спНастройки["ОтветНаЗапросИнформации"]);
+    EndIf;
+  Except
+    Exit "Ошибка команды: "+PopError();
   EndTry;
 EndFunction
 

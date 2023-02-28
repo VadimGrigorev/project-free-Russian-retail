@@ -4,9 +4,10 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, 
+//  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
 
-//Документация: http://doc.shtrih-m.ru/
+//Документация: http://doc.shtrih-m.ru/, http://doc.shtrih-m.ru/Files/Programmer.pdf
 
 Function DriverInit(спНастройки)
   Try
@@ -123,7 +124,7 @@ Function DriverConnect(спНастройки)
     EndIf;
     ТекДата0:=Date();
     ТекДата:=Date(аДрайвер.Date);
-    ТекВремя:=аДрайвер.TimeStr;//XX:XX:XX?
+    ТекВремя:=аДрайвер.TimeStr;//XX:XX:XX
     If not IsEmpty(ТекДата) Then
       ТекДата:=Date(""+ТекДата+" "+ТекВремя);
       If not IsEmpty(ТекДата) Then
@@ -170,6 +171,55 @@ Function DriverDisconnect(спНастройки)
     спНастройки["Соединено"]:=0;
   Except
     Exit PopError()+_NEWLINE+"(3) Драйвер не установлен или в нерабочем состоянии!";
+  EndTry;
+EndFunction
+
+//Тип запроса в "ТипЗапросаИнформации", поддерживаются: МодельККТ, СерийныйНомерККТ, РегистрационныйНоменККТ, СерийныйНомерФН, ДатаОкончанияФН, ДатаПервогоНеотправленногоДокумента
+//Ответ в "ОтветНаЗапросИнформации". Если запрос не удачный или не поддерживается, ответ -- пустая строка.
+Function DeviceInfo(спНастройки)
+  Try
+    спНастройки["ОтветНаЗапросИнформации"]:="";
+    If спНастройки["Соединено"]<>1 Then
+      Exit;
+    EndIf;
+    аДрайвер:=спНастройки["Драйвер"];
+    СтрЗапрос:=спНастройки["ТипЗапросаИнформации"];
+    
+    If СтрЗапрос="МодельККТ" Then
+      If аДрайвер.GetDeviceMetrics()<>0 Then
+        Raise аДрайвер.ResultCodeDescription;
+      EndIf;
+      спНастройки["ОтветНаЗапросИнформации"]:=аДрайвер.UDescription;//TODO: ", прошивка ..."
+    ElseIf СтрЗапрос="СерийныйНомерККТ" Then
+      If аДрайвер.ReadSerialNumber()<>0 Then
+        Raise аДрайвер.ResultCodeDescription;
+      EndIf;
+      спНастройки["ОтветНаЗапросИнформации"]:=аДрайвер.SerialNumber;
+    ElseIf СтрЗапрос="РегистрационныйНоменККТ" Then
+      If аДрайвер.GetFiscalizationParameters()<>0 Then
+        Raise аДрайвер.ResultCodeDescription;
+      EndIf;
+      спНастройки["ОтветНаЗапросИнформации"]:=аДрайвер.RNM;
+    ElseIf СтрЗапрос="СерийныйНомерФН" Then
+      If аДрайвер.FNGetSerial()<>0 Then
+        Raise аДрайвер.ResultCodeDescription;
+      EndIf;
+      спНастройки["ОтветНаЗапросИнформации"]:=аДрайвер.SerialNumber;
+    ElseIf СтрЗапрос="ДатаОкончанияФН" Then
+      If аДрайвер.FNGetExpirationTime()<>0 Then
+        Raise аДрайвер.ResultCodeDescription;
+      EndIf;
+      спНастройки["ОтветНаЗапросИнформации"]:=аДрайвер.Date;
+      спНастройки["ОтветНаЗапросИнформации"]:=?(IsEmpty(спНастройки["ОтветНаЗапросИнформации"]),"",спНастройки["ОтветНаЗапросИнформации"]);
+    ElseIf СтрЗапрос="ДатаПервогоНеотправленногоДокумента" Then
+      If аДрайвер.FNBuildCalculationStateReport()<>0 Then
+        Raise аДрайвер.ResultCodeDescription;
+      EndIf;
+      спНастройки["ОтветНаЗапросИнформации"]:=аДрайвер.Date;
+      спНастройки["ОтветНаЗапросИнформации"]:=?(IsEmpty(спНастройки["ОтветНаЗапросИнформации"]),"",спНастройки["ОтветНаЗапросИнформации"]);
+    EndIf;
+  Except
+    Exit "Ошибка команды: "+PopError();
   EndTry;
 EndFunction
 
