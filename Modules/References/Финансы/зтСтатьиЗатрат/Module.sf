@@ -4,6 +4,17 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 var СтарНаименование Export;
 
+Function УстановитьВидимость()
+  aEl:=Form.Object;
+  
+  Ном:=Form.ТипСтатьиЗатрат.Value.Index();
+  Form.тТ1.isDisabled:=Ном<>2;
+  Form.ГруппаМагазинов.isDisabled:=Ном<>2;
+  Form.тТ2.isDisabled:=(Ном<>3)And(Ном<>4);
+  Form.РесурсПродаж.isDisabled:=(Ном<>3)And(Ном<>4);
+  Form.кнКоэфф.isDisabled:=(Ном<>4)And(Ном<>5);
+EndFunction
+
 Function OnBeforeElementSave()
   aEl:=Form.Object;
   If aEl.Selected()>0 Then

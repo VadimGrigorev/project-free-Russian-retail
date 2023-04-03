@@ -63,6 +63,19 @@ Object FORM
     InitialSortString
       @@>@e_a@)l@*_3@+l@+_;@,!!+@]"@v
     End
+    OnBeforeEditCell
+      @@>@e@Twq@5_>d1@D@N[CC@7@J8r@v_?XA@v@P_O_?r@{u<@khW@%@=P&@H@Kv%i@I@F_:@d_"@<@\@o
+      @q@LzM@B@-@-_J_'@?U_Ge(W_B@O_f@SQ_#_1s@E_:@7@L@5_#_,@S_m_K_$#_dS_!@P@+_Ho_W_CP@3
+      @_,w@,"w@t@uk@1@}@e_S$_h?@7@3_G0@/_U_>T@y@Y_S_N/_-K_Y"G@3@9_Z2@=@G_S\_Q@%@j_f*a^@
+      @t_2_B_'@v_U@b_E@W_"[s@XYa_1_Q@<_,@Cs_]@K6@;@yI_!@b@f@7@^@"_6@M_0_#@z]_%@)_%_2v^_
+      @h_-_5@Ox@3_Ay@H7@=i@+_B_?_QE_l_N(_*_M_9_^_5@B_\^@bq_0@r@vN_"v_E_N_9_V@k@v9wMD}@
+      @0_]@O_^@6_8@m_Na_b_I_)wK_)}@/_^M@.A@5_U_V_""[_k@Z+@L_8_?@j@j@W3_i_$@:_V_N_fz@T8@
+      @}kK@c_R_.@B@7_<@:_4_:$@k@S|{x@D_J_E@Dq_DQ_j_R@"_I_L!_&@Av_E@P_h_L@#@a@q_.62@e_g_
+      @\@X_Z_'_K_+P_4_b@E@=@C@Y>@=@o=E_8@e_C@F@r_E.^._/_Q.@3_J@X_2@,S@|@N_a_d?_3_i@eS@v
+      @j_m@R_X@B_,{:Z@7_Ch/ZC_Oa_]@$@X@-]Y@b_9_2_=@0@j_T@-_/a_>_7_Q@]@o_-_kL@E$I_eM_E@w
+      @@L_Z_XD@z_mt@^{Z@Ys@[_)@)_0_f@d@fY@5X_+6@B_I_7@ysn@A@3W@z_Myl_K_Zr'Q@b_U1_[_\*A
+      @_3@n_1r_,_T@]_8@o@Y@L@}p@=_S@*@CGW_=_E_ec_f@[@U1
+    End
     OnAfterEditCell
       @@>@e@\y_K@5_>d-_d_.aC_]R**@K@K_3_^@}n@y@ocf@|@mm@d@*Op@#<*H_J,O@n@4g@1@X_f_a_g_
       @Xo_=_jL)@f@s@e@D_!_[_a@-@h_G@oXG_bdC_k@ia@v_U@PH@}@k._dS@mO@]e@-Vv@)@+_OYw@#@+@r

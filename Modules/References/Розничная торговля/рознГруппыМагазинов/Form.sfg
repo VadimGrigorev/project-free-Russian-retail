@@ -1,0 +1,59 @@
+FormatVersion=1
+Layer 4D00610069006E00
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=385
+  Height=90
+  OnOpen
+    @@>@e@f@[_K@53e1_2_S@'@gp@CR_h_L@d@p_)@[@m_-@7@6@I_+>@6lE_$_!_f_W_I@at@)@Z7@c@Q@P
+    @@F_)@h@b@iV_beg_d@<@=@,@<_)_K_g_9P.@/_3@"@]@S<_$@&@U_Pl@M\_=@[u@0@k@z@g_W@S@#@s
+    @@X@SW_CH_Bf_&_X@1_/_)_M@=_K@E@SG_,_=_<@S@D@5Qg_-9_L<@y_6@O@VF_S_G@9N]a_2_^?_m@O@
+    @OvA_6E_DW_P@b_d_e^@M@y]@-=w@V@h'@KP_$_2_fk\_ED_0_PZ@+@+_D@X|@D@5_,<Z@tEL9@.@f@u@
+    @p@{@Y_[@{@W@x_7M_$@Y4_)_"@8_YWj_T3@ZU_dwi|@;@z_2@(@a@XV@nHy_c@X@}_]@,_'_&+@;_I@
+    @d]_.@P/@PK@z9_.?@ev_2m_($6@=_a@pOb_-_[@]@7_Yl_B@~@~@"_-@8:Z@e@z@$_L_*@Y_:_b_a@^
+    @_j@,@~_d_Dqz@)_!_>_7_\T_)g@-x_g@T}3@y@9_C@|_O_Vs_D_e_bF_?_\@Wz@o_O_*@<NC@)]_H@WS
+    @@"_h@B@=@x_QN@8r@-_D_l_*@%yQ3_[_=j_:@P_K_;r_Tz_g@i_l@N@A@]ZQ@)@e@AG@=_&^@=o_GE\_
+    @J_G_.@=_H@s@>/@E@L@\_h@d@b(y_9^@E@A@W@X}@d@6@/U+_I_'_#_/_W@f@?x_$_A_!_/w_U@b_T(_
+    @N_:a@l_U_<+_h-@y_B@#@Z@b_j@G_<3>_C_7O\_]@IZ@B]>@,_6u@W_I_d@;_2@h_Vw@<@]_E1_K_U4_
+    @"@~_j_(6_9\@k]c_k_*_0_^k_j+@{_m@j@R@x_P@~_a@R@;=@4@'@7s@-_W@<QJ@X@Z@D@p@"@sQ[@FN
+    @@h_P@d@C"@'_9_6@qm@F@R@z_&@T4_Z_0@Q@^@6"@(_'8U@L_0G@;z@]K-8@$@F@%_l#Y_l@h@v
+  End
+  OnTimerInterval=0
+  MaxControlSerial=14
+  LoadModes=0
+  CompileModule=
+  Object MACRO
+    ModuleName=4D006F00640075006C00650073005C004D006100630072006F0073005C0021043F044004300432043E0447043D0438043A0438045C001704300433043E043B043E0432043E043A042E00730066006700
+    LayerName=4D00610069006E00
+    Left=5
+    Top=5
+    Width=380
+    Height=47
+    Font=440065006600610075006C0074002C0020003800
+    Color=00000000
+    AnchorType=9
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=12
+  End
+  Object MACRO
+    ModuleName=4D006F00640075006C00650073005C004D006100630072006F0073005C0021043F044004300432043E0447043D0438043A0438045C001E0441043D043E0432043D044B0435041A043D043E043F043A0438042E00730066006700
+    LayerName=4D00610069006E00
+    Left=5
+    Top=65
+    Width=280
+    Height=25
+    Font=440065006600610075006C0074002C0020003800
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=13
+  End
+End

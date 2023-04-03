@@ -564,7 +564,7 @@ Function ЗаполнитьБалансНаДату(КДата,Тип)
   |зПриход:=Income(Сумма);
   |Condition(зЗБ=0);
   |Condition(зЮЛ=оЮЛ);
-  |Group зСч;";
+  |Group зСч with folders;";
   З:=Query.Create();
   З.Execute(ТЗ);
 

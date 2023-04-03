@@ -43,6 +43,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=10
   LoadModes=0
+  CompileModule=
   Object LABEL
     LayerName=4D00610069006E00
     Left=5
@@ -54,7 +55,7 @@ Object FORM
     AnchorType=9
     Flags=8
     Hint=
-    Name=
+    Name=740063004E0061006D006500
     ControlSerial=1
     Caption=1D04300438043C0435043D043E04320430043D04380435043A00
     HAlign=2
@@ -162,7 +163,7 @@ Object FORM
     AnchorType=9
     Flags=8
     Hint=
-    Name=
+    Name=7400630043006F0064006500
     ControlSerial=7
     Caption=1A043E0434043A00
     HAlign=2

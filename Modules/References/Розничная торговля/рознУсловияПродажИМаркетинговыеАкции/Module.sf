@@ -17,6 +17,37 @@ Function ПриПодбореНоменклатуры(Эл,Фл)
   Form.оТМЦ.InvokeEvent("OnInitLine","IndexFrom,IndexTo",aTab.Size(),aTab.Size());
 EndFunction
 
+Function Доступность()
+  aEl:=Form.Object;
+  If aEl.ТипУсловия=Enum.рознТипыУсловийПродаж.СкидкаНаПозицию Then
+    Form.тТ4.IsDisabled:=0;
+    Form.БюджетРубли.IsDisabled:=0;
+    Form.тТ5.IsDisabled:=0;
+    Form.БюджетШтуки.IsDisabled:=0;
+    Form.тТ7.IsDisabled:=0;
+    Form.ПроцентСкидки.IsDisabled:=0;
+    Form.тТ8.IsDisabled:=1;
+    Form.СуммаДокумента.IsDisabled:=1;
+  ElseIf aEl.ТипУсловия=Enum.рознТипыУсловийПродаж.СкидкаССуммыПродажи Then
+    Form.тТ4.IsDisabled:=0;
+    Form.БюджетРубли.IsDisabled:=0;
+    Form.тТ5.IsDisabled:=1;
+    Form.БюджетШтуки.IsDisabled:=1;
+    Form.тТ7.IsDisabled:=0;
+    Form.ПроцентСкидки.IsDisabled:=0;
+    Form.тТ8.IsDisabled:=0;
+    Form.СуммаДокумента.IsDisabled:=0;
+  Else
+    Form.тТ4.IsDisabled:=1;
+    Form.БюджетРубли.IsDisabled:=1;
+    Form.тТ5.IsDisabled:=1;
+    Form.БюджетШтуки.IsDisabled:=1;
+    Form.тТ7.IsDisabled:=1;
+    Form.ПроцентСкидки.IsDisabled:=1;
+    Form.тТ8.IsDisabled:=1;
+    Form.СуммаДокумента.IsDisabled:=1;
+  EndIf;
+EndFunction
 
 Function OnBeforeElementSave()
   aEl:=Form.Object;
