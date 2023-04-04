@@ -3,3 +3,6 @@ _DeploymentBin_GUIClient/
 _DeploymentBin_Server/
 _ConfigFiles/ServersList.ini
 Project.Lock
+_ConfigFiles/Repository.ini
+_ConfigFiles/Repository.ini.bak
+_ConfigFiles/SFStudio.exe.log
