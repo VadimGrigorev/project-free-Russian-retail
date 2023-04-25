@@ -594,31 +594,47 @@ Object FORM
       @_d@t@4_?W@=y@u<_R@wST_"@0@x_\?_K@(V_P=bWY@b$h^@\@&@h_d<_R_l_"I@%*@eM_'0@ShH@=_l_
       @+_X@,U@n@5_\@>@Vl@5!_Y_>@E_d@B_+_0_j@5_f@t{{_E_\_k@7L_Jg_j(r@oe:
     End
+    OnChangeOrClick
+      @@>@e_8wqs_-d1@D@N[@b@>_]0|[e@I@C&f@3@/_03l;e/3_[Ly)t@Sz@l_l@A_KN9@1.@jk@|}@<_S_8
+      @@d@b_C_E@j@QL_1@O_<_.-_"^A2_<@E@o_(_/=_e|_+f2_S_=@\7_e@nV@mH{3_=@0@P@L,_]@nrV1@d
+      @@<@P_Hw@wN@$H_=B_=7@V_!_aM@J@,_!i_kX_ka_h@":@Y_So@N@q@(>_^^@|@3_.xWO@lka@'_5_OR_
+      @)M~_&_6^@sH@i{u@+@f:_("@DbS_G@q@0@Z_S@y@(q@c'_>@Q@w[@\_U_a@$@^"_(7j_'_"_!~#D@NZ_
+      @+@O>@d@|@-4@g@=@6_L@'@GW@B_"fG_O@t_L@M_S3@x_X@w,@T_A>_N@H;@U_D@pH_a_%T@,_R@j@e@m
+      @V~@S@hSHX@C@R@14@Z_8@Eq_W@Z_'Dnxu_._KZ@#@D_'@Z@^@26@2@W9w@Z_>_IC@k_l@O4@X_\@=@Q
+      @@j_]j_\@=z_G_I@R@W_eY@A8@S_U_a@o@X*@~8_7F@s{y@E{J@i_7>;@n2_*@&_+@u@1_RO@p@y*2_Q_
+      @Qy@f@h}_5_A@v@a_c4@g@9_'@W@~_-4@v0@E_<_:_G_V_H@>@e@d@7_V@D@1@8@2_R_#@/@,_c_*_bR@
+      @x_R_j_7@Da_7@dk_m@'@?_K@3@Zaq_e8C@j@y@B
+    End
     OnInitLine
-      @@>@e@vz_G@4_Gj1@f@N@DL_;_2!e_;H@u2@}7_-_F@[N~@{@*n@]@*}W={&=_b@#@vv_/i@)(@{@JX_g
-      @_h@gU_&F@^Yk@L,@I_"@f_E_$@e[U_P_)_X_6v@4_P=_S@~_H_6@1@"@5_P@v%@{M@)@9@(@(@e8@o@)
-      @D_a@|[_2@2#@b@a@X@/@)@;@0_h@>@5e_ek=_Q_c1M>@u_bp@I_ee_,_-9_W4U_?_S?F(_\T@J_R!@c
-      @@H@:@7@T_79@-0@A*_Z@HF@>_V_+_d@"_ks@jc@IXa%T@Lj<_B_h@,"_Y,@9@K@~o@~@E@SU@H_d?@(@
-      @?@k?_i_9@)8I@3@M@\_#$_0_On_J_4@v_j_Y_Me_[a@N_0_?_'@M@~@n_1_0>@3h_K_04a@DO@%"_>@D
-      @@?+._R[@K@40@8n_Y@gP_B@]P/@t@X@.@e@D@#@~MS@{@&@2@P_._W%_=h_O@o_X1s_S|@b@t@5_N5@t
-      @@#_R@[Jn_H<[@2'_;@p@C@O+@}>@M@#i_j_+_E_T_.@I_0_5_1@7_P_Q_]D@ty{@1_+_X@)_8Lu*@z@y
-      @_Tx@9_]@Xavc@[@e@/@D},D_+_"@E@j@s@J_7@=|_$@A@E~_9_g@E@^?_14_D@Q5_e=_[/@*S@8?W@6
-      @N@-_N@j_R@WZ@u\@w_-@p_F.q@"_72_W@*u{}_b@6_?@/@m_G@=d_T@u@z_>_%_D@1}@X@8U_=r9J7@P
-      @@<e!@5$_T_F@0@=@1@?_E@<@u_k_4@zE_[@xUQ_6@JN_6&T_&@^:@w@F_M_f6_$_J_4k}_M_g8_EB_m0
-      @@W@2@i@7@T_i_I_B9^b_K@y_?@~yA@en@N_5@1_6+_h@'h@3@*;6_Pk@LJ_h@L_l@O@;r?@-@e@z@|@5
-      @_X_B_E@\_B_i@z_5_=@b_0?;@\@A@*_U@7@h@S@%$@z@F_Ppu@C_:_V@+(2@C@s6@*aIP_i@L_d@\_Y_
-      @7@8_/@;@u@s_h@A$se_U@q_h;_T_l|_S_Y_d@g@>@$@I8_X@LY_#_mH$m@W_IO_^@B0X6@+@B@&3[_b2
-      @@7.G_I_m3_g6@=O@j_iI@:@E(_._d_P]hR_?[_$@N_ZEE@v_PO_^_G@\@]=_6lD@-Q_C@D@o@2_F_B_Z
-      @-\_WN@s@\@<_e>@}_#c@D@o_B'\M_cq_:z_G_F0@ii_Y_%;_K@1&_56[_0@\_i}@VTrU@&@}_4@,-_Y@
-      @$]@5_?@$_4=J@6@~_'_[_G@2/_D_H@o@a'_X@e@C@5@AIk@g@a@wm_S_e@L@/@Q@n@qi@x@)@*@5@)@q
-      @@xlJ]_#_[_3@tp@R@%@\h@1@8@P@b@B_V_)9_do_l+@c_j_O@i_l6@u@2^_W_do_Tk1_M_[@K]@ae_k?
-      @_W@t_'@NS@T_Aw@U_0_$_ju@Z@x@+ra@Y8@M@2oa@n@u*@y_e>_ZY@b_Q\=A_!o@"_6@<_al_S_5>_1
-      @@v@m_8@(8;_"dDt_!_9_,_&0@>_i@[_M_=_-SuM_&_F@7@v@M@q_k@r_+@a_5>i_Xs+@~@vj_G@S_Y@9
-      @_k_&@&_B@eL]\e_2@Q@/@7;_Ai@,@b@h@=_O%@$_C@$@E_.@Q_d@<_J@b@n_[_(@._2k_Jk_(@"2_i_)
-      @'7_g@*o@-@7_<Q{_>@c_g_g@"_M_U@|@dN@e@.Ol@3_(?Y:_WL_(_^@o_c@\_9@pq.b_K@a_[@'@?@j@
-      @9_X/(@B_%@/_-_X@.@Na_>@5O_m_F@)@~_0@5\GC_N@i^@VZ@C_;_=@^U/a_X_j_F_mA_>_f_*s_P_2r
-      @@+?c_#_[@&x_Gm@t_7_F@b_F@$_&@4@$@._C_K@,@D1L_9_8_DX_c_(A_,@sR@|_5_c@2_Z@V@N_\M@8
-      @M_k@Q_;@)_N_#_]@"_m_Q@,@A@nI_iAoX=d_W@n*_+k_&@ly@q@>_$_a_52_]_j88_'_ML
+      @@>@e@v{@5_GX5b0@C;@y@^"&@Q@(_Yx@l_I@2xo@2k@Q>]@{@)]@U8_P_N@jK_!_2_,@t@B@7_C_/@L
+      @@f@&_Y@E_k_)@9lm5GG_ZT)@{F_^_O_$@C_Sf@A@d_!@/n{@:@S@Be_C@:@Q_KM@Ag?y@r@x/x@O_ihW
+      @y@#@f@t@)@C@L_5@l@H_V@r'j@N@s@T_[;@yc_O@8_2@D@SVS_=v2_)]:*@D@S0x{_J@a_E@H@]2@W>
+      @Ba+_\{@D_HO_LD^a@Q_\_B@K_X@z_TA#_K$@cW@>V%@k"@/@3W"_hh_Y@'_Xp@m_[_O@U@G_J@IO0h@
+      @)_G@.-@6@|pc@-_"I@C@"_;@B~_=_K7A@u_(@+_#9@swl@d@Q@#_'@k"_W$_'@z@o@5_U<@6_%q0@H@&
+      @c_&_+_!R_:@|@Aq@G@z@r@zgED@z@|O@l@AF@K8@2@*_f\_+@2F@<_a_HP_J@UST7_I_7wJ@8_E@pl|
+      @_N@~@;_.q(@>@g_[D#._.@'B@S_[9:@3l_;@"@/]_dNc@El@(6l-_D_it_'@Q@*@M_$_;_X_P@D@z@b_
+      @I4a^@9F_]_Q|R$_j_A_9h@~@Z_T@41k@wZc@;_9_E@A@p7_2$_3@s,_[K_Kq_7@L_\_${@Y@)@/H_Z@Q
+      @0@X_M@s@/D@CJ_At@]@RK@)_8_/_V@C7_I@4@;@2_U_R6_L<@/@"@/"_B_V@u@O@9@|P@\_;2PD@r#0_
+      @F\_+_V@.(@L@?_ER}_i@R_4@U@}_)@UNQ@=3QI_\_X@cj_f_k@O_WY_f_%@o<@c_M_k{~_,_ms@a}"@z
+      @_+@9_(S(_e_e_C@=@sX@x@J_&_=@w_P@~_9+_B_.7W_L@/aU_*@^@z@k@f@r@Vt_h_P@E@YU_%_e_c_8
+      @Z{@n_B_)Q@9@7_:_N;_V[WT@~@8@hU@E/_1b_>@X@y@>_4_<oP@,_\@jh@W_O[R_Js@m@w@:@+_%78@+
+      @y@$_CM@._^@eM@x@tE_Wg_U_"@d@1_N_i-@?_,@~_\+_:c@rg2_'_-_*o@*w@<@4,@b_/[@:$_&_%5@
+      @x@F'_m@{@t@o_+@E!_RWT@2@R@g_-@I@w_b_4OxA@-@m@g@?$_m@sx@l@D_Vu_I_3o@z@VF@dX@\]#@,
+      @@g|W@Z_V@$$_0_W_O@=j@v@G@b@P@4_B@u_<~_)(5@l@R@(@CO2@6E@8@O@%@$_:_]@6@?;@H@ly_=@)
+      @|_Z_-@.@)_b@S_1@&@Hk_I@;@V@Zb@i@D<@k<@6_Q@m@1_OI_S_3$6@q_#@F@h@qT@{J_B_F@N_e_F@
+      @M_N@O_fx_,@|fQ35_[L@X_/_P-a_e_;_X9@AI@F"F@hZ9@F"KMo_%_J*@3,_VZ@f_\+_d@i@>@T_B_Q@
+      @w@'@d_h@kK_Q_N@a_J7_f@tU@p@a_44_0_E7@1@Q@|_1_._F_e@>@$G@Y@R@>_'@#P_a_V_5qO>o_Z@y
+      @_(_gl@0Q@sdN_,@KI_E\j_J@D_-_C@^@K@^;@w@Hl@rn_0_An@u_!_&#_G_Pz5@9@F@W@P@3_J_F@8@4
+      @@h_3_U@I_(_R@wv@X/_F8r@|_I@q_3T@f_g@/W/@i@;@4_g_C_8@jY_>_9@$_F_F@|@8@2_R@3_B@5@R
+      @)_C_B@=@O@/B]@Ib]@Lrk_8jQis_Q_b_cV_>@BY_4@wC@g@x_UQ@AI@#_Sj@u_O_3@C@[_Zx&_Bk@^_b
+      @@n@<8_b=I@cl_)_:_\_c_Ef@wS_m(_)s_UG@g_*_._)@9@:@sK_J@C@1@C@I_KS@w@9@S@Mv_]_0@1@0
+      @_$_#@.@F8&_(_6_YF_U*@tN<_=_9_G@[@4_D1_X@{@y@hP@+_K_$_/_D_F_U_(_d6_C@[@#_QP,@3@r
+      @_Qz_l_C@O_$_f@;*c_)_D_i@;@X@*@]@$D@Qg@&_FZ_e_g_L@w@P]@E@8h$_Pkb@Ei@;_M_9_W[_R_#_
+      @'@]@{@;@}_3_?@^?@dI_W_O@d_WL_.^;_ec_&Y@"_L_YA@|o_e_/@V@b_U@D_e]@+5@;_8@b@;_^_$@
+      @W_(@Ey_;@1_){cf_^h@(_(@]_Dxn@=_W@Q_Xz@V_P_H_5_m@Gg@X_0_S@)@g_<@;@"@zN_d@5@\@:_"_
+      @2_)_0@f>_[_m_O@*_a_c@p@d_i@g@6_f_h_4@eK_W@L_I@-@]l]3_E@9@|Ur@*(@#H@B@QQ^@^@9_!@
+      @N_F7_7T_i_*<_:_&_W_O_Z@DNb@X@z_1_3_P_14_g@%V@Y@%_B@m_m4@8X_X!_cp@?_3k_(D_M@4_Q_
+      @$7_]_kQ_*:yc
     End
     OnAttachedButtons
       @@>@e_0z_K@5_>z5b0_e*@P@^@036_FB.lF@0@^_1@4_=7@p@<;@d@}_6n@Y@;&F@g@sv+5_FTGi_F@h_

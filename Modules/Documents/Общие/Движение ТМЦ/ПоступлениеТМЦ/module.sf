@@ -2,11 +2,14 @@
 //Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
 //Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
-
 Var флВидимостьПартий Export;
 Var СуммаМаржПрибыли Export;
 Var флТипЦенРеализации Export;
 Var ТЦеныЗакупок Export;
+
+Var ВыделятьСтроки Export;
+Var ВыделеннаяСтрокаПред Export;
+ВыделятьСтроки:=Number(RestoreValue("ВыделятьСтрокиТаблиц"));
 
 Function Видимость()
   aEl:=Form.Object;
@@ -130,7 +133,7 @@ Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПара
       Continue;
     EndIf;
     If aTab.ЦенаБезСкидки=0 Then
-      Message("Для строки документа "+aTab.CurLine+" не указана цена закупки. Если это первый приход необходимо установить цену закупки равной цене документа!","!");
+      Message("Для строки документа "+aTab.CurLine+" не указана цена закупки (цена без скидки). Если это первый приход необходимо установить цену закупки равной цене документа!","!");
       Фл:=1;
     EndIf;
   EndDo;
@@ -367,12 +370,9 @@ Function OnUnknownAction(Тип)
         ТМарки.CopyTo(ТМаркиДокумента,,,,"Партия",Партия);
       EndIf;
 
+      зЦ:=Max(0,глПолучитьРозничнуюЦену(Номенклатура,aDoc.Магазин.ТипЦенРеализации,aDoc.Магазин,1,Date()));
       bTab:=aDoc.LineParts("ВходящаяНоменклатура");
-      bTab.AddLine("Номенклатура,Партия,Количество,СтавкаНДС",Номенклатура,Партия,зКл0,Номенклатура.СтавкаНДС);
-      If ТабРезультат.FindAndGoto(Элемент,,"Элемент")>0 Then
-        bTab.Цена:=ТабРезультат.Цена;
-        bTab.Сумма:=bTab.Цена*bTab.Количество;
-      EndIf;
+      bTab.AddLine("Номенклатура,Партия,Количество,СтавкаНДС,Цена,Сумма",Номенклатура,Партия,зКл0,Номенклатура.СтавкаНДС,зЦ,зЦ*зКл0);
       глПересчитатьСтроку(aDoc,bTab,"Количество2@СуммаНДС");
       aDoc.СуммаВзаиморасчетов:=bTab.Sum("Сумма");
 
@@ -384,9 +384,12 @@ Function OnUnknownAction(Тип)
       If bTab2.Size()>0 Then
         зН:=bTab2["Номенклатура",1];
         зКл:=bTab2["Количество",1]*зКл0;
-      EndIf;
-      зЦ:=Max(0,глПолучитьРозничнуюЦену(зН,aDoc.Магазин.ТипЦенРеализации,aDoc.Магазин,1,Date()));
-      bTab.AddLine("Номенклатура,Количество,Цена,Сумма,СтавкаНДС",зН,зКл,зЦ,зЦ*зКл,зН.СтавкаНДС);
+      EndIf;      
+      bTab.AddLine("Номенклатура,Количество,СтавкаНДС",зН,зКл,зН.СтавкаНДС);
+      If ТабРезультат.FindAndGoto(Элемент,,"Элемент")>0 Then
+        bTab.Цена:=ТабРезультат.Цена;
+        bTab.Сумма:=bTab.Цена*bTab.Количество;
+      EndIf;      
       глПересчитатьСтроку(aDoc,bTab,"Количество2@СуммаНДС");
     EndDo;
   
@@ -403,5 +406,161 @@ Function OnUnknownAction(Тип)
     EndIf;
     
     OpenObject(aDoc,0,2);
+  ElseIf тип="Загрузка из внешнего файла xls(x) или txt" Then
+  
+    If Form.cDocDate.isDisabled Then
+      Exit;
+    EndIf;
+  
+    If _Or(aEl.Status()<0,Form.IsChanged()=1) Then
+      Box("Документ не записан!",Q_STOP);
+      Exit;
+    EndIf;
+    
+    cols:=List.create("Штрихкод","Количество","Цена","Сумма","ЦенаБезСкидки");
+    colsLowercase:=List.create("штрихкод","количество","цена","сумма","ценабезскидки");
+    xTab:=Tab.create(cols.toString(","));
+    
+    Box("Файл загрузки должен иметь формат xls,xlsx,txt. Документ должен иметь как минимум одну из следующих колонок: "+cols.toString(", "),Q_INFORMATION);
+    Путь:="Документ";
+    If not OpenFileDialog(Путь,"Выберите файл для загрузки:","Файл xls/xlsx/txt") Then
+      Exit;
+    EndIf;
+    
+    If _AND(GetExt(Путь)<>"xls",GetExt(Путь)<>"xlsx",GetExt(Путь)<>"txt") Then
+      Box("Файл не соответствует формату xls,xlsx или txt!",Q_STOP);
+      Exit;
+    Endif;
+    
+    If _OR(GetExt(Путь)="xls",GetExt(Путь)="xlsx") Then
+      aTable:=Table.create();
+      Try
+        aTable.load(Путь);
+      Except
+        Box("Файл заблокирован или не существует!",Q_STOP);
+        Exit;
+      Endtry;
+      
+      If aTable.size()<2 Then
+        Box("Документ пуст!",Q_STOP);
+        Exit;
+      EndIf;
+      
+      спСтолбцы:=List.create();
+      For c:=1 To aTable.sizec() Do
+        стрСтолбец:=aTable.area(c,1).text;
+        If _AND(colsLowercase.find(lowercase(стрСтолбец))<1,стрСтолбец<>"") Then 
+          Message("Неизвестный столбец """+стрСтолбец+""" будет пропущен","i");
+        ElseIf _AND(colsLowercase.find(lowercase(стрСтолбец))<1,стрСтолбец="") Then
+          Message("Найден пустой столбец - будет пропущен","i");
+          спСтолбцы.add("Пустой#"+number(спСтолбцы.size()+1));
+          Continue;
+        EndIf;
+        спСтолбцы.add(стрСтолбец);
+      EndDo;
+      
+      For r:=2 To aTable.size() Do
+        xTab.newLine();        
+        For c:=1 To спСтолбцы.size() Do
+          стрЗначение:=aTable.area(c,r).text;
+          If colsLowercase.find(lowercase(спСтолбцы[c]))>0 Then
+            xTab[спСтолбцы[c]]:=стрЗначение;
+          EndIf;
+        EndDo;
+      EndDo;
+            
+    ElseIf GetExt(Путь)="txt" Then
+      txt:=Text.create();
+      txt.load(Путь);
+      
+      If txt.size()<2 Then
+        Box("Документ пуст!",Q_STOP);
+        Exit;
+      EndIf;
+      
+      спСтолбцы:=List.create();
+      стрСтолбцы:=trim(txt.getLine(1));
+      стрСтолбец:="НазваниеСтолбца";
+      While стрСтолбец<>"" Do
+        стрСтолбец:=tearStr(стрСтолбцы,_TAB);
+        If _AND(colsLowercase.find(lowercase(стрСтолбец))<1,стрСтолбец<>"") Then 
+          Message("Неизвестный столбец """+стрСтолбец+""" будет пропущен","i");
+        ElseIf _AND(colsLowercase.find(lowercase(стрСтолбец))<1,стрСтолбец="") Then
+          Message("Найден пустой столбец - будет пропущен","i");
+          спСтолбцы.add("Пустой#"+number(спСтолбцы.size()+1));
+          Continue;
+        EndIf;
+        спСтолбцы.add(стрСтолбец);
+      EndDo;
+      
+      If спСтолбцы.size()=0 Then
+        Message("Не найдено ни одного столбца из списка: "+cols.toString(", "),"!");
+        Exit;
+      EndIf;
+        
+      For i:=2 To txt.size() Do
+        стрЗначения:=txt.getLine(i);
+        xTab.newLine();
+        For ii:=1 to спСтолбцы.size() Do
+          стрЗначение:=tearStr(стрЗначения,_TAB);
+          If colsLowercase.find(lowercase(спСтолбцы[ii]))>0 Then
+            xTab[спСтолбцы[ii]]:=стрЗначение;
+          EndIf;
+        EndDo;
+      EndDo;   
+    EndIf;
+    
+    aEl:=Form.Object;
+    aTab:=aEl.LineParts("Номенклатура");
+    MainTab:=Form.MainTab.Value;
+    MainTab.Lock();
+   
+    Try
+      xTab.select();
+      While xTab.next() Do
+        Штрихкод:=DB("ref.тмцШтрихкоды","@Status,<>Name,Name",0,"",xTab.Штрихкод);
+        Номенклатура:=?(_AND(not isEmpty(Штрихкод),DBObjectName(Штрихкод.parent())="тмцНоменклатура"),Штрихкод.parent(),"");
+        Цена:=number(replace(replace(xTab.Цена,",",".")," ",""));
+        Сумма:=number(replace(replace(xTab.Сумма,",",".")," ",""));
+        Количество:=number(replace(replace(xTab.Количество,",",".")," ",""));
+        ЦенаБезСкидки:=number(replace(replace(xTab.ЦенаБезСкидки,",",".")," ",""));
+        
+        If _AND(isEmpty(Номенклатура),not isEmpty(xTab.Штрихкод)) Then
+          Message("Номенклатура со штрихкодом "+xTab.Штрихкод+" не найдена!","!");
+        EndIf;
+        
+        If _AND(isEmpty(Цена),not isEmpty(Сумма),not isEmpty(Количество)) Then
+          Цена:=Сумма/Количество;
+        EndIf;
+        
+        If _AND(isEmpty(Сумма),not isEmpty(Цена),not isEmpty(Количество)) Then
+          Сумма:=Цена*Количество;
+        EndIf;
+        
+        If _AND(isEmpty(Количество),not isEmpty(Цена),not isEmpty(Сумма)) Then
+          Количество:=Сумма/Цена;
+        EndIf;
+        
+        If _AND(isEmpty(ЦенаБезСкидки),not isEmpty(Цена)) Then
+          ЦенаБезСкидки:=Цена;
+        EndIf;
+        
+        If aTab.find(Номенклатура,,"Номенклатура") Then
+          Message("Позиция "+Номенклатура.name+" присутствует сразу в нескольких строках данного документа, будьте внимательны","i");
+        Endif;
+        
+        If _AND(isEmpty(Номенклатура),isEmpty(Количество),isEmpty(Цена),isEmpty(Сумма),isEmpty(ЦенаБезСкидки)) Then
+          Continue;
+        EndIf;
+       
+        aTab.addLine("Номенклатура,Количество,Цена,Сумма,ЦенаБезСкидки",Номенклатура,Количество,Цена,Сумма,ЦенаБезСкидки);
+      EndDo;
+      глПересчитатьСтроку(aEl,aTab,"Сумма,СтавкаНДС,СуммаНДС");
+
+    Finally
+      MainTab.unlock();
+    EndTry; 
+       
+    Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,MainTab.Size());
   EndIf;
 EndFunction

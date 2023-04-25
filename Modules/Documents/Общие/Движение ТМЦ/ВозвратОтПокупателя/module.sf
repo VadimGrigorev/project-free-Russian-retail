@@ -5,6 +5,9 @@
 Var СтарКод Export;
 Var флВидимостьПартий Export;
 
+Var ВыделятьСтроки Export;
+Var ВыделеннаяСтрокаПред Export;
+ВыделятьСтроки:=Number(RestoreValue("ВыделятьСтрокиТаблиц"));
 
 Function OnBeforeChangeOperationCode(Стр)
   aEl:=Form.Object;

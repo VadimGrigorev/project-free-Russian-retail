@@ -6,6 +6,10 @@ Var флВидимостьПартий Export;
 Var СтарыйСклад Export;
 Var флБезПроверкиДубля Export;
 
+Var ВыделятьСтроки Export;
+Var ВыделеннаяСтрокаПред Export;
+ВыделятьСтроки:=Number(RestoreValue("ВыделятьСтрокиТаблиц"));
+
 Function Видимость()
   aEl:=Form.Object;
   флВидимостьПартий:=aEl.Склад.БезПартионногоУчета=0;
@@ -70,7 +74,7 @@ Function ЗапретПересчета(Ред=0)
   aEl:=Form.Object;
   If (Trim(aEl.УникальныйИдентификатор)<>"")Or(Trim(aEl.УникальныйИдентификатор2)<>"")Or(Trim(aEl.УникальныйИдентификатор3)<>"") Then
     Box("В документе с внешним уникальным номером запрещено менять содержимое строк!",Q_STOP);
-    If not глПользователь.общиеАдминистратор Then
+    If not _OR(глПользователь.общиеАдминистратор,глПользователь.бухБухгалтер) Then
       Exit 1;
     EndIf;
   EndIf;  
@@ -156,6 +160,10 @@ EndFunction
 Function OnUnknownAction(Тип)
   aEl:=Form.Object;
   If Тип="Загрузка штрихкодов и марок из текстового файла..." Then
+    If Form.cDocDate.isDisabled Then
+      Exit;
+    EndIf;
+  
     If _Or(aEl.Status()<0,Form.IsChanged()=1) Then
       Box("Документ не записан!",Q_STOP);
       Exit;

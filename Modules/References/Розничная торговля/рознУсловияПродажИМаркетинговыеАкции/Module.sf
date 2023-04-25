@@ -17,6 +17,20 @@ Function ПриПодбореНоменклатуры(Эл,Фл)
   Form.оТМЦ.InvokeEvent("OnInitLine","IndexFrom,IndexTo",aTab.Size(),aTab.Size());
 EndFunction
 
+Function ПриПодбореНоменклатурыУсловия(Эл,Фл)
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("НоменклатураУсловия");
+
+  Стр:=0;
+  If aTab.Find(Эл,Стр,"Номенклатура")>0 Then
+    Box("Такая группа номенклатуры уже существует!",Q_STOP);
+    Exit;
+  EndIf;
+  aTab.NewLine();
+  aTab.Номенклатура=Эл;
+  Form.оУсловие.InvokeEvent("OnInitLine","IndexFrom,IndexTo",aTab.Size(),aTab.Size());
+EndFunction
+
 Function Доступность()
   aEl:=Form.Object;
   If aEl.ТипУсловия=Enum.рознТипыУсловийПродаж.СкидкаНаПозицию Then
@@ -28,6 +42,7 @@ Function Доступность()
     Form.ПроцентСкидки.IsDisabled:=0;
     Form.тТ8.IsDisabled:=1;
     Form.СуммаДокумента.IsDisabled:=1;
+    Form.оЗакладки.Pages.Page("НоменклатураУсловия").isInvisible:=0;
   ElseIf aEl.ТипУсловия=Enum.рознТипыУсловийПродаж.СкидкаССуммыПродажи Then
     Form.тТ4.IsDisabled:=0;
     Form.БюджетРубли.IsDisabled:=0;
@@ -37,6 +52,7 @@ Function Доступность()
     Form.ПроцентСкидки.IsDisabled:=0;
     Form.тТ8.IsDisabled:=0;
     Form.СуммаДокумента.IsDisabled:=0;
+    Form.оЗакладки.Pages.Page("НоменклатураУсловия").isInvisible:=1;
   Else
     Form.тТ4.IsDisabled:=1;
     Form.БюджетРубли.IsDisabled:=1;
@@ -46,6 +62,7 @@ Function Доступность()
     Form.ПроцентСкидки.IsDisabled:=1;
     Form.тТ8.IsDisabled:=1;
     Form.СуммаДокумента.IsDisabled:=1;
+    Form.оЗакладки.Pages.Page("НоменклатураУсловия").isInvisible:=1;
   EndIf;
 EndFunction
 
