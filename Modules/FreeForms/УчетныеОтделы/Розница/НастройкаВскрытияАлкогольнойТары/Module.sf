@@ -136,6 +136,6 @@ Function ПринятьИзменения()
       аКм.Save();
     EndIf;
   EndDo;
-  ТСтроки.ClearLines();
+  //ТСтроки.ClearLines();
   Message("Работа окончена!","!");
 EndFunction

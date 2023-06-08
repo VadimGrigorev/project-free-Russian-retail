@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, 
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintLastReceipt, 
 //  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
 
 //Документация: http://doc.shtrih-m.ru/, http://doc.shtrih-m.ru/Files/Programmer.pdf
@@ -411,7 +411,20 @@ Function PrintReportZ(спНастройки)
   EndTry;
 EndFunction
 
-
+//спНастройки["НомерДокумента"] -- фискальный номер документа для печати (если пустой -- печать последнего чека)
+Function PrintLastReceipt(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    If not IsEmpty(спНастройки["НомерДокумента"]) Then
+      Exit "Печать копии произвольного чека не поддерживается!";
+    EndIf;
+    If аДрайвер.RepeatDocument()<>0 Then
+      Exit аДрайвер.ResultCodeDescription;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка печати копии чека!";
+  EndTry;
+EndFunction
 
 
 //ФФД 1.2: https://forum.nalog.ru/index.php?app=core&module=attach&section=attach&attach_id=3772
@@ -666,12 +679,16 @@ Function PrintReceipt(спНастройки)
         аДрайвер.DivisionalQuantity:=0;
         //1023: для марок упаковки при продаже единицы может записываться как "1/x", где x -- количество в упаковке
         If аДрайвер.FNCheckItemBarcode2()<>0 Then
-          Raise "FNCheckItemBarcode2: "+аДрайвер.ResultCodeDescription;
+          //Raise "FNCheckItemBarcode2: "+аДрайвер.ResultCodeDescription;
+          ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"FNCheckItemBarcode2: "+аДрайвер.ResultCodeDescription);
+          Continue;
         EndIf;
         Фл:=аДрайвер.CheckItemLocalResult;
         Фл2:=аДрайвер.KMServerErrorCode;
         If аДрайвер.FNAcceptMarkingCode()<>0 Then
-          Raise "FNAcceptMarkingCode: "+аДрайвер.ResultCodeDescription;
+          //Raise "FNAcceptMarkingCode: "+аДрайвер.ResultCodeDescription;
+          ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"FNAcceptMarkingCode: "+аДрайвер.ResultCodeDescription);
+          Continue;
         EndIf;
         If (Фл=2)or(Фл2>1) Then
           If Фл=2 Then
@@ -959,19 +976,20 @@ Function PrintReceipt(спНастройки)
         Exit;
       EndIf;
     EndTry;  
+    спНастройки["НомерДокумента"]:="";
+    НомерСмены:=спНастройки["НомерСмены"];
+    If аДрайвер.FNGetCurrentSessionParams()=0 Then
+      спНастройки["НомерДокумента"]:=аДрайвер.ReceiptNumber;
+      НомерСмены:=аДрайвер.SessionNumber;
+    EndIf;
+    
     Try
       ЕГАИССылка:=спНастройки["ЕГАИССылка"];
       ЕГАИСПодпись:=спНастройки["ЕГАИСПодпись"];
       If Trim(ЕГАИССылка)<>"" Then
         //ЕГАИССылка -- URL типа "https://check.egais.ru?id=cf1b1096-3cbc-11e7-b3c1-9b018b2ba3f7", если не пустая, будет выведено дополнение к чеку.
         //ЕГАИСПодпись -- строка типа "79DED4A448069B0BFF602FF646F4E9B24D253D311679EA15307AEF38AEEE7933C9175DE5814C3DCF89BF63853CB75003D9FD979F3BEBBC93AFADF1D9A429623F"
-  
-        стрДок:=0;
-        НомерСмены:=спНастройки["НомерСмены"];
-        If аДрайвер.FNGetCurrentSessionParams()=0 Then
-          стрДок:=аДрайвер.ReceiptNumber;
-          НомерСмены:=аДрайвер.SessionNumber;
-        EndIf;
+        стрДок:=спНастройки["НомерДокумента"];
                 
         //If аДрайвер.OpenNonfiscalDocument()<>0 Then
         //  Raise "OpenNonfiscalDocument: "+аДрайвер.ResultCodeDescription;

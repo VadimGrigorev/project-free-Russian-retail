@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, 
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintLastReceipt, 
 //  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
 
 //Документация: http://integration.atol.ru/api/
@@ -326,6 +326,22 @@ Function PrintReportZ(спНастройки)
   EndTry;
 EndFunction
 
+//спНастройки["НомерДокумента"] -- фискальный номер документа для печати (если пустой -- печать последнего чека)
+Function PrintLastReceipt(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    If not IsEmpty(спНастройки["НомерДокумента"]) Then
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_REPORT_TYPE,аДрайвер.LIBFPTR_RT_FN_DOC_BY_NUMBER);
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_DOCUMENT_NUMBER,спНастройки["НомерДокумента"]);
+      аДрайвер.report;
+    Else
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_REPORT_TYPE,аДрайвер.LIBFPTR_RT_LAST_DOCUMENT);
+      аДрайвер.report;
+    EndIf;    
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка печати копии чека!";
+  EndTry;
+EndFunction
 
 //ФФД 1.2: https://forum.nalog.ru/index.php?app=core&module=attach&section=attach&attach_id=3772
 //Используются поля:
@@ -508,6 +524,7 @@ Function PrintReceipt(спНастройки)
         ТабИСМП.Select();
         While ТабИСМП.Next() Do
           ТабИСМП.Поле1:=?(ФлВозврат,аДрайвер.LIBFPTR_MES_PIECE_RETURN,аДрайвер.LIBFPTR_MES_PIECE_SOLD);
+          ТабИСМП.Поле2:=0;
           аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_TYPE,аДрайвер.LIBFPTR_MCT12_AUTO);
           аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE,ТабИСМП.Марка);
           //1 -Штучный товар, подлежащий обязательной маркировке средством идентификации, реализован
@@ -520,14 +537,19 @@ Function PrintReceipt(спНастройки)
           //1023: для марок упаковки при продаже единицы может записываться как "1/x", где x -- количество в упаковке
           //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY,"1/2");
           If аДрайвер.beginMarkingCodeValidation()<>0 Then
-            Exit "beginMarkingCodeValidation. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
+            //Exit "beginMarkingCodeValidation. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
+            ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"beginMarkingCodeValidation. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription);
+            Continue;
           EndIf;
           
           ФлРезультат:=0;
           аДата:=Date();
           While 1 Do
             If аДрайвер.getMarkingCodeValidationStatus()<>0 Then
-              Exit "getMarkingCodeValidationStatus. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
+              аДрайвер.cancelMarkingCodeValidation();
+              //Exit "getMarkingCodeValidationStatus. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
+              ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"getMarkingCodeValidationStatus. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription);
+              Continue 2;
             Endif;
             If аДрайвер.getParamBool(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_VALIDATION_READY) Then
               ФлРезультат:=аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_RESULT);
@@ -535,7 +557,9 @@ Function PrintReceipt(спНастройки)
             EndIf;
             If GetPeriodMs(аДата)>7000 Then //7 с. максимум (Атол отменяет по таймаут менее чем через 6 секунд)
               аДрайвер.cancelMarkingCodeValidation();
-              Exit "getMarkingCodeValidationStatus не возвращает готовность длительное время!";
+              //Exit "getMarkingCodeValidationStatus не возвращает готовность длительное время!";
+              ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"getMarkingCodeValidationStatus не возвратил готовность длительное время. Проверка прекращена!");
+              Continue 2;
             EndIf;
             Sleep(100);
           EndDo;
@@ -545,13 +569,13 @@ Function PrintReceipt(спНастройки)
           //бит 2: проверка ОИСМ выполнена
           //бит 3: планируемый статус (реализация или возврат) корректен, иначе -- нет
           //бит 4: 0 -- онлайн режим ККТ, 1 -- автономно
-          аДрайвер.acceptMarkingCode;
           ТабИСМП.Поле2:=ФлРезультат;
-          If ((ФлРезультат And 1<>0)And(ФлРезультат And 2=0))Or((ФлРезультат And 4<>0)And(ФлРезультат And 8=0)) Then
+          If ((ФлРезультат And 1<>0)And(ФлРезультат And 2=0))Or(ФлРезультат And 5=0)Or((ФлРезультат And 4<>0)And(ФлРезультат And 8=0)) Then
             Стр:=аДрайвер.getParamString(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_ERROR_DESCRIPTION);
-            Стр:=?(Стр<>"",Стр,?(ФлВозврат,"Марка не списана, нельзя возвращать","Марка списана, нельзя продавать"));
-            ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,?((ФлРезультат And 1<>0)And(ФлРезультат And 2=0),"Код марки недостоверен ("+ФлРезультат+")",Стр));
+            Стр:=?(Стр<>"",Стр+". ","")+"Код проверки марки: "+ФлРезультат;
+            ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,Стр);
           EndIf;
+          аДрайвер.acceptMarkingCode;
         EndDo;
       EndIf;
     
@@ -712,7 +736,11 @@ Function PrintReceipt(спНастройки)
         аСтарый:=InterProcessServerTimeout(0);
       EndIf;
       Try
-        аДрайвер.closeReceipt;
+        If аДрайвер.closeReceipt<>0 Then
+          аДрайвер.cancelReceipt;
+          ФлОтменитьЧек:=0;
+          Exit "Ошибка закрытия чека: "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
+        EndIf;
       Finally
         If IsExecutingInSeparateProcess Then
           InterProcessServerTimeout(аСтарый);
@@ -747,7 +775,11 @@ Function PrintReceipt(спНастройки)
           Break;
         EndDo;
       EndIf;
-    EndTry;  
+    EndTry;
+    аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_FN_DATA_TYPE,аДрайвер.LIBFPTR_FNDT_LAST_DOCUMENT);
+    аДрайвер.fnQueryData();
+    спНастройки["НомерДокумента"]:=аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DOCUMENT_NUMBER);
+    
     Try
       ЕГАИССылка:=спНастройки["ЕГАИССылка"];
       ЕГАИСПодпись:=спНастройки["ЕГАИСПодпись"];
@@ -755,10 +787,7 @@ Function PrintReceipt(спНастройки)
         //ЕГАИССылка -- URL типа "https://check.egais.ru?id=cf1b1096-3cbc-11e7-b3c1-9b018b2ba3f7", если не пустая, будет выведено дополнение к чеку.
         //ЕГАИСПодпись -- строка типа "79DED4A448069B0BFF602FF646F4E9B24D253D311679EA15307AEF38AEEE7933C9175DE5814C3DCF89BF63853CB75003D9FD979F3BEBBC93AFADF1D9A429623F"
   
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_FN_DATA_TYPE,аДрайвер.LIBFPTR_FNDT_LAST_DOCUMENT);
-        аДрайвер.fnQueryData();
-        //стрПодпись:=аДрайвер.getParamString(аДрайвер.LIBFPTR_PARAM_FISCAL_SIGN);
-        стрДок:=аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DOCUMENT_NUMBER);
+        стрДок:=спНастройки["НомерДокумента"];
         НомерСмены:=спНастройки["НомерСмены"];
         If IsEmpty(НомерСмены) Then
           аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_DATA_TYPE,аДрайвер.LIBFPTR_DT_SHIFT_STATE);

@@ -9,7 +9,7 @@ Object FORM
   Width=630
   Height=360
   OnTimerInterval=0
-  MaxControlSerial=8
+  MaxControlSerial=9
   LoadModes=0
   CompileModule=
   Object TABLE
@@ -265,6 +265,30 @@ Object FORM
       @Rq@=@i_>@V_S_&_Xcn@7@U_F@I'@B@<_>wwF@#@kE@|vT@LI_mVM_B@2_2_Kr@4@w@1;@|_"@(@?@v_
       @/_=_F@h_7@5_Wr@J@{@q@-vc=g@U@|s@c{@,2_R_F@"@K_[U_S@+I_-_I@W_<V_%@9o\@t@r@f_[c!0@
       @4$3
+    End
+  End
+  Object BUTTON
+    LayerName=4D00610069006E00
+    Left=480
+    Top=335
+    Width=90
+    Height=25
+    Font=440065006600610075006C0074002C0020003800
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=8
+    Caption=210432043E0439044104420432043004
+    HotKey=
+    Picture=0
+    OnClick
+      @@>@e@#@W_6r_-t5i_e@&@Vp@a_]"@;'*@V@Q@rxn@R@}_,_/BT_+A1@'d@[@Y9_mc@w@B@T4@9@9@$_W
+      @@e_&_[@)@u@z_!@0_A_TwI_(_Wg@P@An_(@:_Z_=Mc_#D@]_f_7@P@]_/<@x@#_>_8_H@-@<_3_h_:(@
+      @W*@*_5_)_HU@p@E_]4^JNt_7@PU8@z_e_6L_j'@Y@?@U@\_TV@W^_9FLu_#_.@I_h@%>5_-@v7@.V?@r
+      @@lM_IT_K@T@uD,@-_C@q6@EH@%@Z@#]_H_V@g_"_A@*@r@B@A_?i@%\@1@m@T_J@>@F@t{_N@g@A@pEc
+      @@8_Pk_)_](@v@(@;_1~l@%i^_](0@iJ@<
     End
   End
 End

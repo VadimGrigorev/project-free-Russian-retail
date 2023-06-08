@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, 
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintLastReceipt, 
 //  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
 
 Function DriverInit(спНастройки)
@@ -97,6 +97,9 @@ Function PrintReportZ(спНастройки)
   Message("Виртуальный ККТ: отчет Z, сумма в кассе "+Number(спНастройки["СуммаВКассе"]),"I");
 EndFunction
 
+Function PrintLastReceipt(спНастройки)
+  Exit "Операция не поддерживается!";
+EndFunction
 
 
 //Используются поля:
@@ -174,6 +177,7 @@ Function PrintReceipt(спНастройки)
     If Random<0.05 Then
       Exit "Виртуальный ККТ: чек был аннулирован, ошибка: случайная ошибка с вероятностью 5%";
     EndIf;
+    спНастройки["НомерДокумента"]:=1;
     
     ЕГАИССылка:=спНастройки["ЕГАИССылка"];
     ЕГАИСПодпись:=спНастройки["ЕГАИСПодпись"];

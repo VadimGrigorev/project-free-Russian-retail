@@ -309,12 +309,14 @@ Function OnUnknownAction(Тип)
           ТМарки:=глМаркиЗагрузитьДокумент(aEl);
         EndIf;
         аНум:=0;
-        ТМарки.Select();
-        While ТМарки.Next() Do
-          If ТМарки.Партия=Партия Then
-            аНум:=аНум+1;
-          EndIf;
-        EndDo;
+        If not IsEmpty(ТМарки) Then
+          ТМарки.Select();
+          While ТМарки.Next() Do
+            If ТМарки.Партия=Партия Then
+              аНум:=аНум+1;
+            EndIf;
+          EndDo;
+        EndIf;
         If аНум<>aTab.Количество Then
           Box("Для позиции номенклатуры "+aTab.Номенклатура+" количество марок в документе не совпадает с количеством номенклатуры!",Q_STOP);
           Exit;
@@ -562,5 +564,5 @@ Function OnUnknownAction(Тип)
     EndTry; 
        
     Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,MainTab.Size());
-  EndIf;
+    EndIf;
 EndFunction

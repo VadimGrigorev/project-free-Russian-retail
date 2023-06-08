@@ -104,6 +104,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=23
   LoadModes=0
+  CompileModule=
   Object GROUPBOX
     LayerName=4D00610069006E00
     Left=580

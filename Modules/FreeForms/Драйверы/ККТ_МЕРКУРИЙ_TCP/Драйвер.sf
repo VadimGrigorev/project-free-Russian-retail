@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, 
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintLastReceipt, 
 //  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer
 
 //Документация: https://www.incotexkkm.ru/files/kkm/docs/vt-inecrman-exchange.pdf (https://www.incotexkkm.ru/support/inecrman)
@@ -423,7 +423,18 @@ Function PrintReportZ(спНастройки)
   EndTry;
 EndFunction
 
-
+//спНастройки["НомерДокумента"] -- фискальный номер документа для печати (если пустой -- печать последнего чека)
+Function PrintLastReceipt(спНастройки)
+  Try
+    Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""PrintDocFromFN"""+?(Not IsEmpty(спНастройки["НомерДокумента"]),",""fiscalDocNum"":"""+спНастройки["НомерДокумента"]+"""")+"}";
+    СтрОшибка:=ВыполнитьКоманду(спНастройки,Стр);
+    If СтрОшибка<>"" Then
+      Exit "Ошибка печати последнего чека: "+СтрОшибка;
+    EndIf;
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка печати копии чека!";
+  EndTry;
+EndFunction
 
 
 //ФФД 1.2: https://forum.nalog.ru/index.php?app=core&module=attach&section=attach&attach_id=3772
@@ -582,13 +593,16 @@ Function PrintReceipt(спНастройки)
         //4 -Часть товара, подлежащего обязательной маркировке средством идентификации, возвращена
         //255 -Статус товара, подлежащего обязательной маркировке средством идентификации, не изменился
         ТабИСМП.Поле1:=?(ФлВозврат,"3","1");
+        ТабИСМП.Поле2:=0;
         //Количество умножается на 10000
         //спЕдиница здесь всегда используется, как 0
         Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""CheckMarkingCode"",""mc"":"""+EncodeString(ТабИСМП.Марка,"JSON")+
           """,""plannedStatus"":"+ТабИСМП.Поле1+",""qty"":10000,""measureUnit"":0,""processingMode"":0,""timeout"":5}";
         СтрОшибка:=ВыполнитьКоманду(спНастройки,Стр);
         If СтрОшибка<>"" Then
-          Exit "Ошибка проверки марки марочного товара: "+СтрОшибка;
+          //Exit "Ошибка проверки марки марочного товара: "+СтрОшибка;
+          ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"Ошибка проверки марки марочного товара: "+СтрОшибка);
+          Continue;
         EndIf;
         аДерево:=LoadJSONFromString(Стр,0);
         ФлРезультат:=Number(аДерево["fnCheck","checkResult"]);
@@ -599,7 +613,11 @@ Function PrintReceipt(спНастройки)
             Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""GetMarkingCodeCheckResult""}";
             СтрОшибка:=ВыполнитьКоманду(спНастройки,Стр);
             If СтрОшибка<>"" Then
-              Exit "Ошибка получения статуса проверки марки марочного товара: "+СтрОшибка;
+              Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""AbortMarkingCodeChecking""}";
+              ВыполнитьКоманду(спНастройки,Стр);
+              //Exit "Ошибка получения статуса проверки марки марочного товара: "+СтрОшибка;
+              ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"Ошибка получения статуса проверки марки марочного товара: "+СтрОшибка);
+              Continue;
             EndIf;
             аДерево:=LoadJSONFromString(Стр,0);
             If Uppercase(аДерево["isCompleted"])="TRUE" Then
@@ -609,7 +627,9 @@ Function PrintReceipt(спНастройки)
             If GetPeriodMs(аДата)>7000 Then //7 с. максимум (в CheckMarkingCode указывался таймаут в 5 секунд)
               Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""AbortMarkingCodeChecking""}";
               ВыполнитьКоманду(спНастройки,Стр);
-              Exit "GetMarkingCodeCheckResult не возвращает готовность длительное время!";
+              //Exit "GetMarkingCodeCheckResult не возвращает готовность длительное время!";
+              ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"GetMarkingCodeCheckResult не возвращает готовность длительное время!");
+              Continue;
             EndIf;
             Sleep(100);
           EndDo;
@@ -624,14 +644,16 @@ Function PrintReceipt(спНастройки)
         Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""AcceptMarkingCode""}";
         СтрОшибка:=ВыполнитьКоманду(спНастройки,Стр);
         If СтрОшибка<>"" Then
-          Exit "Ошибка выполнения принятия результата проверки марки марочного товара: "+СтрОшибка;
+          //Exit "Ошибка выполнения принятия результата проверки марки марочного товара: "+СтрОшибка;
+          ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"Ошибка выполнения принятия результата проверки марки марочного товара: "+СтрОшибка);
+          Continue;
         EndIf;
         
         ТабИСМП.Поле2:=ФлРезультат;
-        If ((ФлРезультат And 1<>0)And(ФлРезультат And 2=0))Or((ФлРезультат And 4<>0)And(ФлРезультат And 8=0)) Then
+        If ((ФлРезультат And 1<>0)And(ФлРезультат And 2=0))Or(ФлРезультат And 5=0)Or((ФлРезультат And 4<>0)And(ФлРезультат And 8=0)) Then
           Стр:=аДерево["onlineCheck","description"];
-          Стр:=?(Стр<>"",Стр,?(ФлВозврат,"Марка не списана, нельзя возвращать","Марка списана, нельзя продавать"));
-          ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,?((ФлРезультат And 1<>0)And(ФлРезультат And 2=0),"Код марки недостоверен ("+ФлРезультат+")",Стр));
+          Стр:=?(Стр<>"",Стр+". ","")+"Код проверки марки: "+ФлРезультат;
+          ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,Стр);
         EndIf;
       EndDo;
     EndIf;
@@ -811,6 +833,7 @@ Function PrintReceipt(спНастройки)
     EndIf;
     ФлОтменитьЧек:=0;
     аДерево:=LoadJSONFromString(Стр,0);
+    спНастройки["НомерДокумента"]:=аДерево["fiscalDocNum"];
     стрДок:=аДерево["checkNum"];
     НомерСмены:=Number(аДерево["shiftNum"]);
       

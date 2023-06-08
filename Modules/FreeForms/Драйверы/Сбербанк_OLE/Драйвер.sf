@@ -47,7 +47,11 @@ Function CloseShift(спНастройки)
     спНастройки["ДополнительнаяИнформация"]:="";
     аДрайвер:=спНастройки["Драйвер"];
     аДрайвер.Clear();
+    If спНастройки["Department"]>=0 Then
+      аДрайвер.SParam("Department",спНастройки["Department"]);
+    EndIf;
     аРезультат:=аДрайвер.NFun(6000);
+    ReturnToForeground();
     If аРезультат<>0 Then
       Exit "Ошибка "+аРезультат;
     EndIf;
@@ -73,7 +77,11 @@ Function ReportX(спНастройки)
     спНастройки["ДополнительнаяИнформация"]:="";
     аДрайвер:=спНастройки["Драйвер"];
     аДрайвер.Clear();
+    If спНастройки["Department"]>=0 Then
+      аДрайвер.SParam("Department",спНастройки["Department"]);
+    EndIf;
     аРезультат:=аДрайвер.NFun(6002);
+    ReturnToForeground();
     If аРезультат<>0 Then
       Exit "Ошибка "+аРезультат;
     EndIf;
@@ -141,12 +149,14 @@ Function RegisterTransaction(спНастройки)
     If аТипОперации=0 Then
       аДрайвер.Clear();
       аДрайвер.SParam("Amount",См);
+      //аДрайвер.SParam("Currency",643);
       If спНастройки["Department"]>=0 Then
         аДрайвер.SParam("Department",спНастройки["Department"]);
       EndIf;
       //аДрайвер.SParam("AuthCode","");
       аДрайвер.SParam("CashierFIO",Trim(спНастройки["Кассир"]));//TranslateTo(спНастройки["Кассир"],866)
       аРезультат:=аДрайвер.NFun(4000);
+      ReturnToForeground();
       If аРезультат<>0 Then
         Exit "Ошибка "+аРезультат;
       EndIf;
@@ -157,13 +167,10 @@ Function RegisterTransaction(спНастройки)
       спИнформация["RRN"]:=аДрайвер.GParamString("RRN");
       спНастройки["ИнформацияПоТранзакции"]:=спИнформация;
       спНастройки["ДополнительнаяИнформация"]:=Str(аДрайвер.GParamString("Cheque"));
-      //Открыть транзакцию для возможности отмены
-      If аДрайвер.NFun(6003)=0 Then
-        спИнформация["НезакрытаяТранзакция"]:=1;
-      EndIf;
     ElseIf аТипОперации=1 Then
       аДрайвер.Clear();
       аДрайвер.SParam("Amount",См);
+      //аДрайвер.SParam("Currency",643);
       If спНастройки["Department"]>=0 Then
         аДрайвер.SParam("Department",спНастройки["Department"]);
       EndIf;
@@ -181,19 +188,15 @@ Function RegisterTransaction(спНастройки)
       спНастройки["ИнформацияПоТранзакции"]:=спИнформация;
       спНастройки["ДополнительнаяИнформация"]:=Str(аДрайвер.GParamString("Cheque"));
     ElseIf аТипОперации=100 Then
-      спИнформация:=спНастройки["ИнформацияПоТранзакции"];
-      If _And(TypeStr(спИнформация)="LIST",спИнформация["НезакрытаяТранзакция"]=1) Then
-        //Подтвердить
-        аРезультат:=аДрайвер.NFun(6001);
-        аДрайвер.Clear();
-        If аРезультат<>0 Then
-          Exit "Ошибка подтверждения "+аРезультат;
-        EndIf;
-      EndIf;
+      //Ничего не требуется
     ElseIf аТипОперации=101 Then
       //Отменить
       спИнформация:=спНастройки["ИнформацияПоТранзакции"];
-      If _And(TypeStr(спИнформация)="LIST",спИнформация["НезакрытаяТранзакция"]=1) Then
+      If спНастройки["Department"]>=0 Then
+        аДрайвер.SParam("Department",спНастройки["Department"]);
+      EndIf;
+      //Открыть транзакцию для возможности отмены, а также сама отмена
+      If аДрайвер.NFun(6003)=0 Then
         If аДрайвер.NFun(6004)=0 Then
           //ошибка здесь не важна, так как транзакция отменится сама при изменении смены
         EndIf;
@@ -208,10 +211,14 @@ Function RegisterTransaction(спНастройки)
       
       аДрайвер.Clear();
       аДрайвер.SParam("Amount",См);
+      //аДрайвер.SParam("Currency",643);
       //аДрайвер.SParam("AuthCode","");
       аДрайвер.SParam("CashierFIO",спНастройки["Кассир"]);
       аДрайвер.SParam("Track2","QSELECT");
       аДрайвер.SParam("RRN",RRN);
+      If спНастройки["Department"]>=0 Then
+        аДрайвер.SParam("Department",спНастройки["Department"]);
+      EndIf;
       
       аРезультат:=аДрайвер.NFun(?(аТипОперации2=0,4002,4000));
       спНастройки["ДополнительнаяИнформация"]:=Str(аДрайвер.GParamString("Cheque"));

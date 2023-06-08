@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, 
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintLastReceipt, 
 //  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer
 
 //Документация: https://htmlpreview.github.io/?https://github.com/dreamkas/pirit_documentation/blob/master/output/documentation_fm16_1_2.html
@@ -576,7 +576,18 @@ Function PrintReportZ(спНастройки)
   EndTry;
 EndFunction
 
-
+//спНастройки["НомерДокумента"] -- фискальный номер документа для печати (если пустой -- печать последнего чека)
+Function PrintLastReceipt(спНастройки)
+  Try
+    //<ТипЧека>|<Номер отдела>|<Оператор>|<Номер чека>|<Номер кассы>|<Дата чека>|<Время чека>|<Номер ФД>|<СНО>
+    //<ТипЧека>: 2 -- приход, 3 -- возврат прихода, 6 -- расход, 7 -- возврат расхода
+    Кассир:=спНастройки["Кассир"];
+    Результат:=ExecuteCommand(спНастройки,$53,"2"+Chr($1C,1)+Chr($1C,1)+EncodeStringKKT(Кассир.ПолнНаименование)+Chr($1C,1)+
+      Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+?(IsEmpty(спНастройки["НомерДокумента"]),"",спНастройки["НомерДокумента"])+Chr($1C,1));
+  Except
+    Exit PopError()+_NEWLINE+"Неудачная попытка печати Z-отчета!";
+  EndTry;
+EndFunction
 
 
 //ФФД 1.2: https://forum.nalog.ru/index.php?app=core&module=attach&section=attach&attach_id=3772
@@ -1017,6 +1028,9 @@ Function PrintReceipt(спНастройки)
     //          <Дата документа>|<Время документа>
     Результат:=ExecuteCommand(спНастройки,$31,СтрАдрес+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+СтрДоп+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1));
     стрДок:=TearStr(Результат,Chr($1C));
+    TearStr(Результат,Chr($1C));
+    TearStr(Результат,Chr($1C));
+    спНастройки["НомерДокумента"]:=TearStr(Результат,Chr($1C));
     
     Try
       ЕГАИССылка:=спНастройки["ЕГАИССылка"];
