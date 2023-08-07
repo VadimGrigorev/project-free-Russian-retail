@@ -125,6 +125,7 @@ Function Печать(Док,Т)
     Сп.SetByName("Документ",Док);
     Сп.SetByName("Таблица",Т);
     Сп.SetByName("Module","Modules\FreeForms\ВнутренниеОбработки\ОбработкиДокументов\ДеревоДокументов");
+    Сп.SetByName("НестандартныйОтчет",1);
     Т.CopyByX("v1",1);
     
     Т.Options.FixedLine:=Т.Height();

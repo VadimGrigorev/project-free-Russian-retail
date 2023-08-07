@@ -6,8 +6,8 @@ End
 Object FORM
   FormFlags=1
   Caption=
-  Width=695
-  Height=535
+  Width=675
+  Height=605
   OnOpen
     @@>@e@fxq@5_Fd1@D@N[y@sxya_bzY_$@G@[@IS_#t@)<RGL@83_eE_V@~no@sv2@qvD_c_S_e_8@>S1@
     @XgM@}_!@=@,@<_J@dY]V_<h@HG_CQ@"_a_Y@j@M@H-G_P_5G1@%P@*_5@#J?j@Yn@R_Bp@A_H_C:_i@Q
@@ -25,15 +25,30 @@ Object FORM
     @*@}_7
   End
   OnTimerInterval=0
-  MaxControlSerial=42
+  MaxControlSerial=44
   LoadModes=0
   CompileModule=
   Object GROUPBOX
     LayerName=4D00610069006E00
     Left=5
+    Top=380
+    Width=670
+    Height=195
+    Font=440065006600610075006C0074002C0020003800
+    Color=FF00000F
+    AnchorType=15
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=42
+    Caption=1C04300433043004370438043D044B04200038043B04380420003304400443043F043F044B0420003C04300433043004370438043D043E0432042C002000320420003A043E0442043E0440044B0445042000380441043F043E043B044C04370443044E04420441044F0420003A043004400442044B0420004D0442043E04390420003304400443043F043F044B04
+  End
+  Object GROUPBOX
+    LayerName=4D00610069006E00
+    Left=5
     Top=55
     Width=670
-    Height=450
+    Height=320
     Font=440065006600610075006C0074002C0020003800
     Color=FF00000F
     AnchorType=15
@@ -48,7 +63,7 @@ Object FORM
     LayerName=4D00610069006E00
     Left=5
     Top=5
-    Width=690
+    Width=670
     Height=47
     Font=440065006600610075006C0074002C0020003800
     Color=00000000
@@ -62,7 +77,7 @@ Object FORM
     ModuleName=4D006F00640075006C00650073005C004D006100630072006F0073005C0021043F044004300432043E0447043D0438043A0438045C001E0441043D043E0432043D044B0435041A043D043E043F043A0438042E00730066006700
     LayerName=4D00610069006E00
     Left=5
-    Top=510
+    Top=580
     Width=280
     Height=25
     Font=440065006600610075006C0074002C0020003800
@@ -191,11 +206,11 @@ Object FORM
     Left=15
     Top=145
     Width=650
-    Height=350
+    Height=220
     Font=440065006600610075006C0074002C0020003800
     Color=FF000005
     AnchorType=15
-    Flags=136
+    Flags=8
     Hint=
     Name=3E0422041C042604
     ControlSerial=38
@@ -333,5 +348,81 @@ Object FORM
     Caption=1804340435043D0442043804440438043A04300442043E0440043A00
     HAlign=2
     VAlign=0
+  End
+  Object TABLE
+    LayerName=4D00610069006E00
+    Left=15
+    Top=400
+    Width=650
+    Height=165
+    Font=440065006600610075006C0074002C0020003800
+    Color=FF000005
+    AnchorType=15
+    Flags=8
+    Hint=
+    Name=3E041C04300433043004370438043D044B04
+    ControlSerial=43
+    HotKey=
+    Folders=0
+    AttachedButtons
+      @@>@eU@&t@,R@&@6@&R%@Y'-jd@u-_1B@O1W_/L@0@Ky_?9_3Uf4Whu,!@)@y+Z
+    End
+    DBSource
+      @@>@e@)@*R@)R@*@&#@(a'@)'4'oR@3_7@&/5@-@(!!F_b#@3
+    End
+    OnDoubleClick
+      @@>@e@\uqs_-t1@e_.@gp^@?_]_L@j_M%*f@tD@\_=_Bve)+(@T@="@T@%@v@m_5_m@=@<Shq4WQ_[@1_
+      @J_X_X_X_)H@c@aD_2:@$@z_--Q_#g_5_c2@9^_.e6@wF_NoJ@D[@\@O@B_3@~G/3_Z@g@S@n_2_C@]_?
+      @_3_I_S_f@P_C@P=1@/U_9@^@U_#T@X2@7y@O@r_T@9c3@+@e@a@8@^_e@U%_1yr_+@;_k_%_1@#_J@C:
+      @3y@m_6^g_>@O_4@7@6K_5_[@8@M_7@h~_'sY_<@^@2CW@U[_A@V_J_i@u_l@fy8_R_?e@V@5@g[9@a$@
+      @;_Z_5_$@/_h_7_F_+X_!1_4?_<g_9_!@;@-N>@K9@y@R&TVn_J<_#_,O]_&@(@w_+Vj_#_"/@^@7@x_3
+      @_=_*@a@d_"&P_fE[s2@"_?@W_\_'_f@)@*ns@cW@)_7@K/T@kC_[o/@v@Ar_X@T@pLL_f@w_!@1@#_D@
+      @'_Kv@P[@"@rR_"_l_bW?9@X6/k@b@V@[[@Q@T@5_Y_9@F_V-X_Fw_a@b@9@h_M_U@Z}@$_g@5_Z_W_X
+      @@#>?M|@t_e@v@R_h,"b!?@B@+R
+    End
+    OnInitLine
+      @@>@e@nyq@5_Fd1@f_.@gL_Qxy_NtKzri@k@&<<<_.fB"@Q@Y_?@\3_cro@nDWFnd_Y_:_[@d_E_0_f$L
+      @@m_5~_O_I_g@E_a@,@/u@Rv~_>=@1i<_%_0@Bqc_3@j0Vx@^L_/_%u_)@8_A@-W_2Px/@T_?d@?Z>@t9
+      @_i\@:c_NK@hY@6_N_OFv;_i@m_L@'@O_a@X_V_4@=%m<u@w@i@bd_>@j!@5{.@zD_T@/_j\@m_]_Q_._
+      @eh_N@V@jc@GXk@6@.-.0_J@(W@J_d@T_V_N_Xr_'_e@zV@}@d_3_Q@fh@S@3_/!@R@DXL@?]@I_2a_k@
+      @mI_h@f_.@J@lk7@R@z_%@L_"x_^@(,0_E(_f_Nl@-_b'@a_!@q'.@w@|(_I)@8@];@d!@-@r_8_.@.@.
+      @_4U@]w@93@k+_9q_'PC_A@YY_6\_f@c_O@*D@z:@pt_j@8q~t@(_C@(@Zd@h_Qa@:_+@|9'@I@>_G_
+      @h@O_M_,@&@+_^_T_R_VZ_:@A6l0_#_ht@s_=D@'N-\_A~_^_3@<G/o@o_=@%_Z&E_+_&_#_;_AF@R_Y2
+      @@=_ZRc._S_^@7_>=_1E_f@8&_ea_Jb@*C@0?=_M_D@g@P>@re@u@C_G_M@1@b@M@)@"_HE_R@-}{}_b
+      @_[@u@=@b@gb"._W@TIO@G@v@'_0@U@d@wpfD|@.@b#(_<3_T@c@4((@?_U}_B@E@{_X_D_:_CV{@+]@t
+      @@8@M_5X@:@L_eQ^@%u_WM@3@/@H_[Q_b@I_h@hC@?@H_1+_*@xI@)_\_m_cXnw@T_,_"vk@>@3|_,@7
+      @ZE0@\_%&@?_"@Wi@"@a@Vt_Z_4@E_1:@9_e._Y[s@n@P_J8_E_Z_9_N:;@[@,F_8@7@h:_*%@(@F@.LJ
+      @b@8_e@{@N2@um(_$@hE_kp_R_5p@,[_Og@u@s_1@AdF@p_bx@)G@(A_5@D@B@A@m]@6@I_S_L"_*_KJ
+      @C@T_5@gt_GE@aVt_[@+_h_DD75@d@&3@9@.@R_'@A@Y(_iR7/_j@y_kC@SXve_$@k@1_'_E@g_k5_a@.
+      @@I_$|_[@,@[_k@w1_]@a_d@e_)_._C;_m@VM@0_;i_!_*_+_9p_-a_Bf_NQ_L@=@b@|J_iL_B@"@Z:@
+      @BMY_;t_;@tw_I@,T2@Fo_fS@B@$@F"z%_c@|
+    End
+    OnAttachedButtons
+      @@>@e_Qyq@5_>d1@f_.@g@W_#5/ax@0@cwEf@0]m<@e_Fm_XHJ@m@P2_Y@L4+_kt,Giq_6_C@x_S_8_X_
+      @hU/_b@O@KzM@B_CU@5_K_'@b}_[_<?i@}@i"_I@)_7_U@S@w_T@I_9K@i(_E_$_0_"Gy@.@^@A@s@x_F
+      @@a4_QJo_8_?9@t_!@s_;d_g_5_1@4@i\|_C@&_i3@l_#@%_2@U@J@f$_Q@'_Y_R19_$@J@p@N_I@Dp_d
+      @@O_C@S_O@q)@E7^a_L_(_-_Jx@;_M@?@O_U_,@c_E_$@>_ay0_3CZ^@nI@O@1@V_!@L@7@2_4_J@cm_:
+      @_X_"@G_5_<@y_0h_#Z@a"_J_%d_6_21KY_,>g@\@9_T_b$|@t@J@lA_>26@?~L_d@h_-_e?n_K#@n_H@
+      @F(@z_fn@h_:@uHt_+8@w=@v@\u_E#@E_]F@U_<r@2v@3N@J@+@)_I_2@sP)a@?_C_D_)_T}_P@fL;_<k
+      @_h%_d@-_L@%_9@Cw.@K@B{>@J@9)@S!]@X_<_B_._Fy@C@QQ@~VNhYV_E@S@t_NtT6@c@u_U\@'@5{_'
+      @_On@'@*_9_S_)_]_;M_9@wMX@D@J_Zm?@1_/@.@j_T@7@&_V_$O@7@Bj$_(2@g@H@u@:@~|@0F@p_0n
+      @@2@QX_ji@=j@&ND@9\_2_9;%v_<\@5@=t@4@P_9_%@H@A@ci}G_h@sK_A_2^_f@"_U@O@D@r_k@;W_g
+      @P@J_Ym@L5U_.a_7_#@j@e_<y@x@TDU_U_F@f@"_*7s_"@m@ML_?m_^@n@;,1@'@L@c_=QX_B=S@w_J-
+      @\_e_H@#=@x@f@r@S_^)_X_=@wJgN@)L>@GU~H@|@c@|@Z_/_]Z_1@V_&:(_;@|@H_"7_'_g_lm_i@,@*
+      @_?_Q)@?_9@/@O_T@"hY@I_m>@D@jj@w@l_%@(W@oo_$e_N]_1@l0@&2@&_\_a)E@k:@WL@:L@e7_N_0;
+      @@j_J@'_8@z@3B+_I@L@e@'_9_=j_=_e<@0o9_9_?Py_U_$_<_,S@<6\_/@sK_(_<@Hy_*_/@kKa_E_.)
+      @{_X_$_>@s@q_Y\[@q_]@4_-qk&_k@nX@R_7@?-2_W@;@k@I_J@'._DU_I@d_.@=/_8Zv@v@-@J@U_M_"
+      @!_J_X_H"@'m=_Ez@U_C%@u@0[@eZ8I_\_'S:_3@,@JS_#HQ@7f@\@$t@V@5@$_0@\}_2_%@5_l@,@t@
+      @p@*_*bo@[@c5N@~r@C,|@,z_]@%_Lc_-@J@y_<Z}@4@7_8@.@;_g@t_9@/_Z_0_+@:h@O@y_jc_U@Q
+      @@-}z7d_R_i_j;_5.@7_-{@u@ED~@vu@3q_)_NpVt@T8_ba_4_-@4_Z@K_'@+@$@Jq_\_W@*V_=_c@ts_
+      @8E@m_k_N@xJ_J@W@$_g'@R_:Z@D@OY@,@s_a_2>_7@%_$@w@(@E~_E@}_*jd_)&@<a@|@=@Q>_!o@b@h
+      @_+_i@^@P@4_I@E_Y0@~_6SO@'_e_e_Z@g_N[@l_e_m@/@Fs@j_W3@)@#{_V_J_J@]@c_K'@d@]@P_%@#
+      @_F@%_c@F_'@N@~@^On@8_b_En@P6_4_l8@#_gU_16@\{@V_S@5Q@B@7V
+    End
+    HeaderColumnsData
+      @T#S#R#R#R#R#R#T#T#R#TR#TR#TR#####@3CdKCdWCdVC###R#"R#R#S#R#S#S#R#R#R#S#T#SRRRR#X
+      @TU#aGvGyGvG}G~G@'GfC~G@#G~GfCyG@*G@-G@)G@)GvG####aGvGyGvG}G~G@'G[G@#G~GVG@*G@-G@
+      @)G@)GvG##DC|CwCECwCtCyCzCCtCyCyC}C|CtCyCyC}C}CEC#R#
+    End
   End
 End

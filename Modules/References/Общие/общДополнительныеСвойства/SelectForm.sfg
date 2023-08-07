@@ -36,6 +36,21 @@ Object FORM
   MaxControlSerial=4
   LoadModes=0
   CompileModule=
+  Object MACRO
+    ModuleName=4D006F00640075006C00650073005C004D006100630072006F0073005C0021043F044004300432043E0447043D0438043A0438045C001704300433043E043B043E0432043E043A0420043E0434043804420435043B044C042E00730066006700
+    LayerName=4D00610069006E00
+    Left=5
+    Top=5
+    Width=525
+    Height=20
+    Font=440065006600610075006C0074002C0020003800
+    Color=00000000
+    AnchorType=11
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=3
+  End
   Object TABLE
     LayerName=4D00610069006E00
     Left=5
@@ -52,7 +67,7 @@ Object FORM
     HotKey=
     Folders=0
     AttachedButtons
-      @@>@eU@&t@,R@&@6@&R%@YB@.-_RM@JCf_?-@t@q[@W@-@KH@0)7e{@1@K@(#!@+_)+f
+      @@>@eU@&t@,R@&@6@&R%@YB@.-_RM@JCf_?-@t@q[@W@-@KH@0_/@&@Hi@vC|>_%@q2@Q_$!@'_<-[
     End
     DBSource
       @@>@e@)@*R@)R@*@&#@(aBX!_^@a9!/_'"@)
@@ -140,20 +155,5 @@ Object FORM
       @p~@{n_(Q@t@\0D@]M@L@^I@O_#V@)_L@+|J@k_k@=@V@M_f@sj@U_+-g-@yg@V8?_3_=@5@A_'@7e@\\
       @A@j_b<@p
     End
-  End
-  Object MACRO
-    ModuleName=4D006F00640075006C00650073005C004D006100630072006F0073005C0021043F044004300432043E0447043D0438043A0438045C001704300433043E043B043E0432043E043A0420043E0434043804420435043B044C042E00730066006700
-    LayerName=4D00610069006E00
-    Left=5
-    Top=5
-    Width=525
-    Height=20
-    Font=440065006600610075006C0074002C0020003800
-    Color=00000000
-    AnchorType=11
-    Flags=8
-    Hint=
-    Name=
-    ControlSerial=3
   End
 End

@@ -127,6 +127,8 @@ Function НайтиИлиСоздатьПроизводителя(прзКодЕ
     Exit аПр;
   ElseIf _And(Trim(прзИНН)<>"",аПр.Find("ИНН,@IsFolder,@Status,>ТипАктива",прзИНН+?(прзКПП<>"","/"+прзКПП),0,0,0)) Then
     Exit аПр;
+  ElseIf _And(Trim(прзИНН)="",аПр.Find("Name,@IsFolder,@Status,>ТипАктива",прзНаименование,0,0,0)) Then
+    Exit аПр;
   EndIf;
   //Создание производителя
   аПапка:=0;
@@ -161,12 +163,11 @@ Function НайтиИлиСоздатьПроизводителя(прзКодЕ
   Exit аПр;        
 EndFunction
 
-Function НайтиИлиСоздатьПоставщика(КодЕГАИС,Наименование,ИНН,КПП,Адрес)
+Function НайтиИлиСоздатьПоставщика(КодЕГАИС,Наименование,ИНН0,КПП,Адрес)
   аПр:=Ref.кнтКонтрагенты;
   If аПр.Find("КодТочкиЕГАИС,@IsFolder,@Status,ТипАктива",КодЕГАИС,0,0,1) Then
     Exit аПр;
-  EndIf;
-  If _And(not IsEmpty(ИНН),аПр.Find("КодТочкиЕГАИС,ИНН,@IsFolder,@Status,ТипАктива","",ИНН+?(not IsEmpty(КПП),"/"+КПП,""),0,0,1)) Then
+  ElseIf _And(not IsEmpty(ИНН0),аПр.Find("~(Left(ИНН,"+Length(ИНН0)+")=ИНН0)And(@IsFolder=0)And(@Status=0)And(ТипАктива=1)")) Then
     Exit аПр;
   EndIf;
   
@@ -190,8 +191,8 @@ Function НайтиИлиСоздатьПоставщика(КодЕГАИС,Н�
   аПр.ТипАктива:=1;
   аПр.Name:=Наименование;
   аПр.ПолнНаименование:=Наименование;
-  аПр.ВидКонтрагента:=?(Length(ИНН)>10,Enum.ВидыКонтрагентов.ФизЛицо,Enum.ВидыКонтрагентов.ЮрЛицо);
-  аПр.ИНН:=ИНН+?(КПП<>"","/"+КПП);
+  аПр.ВидКонтрагента:=?(Length(ИНН0)>10,Enum.ВидыКонтрагентов.ФизЛицо,Enum.ВидыКонтрагентов.ЮрЛицо);
+  аПр.ИНН:=ИНН0+?(КПП<>"","/"+КПП);
   аПр.КодТочкиЕГАИС:=КодЕГАИС;
   аПр.ЮрАдрес:=Адрес;
   аПр.ФактАдрес:=Адрес;
@@ -2511,17 +2512,29 @@ Function ВыгрузитьДокументы(Тб,флПакетная,ФлНа
           "<wb:Shipper>"+?(флЮрЛицо,"<oref:UL>","<oref:FL>")+"<oref:INN>"+пИНН+"</oref:INN>"+?(пКПП="","","<oref:KPP>"+пКПП+"</oref:KPP>")+"<oref:ClientRegId>"+оРегИд+"</oref:ClientRegId>"+_NEWLINE+
           "<oref:FullName>"+EncodeXMLString(зДок.ЮрЛицо.ПолнНаименование)+"</oref:FullName>"+_NEWLINE+
           "<oref:ShortName>"+EncodeXMLString(Left(зДок.ЮрЛицо.Name,64))+"</oref:ShortName>"+_NEWLINE+
-          "<oref:address><oref:Country>643</oref:Country><oref:RegionCode>"+Left(пИНН,2)+"</oref:RegionCode><oref:description>"+EncodeXMLString(зДок.ЮрЛицо.ФактАдрес)+"</oref:description></oref:address>"+?(флЮрЛицо,"</oref:UL>","</oref:FL>")+"</wb:Shipper>"+_NEWLINE+
+          "<oref:address><oref:Country>643</oref:Country><oref:RegionCode>"+Left(пИНН,2)+"</oref:RegionCode><oref:description>"+EncodeXMLString(зДок.ЮрЛицо.ФактАдрес)+"</oref:description></oref:address>"+?(флЮрЛицо,"</oref:UL>","</oref:FL>")+"</wb:Shipper>"+_NEWLINE;
           
-          "<wb:Consignee>"+?(флЮрЛицо2,"<oref:UL>","<oref:FL>")+"<oref:INN>"+пИНН2+"</oref:INN>"+?(пКПП2="","","<oref:KPP>"+пКПП2+"</oref:KPP>")+"<oref:ClientRegId>"+Trim(КодТочкиЕГАИС)+"</oref:ClientRegId>"+_NEWLINE+
-          "<oref:FullName>"+EncodeXMLString(зК.ПолнНаименование)+"</oref:FullName>"+_NEWLINE+
-          "<oref:ShortName>"+EncodeXMLString(Left(зК.ПолнНаименование,64))+"</oref:ShortName>"+_NEWLINE+
-          "<oref:address><oref:Country>643</oref:Country><oref:RegionCode>"+Left(пИНН2,2)+"</oref:RegionCode><oref:description>"+EncodeXMLString(зК.ФактАдрес)+"</oref:description></oref:address>"+?(флЮрЛицо2,"</oref:UL>","</oref:FL>")+"</wb:Consignee>"+_NEWLINE+
+          If зК.флИностранныйКонтрагент Then
+            //TODO: Казахстан, Белоруссия, Киргизия, Армения
+            //TS -- таможенный союз
+            //FO -- иностранный контрагент
+            Стр:=Стр+"<wb:Consignee><oref:FO><oref:ClientRegId>"+Trim(КодТочкиЕГАИС)+"</oref:ClientRegId>"+_NEWLINE+
+            "<oref:FullName>"+EncodeXMLString(зК.ПолнНаименование)+"</oref:FullName>"+_NEWLINE+
+            "<oref:ShortName>"+EncodeXMLString(Left(зК.ПолнНаименование,64))+"</oref:ShortName>"+_NEWLINE+
+            "<oref:address><oref:Country>000</oref:Country><oref:description>"+EncodeXMLString(зК.ФактАдрес)+"</oref:description></oref:address></oref:FO></wb:Consignee>"+_NEWLINE;
+          Else
+            //UL/FL
+            Стр:=Стр+"<wb:Consignee>"+?(флЮрЛицо2,"<oref:UL>","<oref:FL>")+"<oref:INN>"+пИНН2+"</oref:INN>"+?(пКПП2="","","<oref:KPP>"+пКПП2+"</oref:KPP>")+"<oref:ClientRegId>"+Trim(КодТочкиЕГАИС)+"</oref:ClientRegId>"+_NEWLINE+
+            "<oref:FullName>"+EncodeXMLString(зК.ПолнНаименование)+"</oref:FullName>"+_NEWLINE+
+            "<oref:ShortName>"+EncodeXMLString(Left(зК.ПолнНаименование,64))+"</oref:ShortName>"+_NEWLINE+
+            "<oref:address><oref:Country>643</oref:Country><oref:RegionCode>"+Left(пИНН2,2)+"</oref:RegionCode><oref:description>"+EncodeXMLString(зК.ФактАдрес)+"</oref:description></oref:address>"+?(флЮрЛицо2,"</oref:UL>","</oref:FL>")+"</wb:Consignee>"+_NEWLINE;
+          EndIf;
+          
           
           //TRAN_TYPE (тип перевозки): строка в TTN4
           //TRANSPORT_TYPE (тран. средство): car,ship,railway,aircraft,other
           //ChangeOwnership: IsChange или NotChange -- здесь всегда IsChange
-          "<wb:Transport><wb:TRAN_TYPE>Автомобиль</wb:TRAN_TYPE><wb:ChangeOwnership>IsChange</wb:ChangeOwnership><wb:TRANSPORT_TYPE>car</wb:TRANSPORT_TYPE>"+_NEWLINE+
+          Стр:=Стр+"<wb:Transport><wb:TRAN_TYPE>Автомобиль</wb:TRAN_TYPE><wb:ChangeOwnership>IsChange</wb:ChangeOwnership><wb:TRANSPORT_TYPE>car</wb:TRANSPORT_TYPE>"+_NEWLINE+
           "<wb:TRAN_COMPANY>"+EncodeXMLString(зК2.ПолнНаименование)+"</wb:TRAN_COMPANY><wb:TRAN_TRAILER></wb:TRAN_TRAILER>"+_NEWLINE+
           "<wb:TRAN_CUSTOMER>"+EncodeXMLString(зДок.ЮрЛицо.ПолнНаименование)+"</wb:TRAN_CUSTOMER><wb:TRAN_DRIVER>"+EncodeXMLString(Вод.ПолнНаименование)+"</wb:TRAN_DRIVER>"+_NEWLINE+
           "<wb:TRAN_LOADPOINT>"+EncodeXMLString(зДок.ЮрЛицо.ФактАдрес)+"</wb:TRAN_LOADPOINT><wb:TRAN_UNLOADPOINT>"+EncodeXMLString(СтрАдрес)+"</wb:TRAN_UNLOADPOINT><wb:TRAN_REDIRECT></wb:TRAN_REDIRECT>"+_NEWLINE+
@@ -3252,7 +3265,7 @@ Function ЗагрузитьТаблицуВходящихПоступлений(
                 Фл:=0;
                 ТСтроки.Select();
                 While ТСтроки.Next() Do
-                  If ТСтроки.Номер=Номер Then
+                  If _And(ТСтроки.Номер=Номер,Pos("###",ТСтроки.Справки)=0) Then
                     ТСтроки.Справки:=?(ТСтроки.Справки="","",ТСтроки.Справки+"###")+СправкаБ;
                     ТСтроки.ДатаРазлива:=ДатаРазлива;
                     Фл:=1;
@@ -5909,6 +5922,10 @@ Function ПринятьВходящийДокумент();
       Exit;
     ElseIf (Тип="#")Or(Тип="=") Then
       Box("Документ уже был принят или отклонен!",Q_STOP);
+      Exit;
+    EndIf;
+    If Trim(зДок.УникальныйИдентификатор2)<>"" Then
+      Box("Документ уже ожидает принятия или отклонения! Дождитесь ответа ЕГАИС",Q_STOP);
       Exit;
     EndIf;
     ТСтроки:=ТабПоступления.ТСтроки;

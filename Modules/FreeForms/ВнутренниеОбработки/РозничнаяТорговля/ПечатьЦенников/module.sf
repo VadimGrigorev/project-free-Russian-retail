@@ -180,6 +180,9 @@ Function OnExecute()
     aList.SetByName("Object",Таб);
     aList.SetByName("БезШК",0);
     aList.SetByName("Магазин",Магазин);
+    If Form.оПортрет.Value=1 Then
+      aList.SetByName("Ориентация",0);
+    EndIf;
     
     If Form.оПринтер.Value.SelectedLine<3 Then
       LoadModule(0,"Modules\FreeForms\ПечатныеФормы\Справочник.тмцНоменклатура\Ценник",aList,0);

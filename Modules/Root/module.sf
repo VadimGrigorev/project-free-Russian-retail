@@ -655,7 +655,7 @@ Function глИсправитьНаименованиеНоменклатуры(
       ElseIf а<Дл Then
         б2:=Стр[а+1];
         If _Or(LowerCase(б2)<>UpperCase(б2),Pos(б2,СтрЧастьСлова)>0) Then
-          Стр:=Mid(Стр,1,а-1)+UpperCase(б)+Mid(Стр,а+1,Дл);
+          Стр:=Mid(Стр,1,а-1)+?(а=1,Uppercase(б),б)+Mid(Стр,а+1,Дл);
         EndIf;
       EndIf;
     Else
@@ -1144,6 +1144,7 @@ Function глСложныйПодбор(СпрВид,оСпис,БезГрупп
   а.Add(0,"Добавить в список");
   а.Add(1,"Оставить входящие в оба списка");
   а.Add(2,"Удалить из списка");
+  а.Add(5,"Оставить с списке первые X элементов");
   If not флДокумент Then
     а.Add(3,"(!) Добавить все элементы");
     а.Add(4,"(!) Добавить все удаленные элементы");
@@ -1152,7 +1153,18 @@ Function глСложныйПодбор(СпрВид,оСпис,БезГрупп
     Exit;
   EndIf;
   
-  If ТипРаботы=3 Then
+  If ТипРаботы=5 Then
+    аNum:=1000;
+    If not AskNumber(аNum,"Количество элементов, которые необходимо оставить в списке:",15) Then
+      Exit;
+    EndIf;
+    If оСпис.Size()>аNum Then
+      For i:=аNum+1 To оСпис.Size() Do
+        оСпис.Remove(оСпис.Size());
+      EndDo;
+    EndIf;
+    Exit;
+  ElseIf ТипРаботы=3 Then
     оСпис.Clear();
     аСпр:=DB("Ref."+СпрВид);
     aList:=аСпр.LoadEx(0,1);
@@ -1676,9 +1688,8 @@ Function глДополнительныеСвойства(Эл) Export
     Box("Сначала, пожалуйста, запишите элемент справочника!",Q_STOP);
     Exit;
   EndIf;
-  aList:=List.Create();
-  aList.Add("Открыть справочник свойств...");
-  aList.Add("-");
+  aList:=List.Create("Поиск по значению свойства...","Открыть справочник свойств...","-");
+  аТехнические:=aList.Size();
   Вид:=Эл.DBName();
   Ид:=Enum.Get("ВидыСправочниковСДопСвойствами."+Вид);
   If IsEmpty(Ид)=1 Then
@@ -1688,7 +1699,7 @@ Function глДополнительныеСвойства(Эл) Export
   а:=Ref.общТипыДополнительныхСвойств;
   aTypes:=а.Load(0,"ВидСправочника,@Status",Ид,0);
   If aTypes.Size()=0 Then
-    Exit;
+    aList:=List.Create("Поиск по значению свойства...");
   EndIf;
   
   ТЗн:=Tab.Create("Вид,Эл");
@@ -1707,11 +1718,11 @@ Function глДополнительныеСвойства(Эл) Export
     aList.Add(Стр);
   EndDo;
   
-  а:=Number(aList.Select(,1));
-  If а=1 Then
-    LoadModule(1,"Ref.общДополнительныеСвойства",Эл);
-  ElseIf а>2 Then
-    а:=aTypes.Get(а-2);
+  Выбор:=Number(aList.Select(,1));
+  If Выбор=0 Then
+    Exit;
+  ElseIf Выбор>аТехнические Then
+    а:=aTypes.Get(Выбор-аТехнические);
     If ТЗн.FindAndGoto(а,,"Вид") Then
       б:=ТЗн.Эл;
     Else
@@ -1728,6 +1739,46 @@ Function глДополнительныеСвойства(Эл) Export
       ELse
         б.Save();
       EndIf;
+    EndIf;
+    Exit;
+  EndIf;
+  Стр:=aList.Get(Выбор);
+  
+  If Стр="Открыть справочник свойств..." Then
+    LoadModule(1,"Ref.общДополнительныеСвойства",Эл);
+  ElseIf Стр="Поиск по значению свойства..." Then
+    ФлФормаСписка:=_And(Form.Type=0,not isEmpty(Form.ControlByName("MainTab")),IsEmpty(Form.Object));
+    If _And(not ФлФормаСписка,IsEmpty(Form.Object)) Then
+      Exit;
+    EndIf;
+    Стр:="";
+    If not AskString(Стр,"Введите значение поиска:",100) Then
+      Exit;
+    EndIf;
+    спСвойства:=Ref.общДополнительныеСвойства.Load(,"Name,@Status",Стр,0);
+    If спСвойства.Size()=0 Then
+      Box("Свойство с указанным значением не найдено!",Q_STOP);
+      Exit;
+    EndIf;
+    If спСвойства.Size()>1 Then
+      For i:=1 To спСвойства.Size() Do
+        аРод:=спСвойства[i].Элемент;
+        спСвойства.SetName(i,аРод.DBName()+": "+аРод);
+      EndDo;
+      спСвойства.SortByNames();
+      Зн:=0;
+      If спСвойства.Select(Зн,0,"Выберите одно из найденных свойств:")=0 Then
+        Exit;
+      EndIf;
+    Else
+      Зн:=спСвойства[1];
+    EndIf;
+    Зн:=Зн.Элемент;
+    If (ФлФормаСписка)And(Вид=Зн.DBName()) Then
+      Form.MainTab.PositionOnElement(Зн);
+      Box("Элемент найден!",Q_INFORMATION);
+    Else
+      OpenObject(Зн,0,1);
     EndIf;
   EndIf;  
 EndFunction
@@ -2310,6 +2361,9 @@ Function глПолучитьСотрудниковПодразделения(Ю
 EndFunction
 
 Function OnDoubleClick(Таб)
+  If ExecuteFunction("глРаботаСОсобымиИконкамиТаблицы",0,Таб) Then
+    Exit;
+  EndIf;
   If Таб.SelectionMode>1 Then
     if Таб.SelectedObjects().Count()<1 Then
       Exit;

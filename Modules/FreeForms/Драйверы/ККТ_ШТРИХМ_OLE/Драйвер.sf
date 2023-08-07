@@ -130,14 +130,15 @@ Function DriverConnect(спНастройки)
       If not IsEmpty(ТекДата) Then
         If Abs(GetPeriod(ТекДата,ТекДата0,5))>30000 Then //Полминуты
           //Данная операция не работает при открытой смене: выполнить аДрайвер.FNSessionState?
-          аДрайвер.Date:=Date();
-          If аДрайвер.SetDate()<>0 Then
+          аДата:=Date();
+          аДрайвер.Date:=аДата;
+          If _Or(аДрайвер.SetDate()<>0,аДрайвер.ConfirmDate()<>0) Then
             Стр:="Время в ККТ сильно отличается от времени компьютера (на "+Abs(GetPeriod(ТекДата,ТекДата0,5) div 1000)+" с.), однако изменить время не удалось, возможно требуется закрыть смену и войти в режим продавца снова! "+
               "Ошибка установки даты в ККМ: "+аДрайвер.ResultCodeDescription;
             Box(Стр,Q_WARNING);
           Else
-            аДрайвер.TimeStr:=GetTime(Date());
-            аДрайвер.Time:=аДрайвер.TimeStr;
+            аДрайвер.TimeStr:=GetTime(аДата);
+            //аДрайвер.Time:=аДрайвер.TimeStr;
             If аДрайвер.SetTime()<>0 Then
               Стр:="Время в ККТ сильно отличается от времени компьютера (на "+Abs(GetPeriod(ТекДата,ТекДата0,5) div 1000)+" с.), однако изменить время не удалось, возможно требуется закрыть смену и войти в режим продавца снова! "+
                 "Ошибка установки времени в ККМ: "+аДрайвер.ResultCodeDescription;
@@ -771,7 +772,7 @@ Function PrintReceipt(спНастройки)
       aTab:=спНастройки["Таблица"];
       aTab.Select();
       While aTab.Next() Do
-        If (not aTab.Номенклатура.флПодлежитПрослеживаемости)or(ФФД10) Then
+        If (not aTab.Номенклатура.флПодлежитПрослеживаемости)or(aTab.Номенклатура.ГИСМТТоварнаяГруппа.Selected()=0)or(ФФД10) Then
           аДрайвер.StringForPrinting:=aTab.Номенклатура.Name;
           аДрайвер.Quantity:=aTab.Количество;
           аДрайвер.Price:=Round(aTab.Сумма/aTab.Количество,2);
@@ -780,7 +781,7 @@ Function PrintReceipt(спНастройки)
           аДрайвер.TaxValueEnabled:=0;
           аДрайвер.Summ1Enabled:=0;
           аДрайвер.PaymentTypeSign:=ФлСпособРасчета;
-          аДрайвер.PaymentItemSign:=1;//Товар
+          аДрайвер.PaymentItemSign:=?((aTab.Номенклатура.флПодлежитПрослеживаемости)And(not ФФД10),2,1);//Товар или акцизный товар
           If ФФД12 Then
             аДрайвер.DivisionalQuantity:=0;
           EndIf;

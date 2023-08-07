@@ -7,9 +7,10 @@ Var бТипЦен Export;
 
 Function OnExecute(СпУстановки)
   оН:=Form.оН.Value;
+  оПрз:=Form.оПрз.Value;
   
   If глПользователь.цЦенообразование=1 Then
-    Сп2:=Ref.тмцНоменклатура.LoadEx(0,1,"","~(@ELEMENT IN оН.Get(1))And(@ELEMENT NOT IN оН.Get(2))And(@IsFolder=0)");
+    Сп2:=Ref.тмцНоменклатура.LoadEx(0,1,"","~(@ELEMENT IN оН.Get(1))And(@ELEMENT NOT IN оН.Get(2))And(@IsFolder=0)"+?(оПрз[1].Size()>0,"And(Поставщик IN оПрз.Get(1))")+?(оПрз[2].Size()>0,"And(Поставщик NOT IN оПрз.Get(2))"));
     СпМаг:=Ref.рознМагазины.Load(0,"~(@ELEMENT IN Form.оМг.Value.Get(1))And(@ELEMENT NOT IN Form.оМг.Value.Get(2))");
     If СпМаг.Size()=0 Then
       Box("Необходимо выбрать магазин!",Q_STOP);
@@ -23,6 +24,11 @@ Function OnExecute(СпУстановки)
     EndDo;
     аТипЦен.Group();
     бТипЦен.Group();
+    
+    If Сп2.Size()=0 Then
+      Box("В выборку не вошла ни одна позиция номенклатуры!",Q_STOP);
+      Exit;  
+    EndIf;    
   Else
     Сп:=List.Create();
     aEl:=Ref.цНаценкиНаГруппы;

@@ -26,6 +26,8 @@ Function Печать(Сп)
     Сп:=List.Create();
     Сп.SetByName("Установки",Д);
     Сп.SetByName("Таблица",0);
+    Сп.SetByName("Module",Form.GetModuleFileName());
+    Сп.SetByName("Form",Form.GetFormFileName());
     Т.CopyByX("v1",1);
     спОбычные:=List.Create();
     спОбычные.Add("NEW","Новый объект");

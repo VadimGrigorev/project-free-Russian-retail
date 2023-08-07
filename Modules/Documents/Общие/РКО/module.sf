@@ -42,9 +42,7 @@ Function Видимость()
     Form.пБанковскийСчет.Caption:=Стр;
   EndIf;  
   
-  
-  Фл:=?(aEl.КодОперации=Enum.коРКО.Инкассация,1,0);
-  Form.УчитыватьВНалоговомУчете.isDisabled:=Фл;
+  Form.УчитыватьВНалоговомУчете.isDisabled:=not глПользователь.бухБухгалтер;
   
   If aEl.ТипПроводки.Selected()<>0 Then
     Form.оСчет.isInvisible:=1;

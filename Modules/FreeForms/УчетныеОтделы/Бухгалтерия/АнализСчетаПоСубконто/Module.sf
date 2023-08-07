@@ -466,6 +466,7 @@ Function Печать(СпУстановки)
       Т.Levels(0).Close();
     EndIf;
     
+    Т.AttachedModule:=1;
     глПечатнаяФормаОтчета(Т,Param,оЗагол);
   Finally
     If ФлЛок Then

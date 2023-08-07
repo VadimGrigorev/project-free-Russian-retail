@@ -13,6 +13,21 @@ Function ПриПодбореНоменклатуры(Эл,Фл)
     Exit;
   EndIf;
   aTab.NewLine();
-  aTab.Номенклатура=Эл;
+  aTab.Номенклатура:=Эл;
   Form.оТМЦ.InvokeEvent("OnInitLine","IndexFrom,IndexTo",aTab.Size(),aTab.Size());
 EndFunction
+
+Function ПриПодбореМагазинов(Эл,Фл)
+  aEl:=Form.Object;
+  aTab:=aEl.LineParts("Магазины");
+
+  Стр:=0;
+  If aTab.Find(Эл,Стр,"МагазинИлиГруппа")>0 Then
+    Box("Этот элемент уже был добавлен!",Q_STOP);
+    Exit;
+  EndIf;
+  aTab.NewLine();
+  aTab.МагазинИлиГруппа:=Эл;
+  Form.оМагазины.InvokeEvent("OnInitLine","IndexFrom,IndexTo",aTab.Size(),aTab.Size());
+EndFunction
+

@@ -44,6 +44,9 @@ Function OnExecute(ТабНом=0)
   aList.SetByName("БезШК",0);
   aList.SetByName("флБезМагазина",1);
   aList.SetByName("ЮрЛицо",".");//Д.ЮрЛицо);
+  If Form.оПортрет.Value=1 Then
+    aList.SetByName("Ориентация",0);
+  EndIf;
   If isEmpty(ТабНом) Then
     aList.SetByName("Колонтитул","Реализация "+Д.DocNum+" от "+Д.DocDate+", контрагент "+Д.Контрагент+", адрес "+Д.АдресДоставки);
   EndIf;  
@@ -115,24 +118,6 @@ Function OnOpen()
         Exit;
       EndIf;
     EndIf;
-    
-    If Param.GetByName("АвтоматическаяПечать")=1 Then
-      Result:=0;
-      
-      аАд:=Д.АдресДоставки;
-      If isEmpty(аАд.ПолочныеЦеныМагазина) Then
-        Message("Для точки "+аАд+" контрагента "+Д.Контрагент+" не заданы розничные цены!","!");
-        Exit;
-      EndIf;
-      ТипЦен:=аАд.ПолочныеЦеныМагазина;
-    
-      ФлБонусРаспечатан:=0;
-      Копий:=Max(1,Number(Param.GetByName("КоличествоКопий")));
-      Param.SetByName("КоличествоКопий",1);
-      For а:=1 to Копий Do
-        OnExecute();
-      EndDo;
-    EndIf;  
   EndIf;
 EndFunction
 
@@ -146,7 +131,7 @@ Function OnPrintButtonPress()
   оН:=Form.оН.Value;
 
   ТЗ:="Period From НачДата To КонДата;
-  |зД:=Storage.ДвижениеТМЦ.АдресДоставки.@Parent;
+  |зД:=Storage.ДвижениеТМЦ.Договор;
   |Condition(зД IN оД.Get(1));
   |Condition(зД NOT IN оД.Get(2));
   |зК:=Storage.ДвижениеТМЦ.Договор.@Parent;

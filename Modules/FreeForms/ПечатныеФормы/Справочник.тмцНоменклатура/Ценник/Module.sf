@@ -39,6 +39,7 @@ Function Печать(флСкидка=0)
   EndIf;  
   нКол:=1;
   нСтр:=1;
+  Столбцов:=?(Ориентация=0,4,5);
   
   пДатаЦены:=FormatDate(CurDate(),"dd.mm.yy");
   If isEmpty(ЮрЛицо) Then
@@ -91,7 +92,7 @@ Function Печать(флСкидка=0)
     If нКол=1 Then
       Т.CopyByX("h1|"+ТипТаб,1);
       нКол:=2;
-    ElseIf нКол<5 Then
+    ElseIf нКол<Столбцов Then
       нКол:=нКол+1;
       Т.CopyByX("h1|"+ТипТаб);
     ElseIf нСтр<?(флСкидка=0,4,3) Then
@@ -110,7 +111,7 @@ Function Печать(флСкидка=0)
     Exit;
   EndIf;
   
-  While нКол<5 Do
+  While нКол<Столбцов Do
     нКол:=нКол+1;
     Т.CopyByX("h1|v3");//Ширина страницы
   EndDo;
@@ -119,9 +120,9 @@ Function Печать(флСкидка=0)
   EndIf;
   Т.CopyTitles();
   
-  Т.Printing.Orientation:=1;
+  Т.Printing.Orientation:=?(Trim(Ориентация)<>"",Ориентация,1);
   Т.Printing.ScaleMode:=3;
-  глПечатнаяФорма(Т,Param,"Печать ценников"+?(флСкидка=0,""," (скидка)"),?(IsEmpty(Ориентация)=0,Ориентация,-1));
+  глПечатнаяФорма(Т,Param,"Печать ценников"+?(флСкидка=0,""," (скидка)"),?(Trim(Ориентация)<>"",Ориентация,-1));
 EndFunction
 
 Function OnOpen()

@@ -11,6 +11,25 @@ Var ВыделеннаяСтрокаПред Export;
 
 Function Видимость()
   aEl:=Form.Object;
+  If aEl.КодОперации=Enum.коРеализация.РеализацияРозничная Then
+    Form.кнЕГАИС.isDisabled:=1;
+  ElseIf Left(aEl.УникальныйИдентификатор3,1)="=" Then
+    Form.кнЕГАИС.FontColor:=_CLR_WINDOWTEXT;
+    Form.кнЕГАИС.FontStyle:=0;
+    Form.кнЕГАИС.Glyph:=1;
+    Form.кнЕГАИС.isDisabled:=0;
+  ElseIf aEl.УникальныйИдентификатор2<>"" Then
+    Form.кнЕГАИС.FontColor:=_CLR_HIGHLIGHT;
+    Form.кнЕГАИС.FontStyle:=1;
+    Form.кнЕГАИС.Glyph:=75;
+    Form.кнЕГАИС.isDisabled:=0;
+  Else
+    Form.кнЕГАИС.FontColor:=_CLR_RED;
+    Form.кнЕГАИС.FontStyle:=1;
+    Form.кнЕГАИС.Glyph:=75;
+    Form.кнЕГАИС.isDisabled:=0;
+  EndIf;  
+  
   флВидимостьПартий:=aEl.Склад.БезПартионногоУчета=0;
   Form.СуммаБезналичнойПродажи.isInvisible:=aEl.КодОперации<>Enum.коРеализация.РеализацияРозничная;
   Form.тСуммаБезналичнойПродажи.isInvisible:=aEl.КодОперации<>Enum.коРеализация.РеализацияРозничная;
@@ -203,7 +222,7 @@ Function OnUnknownAction(Тип)
           зН3:=Nothing();
           While зШк.Next() Do
             зН2:=зШк.Parent();
-            If _And(зН2.Status()=0,зН2.флПартионныйУчет,_Or(зН2.флПодлежитПрослеживаемости,зН2.флАлкогольнаяПродукция)) Then
+            If _And(зН2.Status()=0,зН2.флПартионныйУчет,_Or((зН2.флПодлежитПрослеживаемости)And(зН2.ГИСМТТоварнаяГруппа.Selected()<>0),зН2.флАлкогольнаяПродукция)) Then
               зН:=зН2;
               Break;
             ElseIf зН2.Status()=0 Then

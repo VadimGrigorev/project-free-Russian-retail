@@ -28,6 +28,7 @@ Function DriverConnect(спНастройки)
     
     спНастройки["Department"]:=Number(Ини.GetData("Department","-1"));
     спНастройки["МаксимальныйРазмерОтчетаДляПечати"]:=Number(Ини.GetData("МаксимальныйРазмерОтчетаДляПечати","4100"));
+    спНастройки["КодВалюты"]:=Number(Ини.GetData("КодВалюты","0"));
     спНастройки["Соединено"]:=1;
   Except
     Exit PopError()+_NEWLINE+"(2) Драйвер не установлен или в нерабочем состоянии!";
@@ -149,7 +150,9 @@ Function RegisterTransaction(спНастройки)
     If аТипОперации=0 Then
       аДрайвер.Clear();
       аДрайвер.SParam("Amount",См);
-      //аДрайвер.SParam("Currency",643);
+      If спНастройки["КодВалюты"]>=0 Then
+        аДрайвер.SParam("Currency",спНастройки["КодВалюты"]);
+      EndIf;
       If спНастройки["Department"]>=0 Then
         аДрайвер.SParam("Department",спНастройки["Department"]);
       EndIf;
@@ -170,7 +173,9 @@ Function RegisterTransaction(спНастройки)
     ElseIf аТипОперации=1 Then
       аДрайвер.Clear();
       аДрайвер.SParam("Amount",См);
-      //аДрайвер.SParam("Currency",643);
+      If спНастройки["КодВалюты"]>=0 Then
+        аДрайвер.SParam("Currency",спНастройки["КодВалюты"]);
+      EndIf;
       If спНастройки["Department"]>=0 Then
         аДрайвер.SParam("Department",спНастройки["Department"]);
       EndIf;
@@ -211,7 +216,9 @@ Function RegisterTransaction(спНастройки)
       
       аДрайвер.Clear();
       аДрайвер.SParam("Amount",См);
-      //аДрайвер.SParam("Currency",643);
+      If спНастройки["КодВалюты"]>=0 Then
+        аДрайвер.SParam("Currency",спНастройки["КодВалюты"]);
+      EndIf;
       //аДрайвер.SParam("AuthCode","");
       аДрайвер.SParam("CashierFIO",спНастройки["Кассир"]);
       аДрайвер.SParam("Track2","QSELECT");

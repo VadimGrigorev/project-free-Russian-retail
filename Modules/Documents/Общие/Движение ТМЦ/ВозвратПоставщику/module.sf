@@ -19,7 +19,7 @@ Function Видимость()
   флВидимостьПартий:=aEl.Склад.БезПартионногоУчета=0;
   
   Form.MainTab.Value.Column("оЦЗ").isVisible:=aEl.Склад.рзТипЦенРеализации.Selected()<>0;
-  Form.УчитыватьВНалоговомУчете.isDisabled:=1-глПользователь.бухБухгалтер;
+  Form.УчитыватьВНалоговомУчете.isDisabled:=not глПользователь.бухБухгалтер;
   Form.MainTab.Value.Column("Партия").isVisible:=флВидимостьПартий;
   Form.MainTab.Value.Column("Партия").isReadonly:=1-глПользователь.бухБухгалтер;
   

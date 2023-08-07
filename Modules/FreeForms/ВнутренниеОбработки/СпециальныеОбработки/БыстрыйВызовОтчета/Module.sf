@@ -163,7 +163,7 @@ Function OnOpen()
     EndIf;
   ElseIf (Тип="Карточка взаиморасчетов")Or(Тип="Карточка договора") Then
     ОбнулитьСписки(Сп,"оЮЛ,оТара");
-    Сп.SetByName("НачДата",'01.01.1980');
+    Сп.SetByName("НачДата",BegOfMonth(Date()));
     Сп.SetByName("КонДата",Date());
     Сп.SetByName("оВключить",1);
     Сп.SetByName("оТипДолга",1);
@@ -183,7 +183,7 @@ Function OnOpen()
     EndIf;
   ElseIf Тип="Ведомость по взаиморасчетам (с тарой)" Then
     ОбнулитьСписки(Сп,"оЮЛ,оК,оТП,оН,оД");
-    Сп.SetByName("НачДата",'01.01.1980');
+    Сп.SetByName("НачДата",BegOfMonth(Date()));
     Сп.SetByName("КонДата",Date());
     Сп.SetByName("оВключить",1);
     Сп.SetByName("оТипДолга",1);
@@ -202,7 +202,7 @@ Function OnOpen()
     EndIf;
   ElseIf Тип="Ведомость по взаиморасчетам" Then
     ОбнулитьСписки(Сп,"оЮЛ,оК,оД,оТП,оН,оД");
-    Сп.SetByName("НачДата",'01.01.1980');
+    Сп.SetByName("НачДата",BegOfMonth(Date()));
     Сп.SetByName("КонДата",Date());
     Сп.SetByName("оВключить",1);
     Сп.SetByName("оТипДолга",1);
@@ -246,7 +246,7 @@ Function OnOpen()
     EndIf;
   ElseIf Тип="Ведомость по взаиморасчетам (тара)" Then
     ОбнулитьСписки(Сп,"оЮЛ,оК,оТП,оН,оД");
-    Сп.SetByName("НачДата",'01.01.1980');
+    Сп.SetByName("НачДата",BegOfMonth(Date()));
     Сп.SetByName("КонДата",Date());
     Сп.SetByName("оВключить",1);
     Сп.SetByName("оТипДолга",1);

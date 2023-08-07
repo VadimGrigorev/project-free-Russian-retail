@@ -227,6 +227,7 @@ Function Печать(СпУстановки)
       Т.CopyByX("v3",1);
     EndIf;
     
+    Т.AttachedModule:=1;
     глПечатнаяФормаОтчета(Т,Param,оЗагол);
   Finally
     If ФлЛок Then

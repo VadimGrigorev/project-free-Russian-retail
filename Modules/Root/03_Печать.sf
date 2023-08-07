@@ -1777,6 +1777,29 @@ Function глРаботаСОсобымиИконкамиТаблицы(Таб) 
     Сп:=Obj.Value;
     
     If Obj.Name="cRefresh" Then
+      If TypeStr(Сп)<>"LIST" Then
+        Exit 0;
+      EndIf;
+      If Сп.GetByName("НестандартныйОтчет")=1 Then
+        Exit 0;
+      EndIf;
+      aParent:=Form.GetParentForm();
+      If aParent.GetModuleFileName()<>Сп["Module"] Then
+        If Сп.GetByName("БезНастройки")=1 Then
+          Box("Для использования этой иконки, не закрывайте форму отчета!",Q_STOP);
+          Exit 1;
+        EndIf;
+        пПуть:=Сп["Module"];
+        пМодуль:=GetFileName(пПуть);
+        пПуть:=GetPath(пПуть);
+        пФорма:=GetFileName(Сп["Form"]);
+        пФорма:=TearStr(пФорма,".");//Убрать расширение
+        Сп["Таблица"]:=Таб;
+        Сп["ИспользоватьТаблицу"]:=1;
+        Сп["Выполнить"]:=1;
+        LoadModule(0,пПуть,Сп,0,?(пМодуль="","Module",пМодуль),?(пФорма="","Form",пФорма));
+        Exit 1;
+      EndIf;
       If DoesFunctionExist("OnExecute",2) Then
         If ArgumentsNumber("OnExecute",2)>0 Then
           If TypeStr(Сп)="LIST" Then
@@ -1791,6 +1814,9 @@ Function глРаботаСОсобымиИконкамиТаблицы(Таб) 
       If TypeStr(Сп)<>"LIST" Then
         Exit 0;
       EndIf;
+      If Сп.GetByName("НестандартныйОтчет")=1 Then
+        Exit 0;
+      EndIf;
       а:=List.Create("Настройка отчета (открыть форму отчета с текущими настройками)","Удалить сохраненные параметры печати для данного отчета");
       Зн:=а.Select(,1);
       If Зн=0 Then
@@ -1801,11 +1827,11 @@ Function глРаботаСОсобымиИконкамиТаблицы(Таб) 
           Exit 1;
         EndIf;
         Сп.SetByName("Таблица",Таб);
-        aParent:=Form.GetParentForm();
-        пПуть:=aParent.GetModuleFileName();
+        пПуть:=Сп["Module"];
         пМодуль:=GetFileName(пПуть);
         пПуть:=GetPath(пПуть);
-        пФорма:=GetFileName(aParent.GetFormFileName());
+        пФорма:=GetFileName(Сп["Form"]);
+        пФорма:=TearStr(пФорма,".");//Убрать расширение
         LoadModule(2,пПуть,Сп,0,?(пМодуль="","Module",пМодуль),?(пФорма="","Form",пФорма));
       ElseIf Зн=2 Then
         Файл:=глПолучитьИмяУстановокПечатнойФормы(Таб);

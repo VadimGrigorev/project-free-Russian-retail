@@ -42,7 +42,9 @@ Function Доступность()
     Form.ПроцентСкидки.IsDisabled:=0;
     Form.тТ8.IsDisabled:=1;
     Form.СуммаДокумента.IsDisabled:=1;
+    Form.тНоменклатураУсловия.Caption:="Номенклатура, которая должна присутствовать в чеке, чтобы акция сработала:";
     Form.оЗакладки.Pages.Page("НоменклатураУсловия").isInvisible:=0;
+    Form.оЗакладки.Pages.Page("Номенклатура").isInvisible:=0;
   ElseIf aEl.ТипУсловия=Enum.рознТипыУсловийПродаж.СкидкаССуммыПродажи Then
     Form.тТ4.IsDisabled:=0;
     Form.БюджетРубли.IsDisabled:=0;
@@ -53,6 +55,19 @@ Function Доступность()
     Form.тТ8.IsDisabled:=0;
     Form.СуммаДокумента.IsDisabled:=0;
     Form.оЗакладки.Pages.Page("НоменклатураУсловия").isInvisible:=1;
+    Form.оЗакладки.Pages.Page("Номенклатура").isInvisible:=0;
+  ElseIf aEl.ТипУсловия=Enum.рознТипыУсловийПродаж.ЗапретитьСкидкиНаПозиции Then
+    Form.тТ4.IsDisabled:=1;
+    Form.БюджетРубли.IsDisabled:=1;
+    Form.тТ5.IsDisabled:=1;
+    Form.БюджетШтуки.IsDisabled:=1;
+    Form.тТ7.IsDisabled:=1;
+    Form.ПроцентСкидки.IsDisabled:=1;
+    Form.тТ8.IsDisabled:=1;
+    Form.СуммаДокумента.IsDisabled:=1;
+    Form.тНоменклатураУсловия.Caption:="Номенклатура, для которой буду запрещены любые скидки:";
+    Form.оЗакладки.Pages.Page("НоменклатураУсловия").isInvisible:=0;
+    Form.оЗакладки.Pages.Page("Номенклатура").isInvisible:=1;
   Else
     Form.тТ4.IsDisabled:=1;
     Form.БюджетРубли.IsDisabled:=1;
@@ -63,6 +78,7 @@ Function Доступность()
     Form.тТ8.IsDisabled:=1;
     Form.СуммаДокумента.IsDisabled:=1;
     Form.оЗакладки.Pages.Page("НоменклатураУсловия").isInvisible:=1;
+    Form.оЗакладки.Pages.Page("Номенклатура").isInvisible:=0;
   EndIf;
 EndFunction
 
