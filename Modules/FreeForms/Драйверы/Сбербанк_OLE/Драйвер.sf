@@ -29,6 +29,7 @@ Function DriverConnect(спНастройки)
     спНастройки["Department"]:=Number(Ини.GetData("Department","-1"));
     спНастройки["МаксимальныйРазмерОтчетаДляПечати"]:=Number(Ини.GetData("МаксимальныйРазмерОтчетаДляПечати","4100"));
     спНастройки["КодВалюты"]:=Number(Ини.GetData("КодВалюты","0"));
+    спНастройки["Dirgate"]:=Ини.GetData("Dirgate","");
     спНастройки["Соединено"]:=1;
   Except
     Exit PopError()+_NEWLINE+"(2) Драйвер не установлен или в нерабочем состоянии!";
@@ -50,6 +51,9 @@ Function CloseShift(спНастройки)
     аДрайвер.Clear();
     If спНастройки["Department"]>=0 Then
       аДрайвер.SParam("Department",спНастройки["Department"]);
+    EndIf;
+    If not IsEmpty(спНастройки["Dirgate"]) Then
+      аДрайвер.SParam("dirgate",спНастройки["Dirgate"]);
     EndIf;
     аРезультат:=аДрайвер.NFun(6000);
     ReturnToForeground();
@@ -81,6 +85,9 @@ Function ReportX(спНастройки)
     If спНастройки["Department"]>=0 Then
       аДрайвер.SParam("Department",спНастройки["Department"]);
     EndIf;
+    If not IsEmpty(спНастройки["Dirgate"]) Then
+      аДрайвер.SParam("dirgate",спНастройки["Dirgate"]);
+    EndIf;    
     аРезультат:=аДрайвер.NFun(6002);
     ReturnToForeground();
     If аРезультат<>0 Then
@@ -156,6 +163,9 @@ Function RegisterTransaction(спНастройки)
       If спНастройки["Department"]>=0 Then
         аДрайвер.SParam("Department",спНастройки["Department"]);
       EndIf;
+      If not IsEmpty(спНастройки["Dirgate"]) Then
+        аДрайвер.SParam("dirgate",спНастройки["Dirgate"]);
+      EndIf;
       //аДрайвер.SParam("AuthCode","");
       аДрайвер.SParam("CashierFIO",Trim(спНастройки["Кассир"]));//TranslateTo(спНастройки["Кассир"],866)
       аРезультат:=аДрайвер.NFun(4000);
@@ -179,6 +189,9 @@ Function RegisterTransaction(спНастройки)
       If спНастройки["Department"]>=0 Then
         аДрайвер.SParam("Department",спНастройки["Department"]);
       EndIf;
+      If not IsEmpty(спНастройки["Dirgate"]) Then
+        аДрайвер.SParam("dirgate",спНастройки["Dirgate"]);
+      EndIf;
       //аДрайвер.SParam("AuthCode","");
       аДрайвер.SParam("CashierFIO",Trim(спНастройки["Кассир"]));
       аРезультат:=аДрайвер.NFun(4002);
@@ -199,6 +212,9 @@ Function RegisterTransaction(спНастройки)
       спИнформация:=спНастройки["ИнформацияПоТранзакции"];
       If спНастройки["Department"]>=0 Then
         аДрайвер.SParam("Department",спНастройки["Department"]);
+      EndIf;
+      If not IsEmpty(спНастройки["Dirgate"]) Then
+        аДрайвер.SParam("dirgate",спНастройки["Dirgate"]);
       EndIf;
       //Открыть транзакцию для возможности отмены, а также сама отмена
       If аДрайвер.NFun(6003)=0 Then
@@ -226,6 +242,9 @@ Function RegisterTransaction(спНастройки)
       If спНастройки["Department"]>=0 Then
         аДрайвер.SParam("Department",спНастройки["Department"]);
       EndIf;
+      If not IsEmpty(спНастройки["Dirgate"]) Then
+        аДрайвер.SParam("dirgate",спНастройки["Dirgate"]);
+      EndIf;      
       
       аРезультат:=аДрайвер.NFun(?(аТипОперации2=0,4002,4000));
       спНастройки["ДополнительнаяИнформация"]:=Str(аДрайвер.GParamString("Cheque"));

@@ -465,6 +465,20 @@ Function PrintReceipt(спНастройки)
   Try
     аДрайвер:=спНастройки["Драйвер"];
     
+    //Текущее состояние чека
+    If аДрайвер.GetECRStatus()<>0 Then
+      Raise "GetECRStatus: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    //Существует ли сейчас открытый чек?
+    If аДрайвер.ECRMode=8 Then
+      If аДрайвер.SysAdminCancelCheck()<>0 Then
+        Raise "SysAdminCancelCheck: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+      //If аДрайвер.FNResetState()<>0 Then
+      //  Raise "FNResetState: "+аДрайвер.ResultCodeDescription;
+      //EndIf;
+    EndIf;
+    
     //Установка имени кассира
     Кассир:=спНастройки["Кассир"];
     //стрИНН:=Trim(Кассир.ИНН);
@@ -482,18 +496,9 @@ Function PrintReceipt(спНастройки)
     
     //Версия ФФД
     ФФД12:=спНастройки["_FFDVersion"]>=120;
+    ФФД105:=спНастройки["_FFDVersion"]=105;
     ФФД10:=спНастройки["_FFDVersion"]<105;
     
-    //Текущее состояние чека
-    If аДрайвер.GetECRStatus()<>0 Then
-      Raise "GetECRStatus: "+аДрайвер.ResultCodeDescription;
-    EndIf;
-    //Существует ли сейчас открытый чек?
-    If аДрайвер.ECRMode=8 Then
-      If аДрайвер.SysAdminCancelCheck()<>0 Then
-        Raise "SysAdminCancelCheck: "+аДрайвер.ResultCodeDescription;
-      EndIf;
-    EndIf;
     //0 -- Без НДС
     //1 -- НДС 20%
     //2 -- НДС 10%
@@ -821,13 +826,34 @@ Function PrintReceipt(спНастройки)
               If аДрайвер.FNSendItemBarcode()<>0 Then
                 Raise "FNSendItemBarcode: "+аДрайвер.ResultCodeDescription;
               EndIf;
-            Else
-              аДрайвер.TagNumber:=1162;
-              аДрайвер.TagType:=9;//Byte array              
-              аДрайвер.TagValueBinHex:="44 4D "+ТабИСМП.Поле1;
-              If аДрайвер.FNSendTagOperation()<>0 Then
-                Raise "FNSendTagOperation: "+аДрайвер.ResultCodeDescription;
+            ElseIf not ФФД10 Then
+              //https://docs.google.com/document/d/1m3gHyKvM0gBMPgpzG-1cFsfVDnecouCtzQBJVDooGuM
+              //TODO: BarcodeHex?
+              аДрайвер.BarCode:=ТабИСМП.Марка;//"00000046198???X??????????";
+              If аДрайвер.FNSendItemBarcode()<>0 Then
+                Raise "FNSendItemBarcode: "+аДрайвер.ResultCodeDescription;
               EndIf;
+              
+              //Альтернативный метод:
+              //аДрайвер.MarkingType:=$444D;
+              //аДрайвер.GTIN:='04604060006000';
+              //аДрайвер.SerialNumber:='N4N57RSCBUZTQ';
+              //If аДрайвер.FNSendItemCodeData()<>0 Then
+              //  Raise "FNSendItemCodeData: "+аДрайвер.ResultCodeDescription;
+              //EndIf;
+              
+              //Альтернативный метод:
+              //Стр:=ТабИСМП.Марка;
+              //СтрМарка:="";
+              //For i:=1 To Length(Стр) Do
+              //  AppendStringToBufferedString(СтрМарка,?(i>1," ","")+DecToHex(Asc(Стр[i]),2));
+              //EndDo;
+              //аДрайвер.TagNumber:=1162;
+              //аДрайвер.TagType:=9;//Byte array              
+              //аДрайвер.TagValueBinHex:=СтрМарка;
+              //If аДрайвер.FNSendTagOperation()<>0 Then
+              //  Raise "FNSendTagOperation: "+аДрайвер.ResultCodeDescription;
+              //EndIf;
             EndIf;
             зК:=зК-1;
             ТабИСМП.Remove(ТабИСМП.CurLine);

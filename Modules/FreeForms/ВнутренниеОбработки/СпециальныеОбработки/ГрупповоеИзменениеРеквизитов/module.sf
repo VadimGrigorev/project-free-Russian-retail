@@ -162,7 +162,7 @@ Function Выполнить(СпУстановки)
   While З.Next(1) Do
     Form.StatusText(З.зЭл);
     аЭл:=З.зЭл.Copy();
-    Message(аЭл);
+    Message("%LINK%",,аЭл);
     
     Фл:=0;
     оИзм.Select();
@@ -209,7 +209,7 @@ Function Выполнить(СпУстановки)
     
     If Фл Then
       глЗаписать(аЭл);
-      Message("Обновлен: "+аЭл,"I");
+      Message("Обновлен: %LINK%","I",аЭл);
     EndIf;
   EndDo;
 

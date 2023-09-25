@@ -107,7 +107,7 @@ Function OnExecute(СпУстановки)
       зК.Reload();
       зК.Folder(оК2);
       зК.Save();
-      Message("Перенесен элемент: "+зК);
+      Message("Перенесен элемент: %LINK%",,зК);
     Finally
       зК.Unlock();
     EndTry;

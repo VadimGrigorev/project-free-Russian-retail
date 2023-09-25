@@ -64,7 +64,7 @@ Function OnExecute(СпУстановки)
     
     If aTab.Size()>0 Then
       If глОбработать(аДок) Then
-        Message("Был создан документ "+аДок,"I");
+        Message("Был создан документ %LINK%","I",аДок);
       EndIf;
     EndIf;
   EndIf;

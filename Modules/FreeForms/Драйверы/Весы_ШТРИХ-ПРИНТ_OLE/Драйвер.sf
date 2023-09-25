@@ -1,0 +1,143 @@
+//Модуль загружается до загрузки любой формы и остается в памяти до закрытия всех связанных с ним (либо с его потомками) форм.
+//Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
+//Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
+//Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+
+//Функции:
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, UploadPositions
+
+Function DriverInit(спНастройки)
+  Try
+    аДрайвер:=CreateOLE("AddIn.DrvLP");
+    спНастройки["Драйвер"]:=аДрайвер;
+    спНастройки["АктивныеВесы"]:=0;
+    спНастройки["ВыгрузкаЦен"]:=1;
+    спНастройки["ЭтоВесы"]:=1;
+  Except
+    Exit PopError()+_NEWLINE+"(1) Драйвер не установлен или в нерабочем состоянии!";
+  EndTry;
+EndFunction
+
+Function DriverDeinit(спНастройки)
+  спНастройки["Драйвер"]:=0;
+EndFunction
+
+Function DriverConnect(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    СтрДоп:=спНастройки["ДопУстановки"];
+    Ини:=Ini.Create();
+    Ини.AddFromString(СтрДоп);
+    
+    ФлТип:=Number(Ини.GetData("ConnectionType","0"));
+    
+    If ФлТип=0 Then
+      аДрайвер.DeviceInterface:=0;
+      Стр:=Ини.GetData("Connection","");
+      If Стр<>"" Then
+        СпСкорость:=List.Create(2400,4800,9600,19200,38400,57600,115200);
+        аДрайвер.ComNumber:=Number(TearStr(Стр,","));
+        aNum:=СпСкорость.Find(Number(TearStr(Стр,",")))-1;
+        If aNum<0 Then
+          аДрайвер.BaudRate:=5;
+        Else
+          аДрайвер.BaudRate:=aNum;
+        EndIf;
+        aNum:=Number(Ини.GetData("TimeOut","0"));
+        If aNum>0 Then
+          аДрайвер.TimeOut:=aNum;
+        EndIf;
+      Else
+        аДрайвер.ComNumber:=1;
+        аДрайвер.BaudRate:=2;
+      EndIf;
+    Else
+      аДрайвер.DeviceInterface:=1;
+      Стр:=Ини.GetData("RemoteHost","127.0.0.1:1111");
+      аДрайвер.RemoteHost:=TearStr(Стр,":");
+      If Стр<>"" Then
+        аДрайвер.RemotePort:=Number(Стр);
+      EndIf;
+      aNum:=Number(Ини.GetData("TimeOut","0"));
+      If aNum>0 Then
+        аДрайвер.TimeoutUDP:=aNum;
+      EndIf;
+    EndIf;
+    спНастройки["Пароль"]:=Ини.GetData("Password","");
+    If аДрайвер.Connect()<>0 Then
+      Exit "Ошибка соединения с весами: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    аДрайвер.PLUAccess:=0;
+    If аДрайвер.SetPLUAccess()<>0 Then
+      Exit "Ошибка SetPLUAccess: "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    спНастройки["Соединено"]:=1;
+  Except
+    Exit PopError()+_NEWLINE+"(2) Драйвер не установлен или в нерабочем состоянии!";
+  EndTry;
+EndFunction
+
+Function DriverDisconnect(спНастройки)
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    аДрайвер.Disconnect;
+  Except
+  EndTry;
+EndFunction
+
+//спНастройки: "ПолнаяОчистка" -- очищать PLU-коды, отсуствующие в таблице
+//спНастройки: "ТолькоВесовойТовар" -- пропускать штучный товар в таблице
+Function UploadPositions(спНастройки)
+  //aTab:"PLUКод,Номенклатура,Цена"
+  Try
+    аДрайвер:=спНастройки["Драйвер"];
+    ФлПолнаяОчистка:=Number(спНастройки["ПолнаяОчистка"]);
+    ФлТолькоВесовойТовар:=Number(спНастройки["ТолькоВесовойТовар"]);
+    СпКоды:=List.Create();
+    aTab:=спНастройки["Позиции"];
+    aTab.Sort("PLUКод");
+    aTab.Select();
+    While aTab.Next() Do
+      Form.StatusText("Выгрузка "+aTab.CurLine+"/"+aTab.Size());
+      If _And(ФлТолькоВесовойТовар,not aTab.Номенклатура.флВесовойТовар) Then
+        Continue;
+      EndIf;
+      аДрайвер.PLUNumber:=aTab.PLUКод;
+      аДрайвер.Price:=aTab.Цена;
+      аДрайвер.ItemCode:=aTab.PLUКод;//Number(aTab.Номенклатура.Code);
+      Стр:=Trim(aTab.Номенклатура);
+      аДрайвер.NameFirst:=Left(Стр,28);
+      аДрайвер.NameSecond:=Mid(Стр,29,28);
+      аДрайвер.PictureNumber:=0;
+      аДрайвер.GoodsType:=?(aTab.Номенклатура.флВесовойТовар,0,1);
+      аДрайвер.BCFormat:=0;
+      аДрайвер.LabelFormat:=0;
+      аДрайвер.PrefixBCType:=0;
+      If Trim(спНастройки["Пароль"])<>"" Then
+        аДрайвер.Password:=спНастройки["Пароль"];
+      EndIf;
+      If аДрайвер.SetPLUDataEx()<>0 Then
+        Exit "Ошибка SetPLUDataEx (позиция "+aTab.Номенклатура+"): "+аДрайвер.ResultCodeDescription;
+      EndIf;
+      СпКоды.Add(aTab.PLUКод);
+    EndDo;
+    
+    If ФлПолнаяОчистка Then
+      If аДрайвер.GetPLUCount()<>0 Then
+        Exit "Ошибка GetPLUCount: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+      aNum:=аДрайвер.PLUCount;
+      For i:=1 To aNum Do
+        Form.StatusText("Очистка "+i+"/"+aNum);
+        If СпКоды.Find(i,,1)=0 Then
+          аДрайвер.PLUNumber:=i;
+          If аДрайвер.DeletePLUData()<>0 Then
+            Message("Ошибка DeletePLUData (PLU "+i+"): "+аДрайвер.ResultCodeDescription,"!");
+          EndIf;
+        EndIf;
+      EndDo;
+    EndIf;
+  Except
+    Exit "Ошибка UploadPositions: "+PopError();
+  EndTry;
+EndFunction

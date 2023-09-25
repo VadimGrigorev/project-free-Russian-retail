@@ -15,6 +15,12 @@ Function Видимость()
   aEl:=Form.Object;
   MainTab:=Form.ControlByName("MainTab").Value;
   
+  If aEl.флПересчетРозничныхЦенВыполнен Then
+    Form.кнЦены.FontColor:=_CLR_WINDOWTEXT;
+    Form.кнЦены.FontStyle:=0;
+    Form.кнЦены.Glyph:=1;
+  EndIf
+  
   флТипЦенРеализации:=?(aEl.Склад.рзТипЦенРеализации.Selected()<>0,aEl.Склад.рзТипЦенРеализации,0);
   флТипЦенРеализацииПолучатель:=?(aEl.СкладПолучатель.рзТипЦенРеализации.Selected()<>0,aEl.СкладПолучатель.рзТипЦенРеализации,0);
   MainTab.Column("оЦЗ").isVisible:=aEl.Склад.рзТипЦенРеализации.Selected()<>0;

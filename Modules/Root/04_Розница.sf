@@ -36,7 +36,7 @@ Function глВыполнитьФункциюДрайвера(ИмяФункци
 //Для передачи информации драйверы вызывают SendMessage с индексами сообщений:
 //10001 -- сканер (не клавиатурный) получил сообщение и передает его в программу
 
-Function глЗагрузитьДрайверы(Реинициализация=0,УдалитьДрайвер=0,СпОшибки=0) Export;
+Function глЗагрузитьДрайверы(Реинициализация=0,УдалитьДрайвер=0,СпОшибки=0,ТабКроме=0) Export;
   спДрайверы:=List.Create();
   глМагазинДрайверов:=глПользователь.РабочееМесто.Parent();
   ФлСканер:=0;
@@ -134,6 +134,11 @@ Function глЗагрузитьДрайверы(Реинициализация=0
           спНастройки["СканерКлавиатура"]:=1;
         EndIf;
         спНастройки["ТипОборудования"]:=Ини.GetData("Оборудование","");
+        If _And(not IsEmpty(ТабКроме),ТабКроме.FindAndGoto(спНастройки["ТипОборудования"],,"Тип")>0) Then
+          If Ини.GetData(ТабКроме.Переменная,"")=ТабКроме.Значение Then
+            Continue;
+          EndIf;
+        EndIf;
         
         //Загрузка текста драйвера
         Путь:=AddBackSlash(aEl.Путь)+"Драйвер";
@@ -239,7 +244,7 @@ Function глЗагрузитьПроизвольныйДрайвер(Обору
       Raise Стр;
     EndIf;
   Except
-    Message("Ошибка при инициализации оборудования "+Оборудование+": "+PopError(),"!");
+    Message("Ошибка при инициализации оборудования %LINK%: "+PopError(),"!",Оборудование);
   EndTry;
   
   Exit спНастройки;
@@ -551,7 +556,7 @@ Function глПолучитьРозничнуюЦену(зН,ТипЦен,Маг
   Ц:=Ref.цЦены;
   If not Ц.Find("@Parent,ТипЦен",зН,ТипЦен) Then
     If Тихо=0 Then
-      Message("Для ТМЦ "+зН+" ("+зН.Code+") не установлена цена!","!");
+      Message("Для ТМЦ %LINK% ("+зН.Code+") не установлена цена!","!",зН);
     EndIf;
     Exit -1;
   EndIf;
@@ -565,7 +570,7 @@ Function глПолучитьРозничнуюЦену(зН,ТипЦен,Маг
     кЦ:=Ref.цПечатьЦенников;
     If not кЦ.Find("@Parent,Магазин",зН,Магазин) Then
       If Тихо=0 Then
-        Message("Для ТМЦ "+зН+" ("+зН.Code+") не был предварительно распечатан ценник!","!");
+        Message("Для ТМЦ %LINK% ("+зН.Code+") не был предварительно распечатан ценник!","!",зН);
       EndIf;
       Exit -1;
     EndIf;
@@ -846,6 +851,80 @@ Function глВыполнитьФункциюДрайвера(ИмяФункци
   Except
     Exit PopError();
   EndTry;
+EndFunction
+
+
+//"Номенклатура,PLUКод,..."
+Function глЗаполнитьPLUКодыВТаблицеПозиций(аМагазин,aTab,ФлРазрещитьНесколькоPLU=0) Export
+  ФлСемафор:=0;
+  ФлОк:=0;
+  МаксКод:=0;
+  ИмяМутанта:="";
+  Try
+    aTab.Select();
+    While aTab.Next() Do
+      If Not IsEmpty(aTab.PLUКод) Then
+        Continue;
+      EndIf;
+      Form.StatusText("Обновление PLU-кодов "+aTab.CurLine+"/"+aTab.Size()+"...");
+      зН:=aTab.Номенклатура;
+      bEl:=Ref.тмцPLUКоды;
+      If ФлРазрещитьНесколькоPLU Then
+        Фл:=0;
+        bEl.SelectEx(1,"PLUКод","~(@Parent=зН)And(Магазин=аМагазин)");
+        If bEl.Next() Then
+          aTab.PLUКод:=bEl.PLUКод;
+          Фл:=1;
+          While bEl.Next() Do
+            aNum:=aTab.CurLine;
+            aTab.CopyLine(aNum,aNum+1,1);
+            aTab.CurLine:=aNum+1;
+            aTab.PLUКод:=bEl.PLUКод;
+          EndDo;
+        EndIf;
+        If Фл Then
+          Continue;
+        EndIf;
+      ElseIf bEl.FindEx(1,"PLUКод","~(@Parent=зН)And(Магазин=аМагазин)") Then
+        aTab.PLUКод:=bEl.PLUКод;
+        Continue;
+      EndIf;
+      If not ФлСемафор Then
+        ИмяМутанта:="PLU_"+аМагазин.Code;аПольз:="";аМаш:="";аДата:="";
+        If not DBLockStringMutex(ИмяМутанта,аПольз,аМаш,аДата) Then
+          Message("Невозможно заблокировать генератор PLU-кодов для магазина, он был заблокирован пользователем "+аПольз+" ("+аМаш+") в "+аДата,"!");
+          Message("Попробуйте запустить обработку еще раз!","!");
+          Exit 0;
+        EndIf;
+        ФлСемафор:=1;
+        ФлОк:=0;
+        BeginTransaction();
+        
+        тМаксКод:=Ref.тмцPLUКоды.Compute("","PLUКод:MAX","Магазин",аМагазин);
+        МаксКод:=0;
+        if тМаксКод.Size()>0 Then
+          МаксКод:=тМаксКод["_MAX_PLUКод",1];
+        EndIf;
+      EndIf;
+      МаксКод:=МаксКод+1;
+      bEl.New();
+      bEl.Parent(зН);
+      bEl.PLUКод:=МаксКод;
+      bEl.Магазин:=аМагазин;
+      bEl.Save();
+    EndDo;
+    ФлОк:=1;
+  Finally
+    If ФлСемафор Then
+      If ФлОк Then
+        CommitTransaction();
+      Else
+        RollbackTransaction();
+      EndIf;
+      DBUnlockStringMutex(ИмяМутанта);
+    ENdIf;
+  EndTry;
+  Exit ФлОк;
 EndFunction
 
 

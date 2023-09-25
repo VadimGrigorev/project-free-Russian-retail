@@ -65,6 +65,15 @@ Function OnBeforeElementSave()
       EndIf;
     EndDo;
     aEl.ЗапрещенныеОтчеты:=б;
+    
+    б:="";
+    СпМаг:=Form.СпМаг.Value;
+    For а:=1 to СпМаг.Size() Do
+      If СпМаг.Check(а) Then
+        б:=б+СпМаг.Get(а).Code+"@";
+      EndIf;
+    EndDo;
+    aEl.МагазиныРасширенногоДоступа:=б;    
   EndIf;
   
   aEl.ПринтерПоУмолчанию:=Form.ОснПринтер.Value.Get(Form.ОснПринтер.Value.SelectedLine);

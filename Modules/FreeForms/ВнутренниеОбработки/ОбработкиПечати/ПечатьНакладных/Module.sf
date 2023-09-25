@@ -43,7 +43,7 @@ Function OnExecute(СпУстановки)
       aList.Add(1,"ПечататьБезВывода");
       aList.Add(1,"КоличествоКопий");
       aList.Add(1,"АвтоматическаяПечать");
-      Message(""+З.зК+":"+зДок);
+      Message("%LINK%: %LINK%",,З.зК,зДок);
       стрПуть:="Modules\FreeForms\ПечатныеФормы\Документ."+зДок.DBName()+"\";
       стрФорма:=оФорма;
       If isEmpty(стрФорма) Then
@@ -59,7 +59,7 @@ Function OnExecute(СпУстановки)
       EndIf;
       
       If File.DoesFileExist(стрПуть+стрФорма+"\Module.sfc")+File.DoesFileExist(стрПуть+стрФорма+"\Module.sf")=0 Then
-        Message("Пропущен документ "+зДок+", так как не найдена печатная форма "+стрФорма+"!","!");
+        Message("Пропущен документ %LINK%, так как не найдена печатная форма "+стрФорма+"!","!",зДок);
         Continue;
       EndIf;
       LoadModule(0,стрПуть+стрФорма,aList,0,"Module","Form");

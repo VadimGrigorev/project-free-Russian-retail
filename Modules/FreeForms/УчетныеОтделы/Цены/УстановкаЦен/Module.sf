@@ -10,11 +10,12 @@ Var спИзменные Export;
 Var Ширина Export;
 Var З2 Export;
 Var ФлЗапретУстановкиТиповЦен Export;
+Var ФлНеУдалятьНеВыбранные Export;
 
 Function Доступность()
   оСпр:=Form.оСпр.Value;
   Form.оТЦ.isDisabled:=1-оСпр;
-  Form.bPanelSpecial.isDisabled:=флУстановкаРучныхЦен;
+  //Form.bPanelSpecial.isDisabled:=флУстановкаРучныхЦен;
   //Form.bPanelProceed.isDisabled:=флУстановкаРучныхЦен;
 EndFunction
 

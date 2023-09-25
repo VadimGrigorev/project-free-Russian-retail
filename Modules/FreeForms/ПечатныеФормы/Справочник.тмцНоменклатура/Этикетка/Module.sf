@@ -19,6 +19,7 @@ Function OnFinishCopyObject(Name,Index)
       Generate1DBarcode("EAN",iX,iY,Trim(пШК),"BR:1,F:Consolas|8,SCALE:5,BRT:0");
       iY:=iX*(Т.Objects(Index).Height/Т.Objects(Index).Width);
       Картинка:=Generate1DBarcode("EAN",iX,iY,Trim(пШК),"BR:1,F:Consolas|8,SCALE:5,BRT:0,BPP:32");
+      Картинка.ConvertTo("JPG");//Меньше объем таблици при сохранении на диск
       Т.Objects(Index).Picture.Assign(Картинка);
     Except
     EndTry;

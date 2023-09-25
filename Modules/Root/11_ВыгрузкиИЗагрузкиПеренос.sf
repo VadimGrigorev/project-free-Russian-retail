@@ -327,7 +327,7 @@ Function глОчисткаТмцПартииТМЦ() Export
       
       For i:=1 to СпУдалить.Size() Do
         аЭл:=СпУдалить.Get(i);
-        Message("Удаляется партия "+аЭл+" ТМЦ "+аЭл.Parent()+" ("+аЭл.Parent().Code+")!","I");
+        Message("Удаляется партия %LINK% ТМЦ %LINK% ("+аЭл.Parent().Code+")!","I",аЭл,аЭл.Parent());
         If not флСимуляция Then
           аЭл.DeletePhysically();
         EndIf;

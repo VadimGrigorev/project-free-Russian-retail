@@ -55,7 +55,7 @@ Function OnExecute(СпУстановки)
       aList.Add(зДок,"Object");
       aList.Add(1,"ПечататьБезВывода");
       aList.Add(1,"КоличествоКопий");
-      Message(""+З.зК+":"+зДок);
+      Message("%LINK%: %LINK%",,З.зК,зДок);
       If зДок.DBName()="Реализация" Then
         LoadModule(0,"Modules\FreeForms\ПечатныеФормы\Документ.Реализация\СчетФактура",aList,0,"Module","Form");
       ElseIf зДок.DBName()="ПоступлениеТМЦ" Then

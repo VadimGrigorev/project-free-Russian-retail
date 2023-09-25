@@ -413,7 +413,7 @@ Function РасхожденияСкладБухУчет()
 
   If aTab.Size()>0 Then
     If глОбработать(аДок) Then
-      Message("Был создан документ "+аДок,"I");
+      Message("Был создан документ %LINK%","I",аДок);
     EndIf;
   EndIf;
 EndFunction
@@ -496,7 +496,7 @@ Function РасхожденияКассыБухУчет()
     
   If aTab.Size()>0 Then
     If глОбработать(аДок) Then
-      Message("Был создан документ "+аДок,"I");
+      Message("Был создан документ %LINK%","I",аДок);
     EndIf;
   EndIf;
 EndFunction
@@ -580,7 +580,7 @@ Function РасхожденияБанкиБухУчет()
     
   If aTab.Size()>0 Then
     If глОбработать(аДок) Then
-      Message("Был создан документ "+аДок,"I");
+      Message("Был создан документ %LINK%","I",аДок);
     EndIf;
   EndIf;
 EndFunction

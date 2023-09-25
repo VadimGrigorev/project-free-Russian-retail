@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, CertificatesList, CheckCertificate, SetCertificate, SignMessage, VerifySignature, EncryptData, DecryptData, CreateHash, GetCertificatePrint
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, CertificatesList, CheckCertificate, SetCertificate, ExportSertificate, SignMessage, VerifySignature, EncryptData, DecryptData, CreateHash, GetCertificatePrint
 
 Function DriverInit(спНастройки)
   Try
@@ -113,6 +113,19 @@ Function SetCertificate(спНастройки)
   EndTry;
 EndFunction;
 
+//спНастройки["ТекСертификат"] -- идентификатор сертификата
+//X.509, Base64
+Function ExportSertificate(спНастройки)
+  Try
+    If IsEmpty(спНастройки["ТекСертификат"]) Then
+      Exit "Сертификат для подписи не выбран или не найден!";
+    EndIf;
+    аСертификат:=спНастройки["ТекСертификат"];
+    спНастройки["Результат"]:=аСертификат.Export(0);
+  Except
+    Exit "Ошибка выполнения команды: "+PopError();
+  EndTry;
+EndFunction;
 
 //спНастройки["Сообщение"] -- бинарное сообщение в виде строки base64 -- возвращает подписанное сообщение также в base64, либо просто подпись без сообщения, если последняя открепленная
 //спНастройки["ОткрепленнаяПодпись"] -- по умолчанию 0

@@ -351,7 +351,7 @@ Function DriverConnect(спНастройки)
     EndIf;
     спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=?(IsEmpty(Ини),0,Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0")));
     спНастройки["FFDVersion"]:=?(IsEmpty(Ини),"",Number(Ини.GetData("FFDVersion","")));
-    
+    спНастройки["ТочнаяСуммаЧека"]:=1; 
     
     //Исправление текущей даты и времени в ККМ -- Атол не дайет возможности исправить дату и время программно
     ТекДата0:=Date();
