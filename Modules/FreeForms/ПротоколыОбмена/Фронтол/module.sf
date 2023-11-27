@@ -2524,6 +2524,8 @@ Function ВыполнитьЗагрузку()
               aNum:=aNum+1;
               If aNum>aTab.Size() Then
                 aTab.NewLine();
+              Else
+                aTab.CurLine:=aNum;
               EndIf;
               If _Or(aTab.Номенклатура<>зН,aTab.ПроцентСкидки<>аСкидка,aTab.СуммаСкидки<>аСумма,aTab.МаксКоличество<>аКоличество) Then
                 aTab.Номенклатура:=зН;
@@ -2566,6 +2568,8 @@ Function ВыполнитьЗагрузку()
               aNum:=aNum+1;
               If aNum>aTab.Size() Then
                 aTab.NewLine();
+              Else
+                aTab.CurLine:=aNum;
               EndIf;
               If _Or(aTab.Номенклатура<>зН,aTab.Количество<>аКоличество) Then
                 aTab.Номенклатура:=зН;
@@ -2684,6 +2688,8 @@ Function ВыполнитьЗагрузку()
                 aNum:=aNum+1;
                 If aNum>aTab.Size() Then
                   aTab.NewLine();
+                Else
+                  aTab.CurLine:=aNum;
                 EndIf;
                 If aTab.Номенклатура<>зН Then
                   aTab.Номенклатура:=зН;
@@ -2834,7 +2840,130 @@ Function ВыполнитьЗагрузку()
             EndIf;
           EndIf;
         EndTry;
-        iLoop:=jLoop;        
+        iLoop:=jLoop;   
+      ElseIf Стр="$$$EXMARKS" Then  
+        тМарки:=0;
+      
+        ФлИзмененных:=0;//Измененных товаров/элементов внутри транзакции
+        ВремяТранзакции:=Date();
+        BeginTransaction();
+        Try
+          For jLoop:=iLoop+1 To тФайл.Size() Do
+            Стр:=тФайл[jLoop];
+            If Left(Стр,3)="$$$" Then
+              iLoop:=jLoop-1;
+              Continue 2;
+            ElseIf _Or(Стр="",Left(Стр,2)="//") Then
+              Continue;
+            EndIf;
+            If _And(ProgramMode()=1,jLoop%10=0) Then
+              Form.StatusText(""+jLoop+" из "+тФайл.Size()+" (Марки)");
+            EndIf;
+        
+            //<Марка>;<Код товара>;
+            аКодМарки:=Replace(TearStr(Стр,";"),"¤",";");
+            аКод:=TearStr(Стр,";");
+            If (аКод="")or(аКодМарки="") Then
+              Continue;
+            EndIf;
+            If not тКодыНоменклатуры.FindAndGoto(аКод,,"зКод",1) Then
+              MessageVisual("В команде изменения марок передана неизвестная номенклатура "+аКод+"! Команда пропущена!","!");
+              //ФлНеУдалятьФайл:=1;
+              Continue;
+            EndIf;
+            зН:=тКодыНоменклатуры.зН;
+          
+            //Обновляем марки
+            If тМарки=0 Then
+              //Запрос по маркам, не загружаем элементы номенклатуры (небольшое ускорение)
+              ТЗ:="зКодМарки:=Ref.тмцМаркировкаПозиций.КодМарки;
+              |зНКод:=Ref.тмцМаркировкаПозиций.@Parent.@Parent.Code;
+              |Condition(Ref.тмцМаркировкаПозиций.флСостояние=1);
+              |зЭл:=Ref.тмцМаркировкаПозиций;
+              |Group зНКод,зЭл;";
+              З:=Query.Create();
+              тМарки:=З.Execute(ТЗ,0);
+              MassLoadObjects(тМарки);
+              тМарки.Sort("зНКод,зКодМарки");
+              тМарки.AddColumn("ФлУчтен");
+            EndIf;
+          
+            тМарки.CurLine:=0;
+            If тМарки.LocateAndGoto("зНКод,зКодМарки",зН.Code,аКодМарки,1) Then
+              тМарки.ФлУчтен:=1;
+              If тМарки.зЭл.Status()=1 Then
+                Try
+                  тМарки.зЭл.Mark(0);
+                  ФлИзмененных:=ФлИзмененных+1;
+                Except
+                  ФлНеУдалятьФайл:=1;
+                EndTry;
+              EndIf;
+            Else
+              //Добавляем
+              зП:=DB("Ref.тмцПартииТМЦ","@Parent,@Status",зН,0);
+              If IsEmpty(зП) Then
+                Message("Не найдена ни одна партия для позиции "+зН+". Марка пропущена "+аКодМарки,"!");
+                Continue;
+              EndIf;
+              зМ:=Ref.тмцМаркировкаПозиций;
+              зМ.New();
+              зМ.Parent(зП);
+              зМ.КодМарки:=аКодМарки;
+              зМ.флСостояние:=1;
+              зМ.Save(,,зП);
+              ФлИзмененных:=ФлИзмененных+1;
+            EndIf;
+          
+            If _Or(ФлИзмененных>50,GetPeriodMs(ВремяТранзакции)>5000) Then
+              ВремяТранзакции:=Date();
+              CommitTransaction();
+              ФлИзмененных:=0;
+              BeginTransaction();
+            EndIf;
+          EndDo;//По строкам документа загрузки
+          
+          //Удаляем марки, отсутствовавшие в выгрузке
+          If not IsEmpty(тМарки) Then
+            тМарки.Select();
+            While тМарки.Next() Do
+              If IsEmpty(тМарки.ФлУчтен) Then
+                If тМарки.зЭл.Status()=0 Then
+                  Try
+                    тМарки.зЭл.Mark(1);
+                    ФлИзмененных:=ФлИзмененных+1;
+                  Except
+                    ФлНеУдалятьФайл:=1;
+                  EndTry;
+                EndIf;
+              EndIf;
+              
+              If _Or(ФлИзмененных>50,GetPeriodMs(ВремяТранзакции)>5000) Then
+                ВремяТранзакции:=Date();
+                CommitTransaction();
+                ФлИзмененных:=0;
+                BeginTransaction();
+              EndIf;
+            EndDo;
+          EndIf;
+          
+        Finally
+          Стр:=PopError();
+          SuppressException();
+          If not IsEmpty(Стр) Then
+            MessageVisual(Стр,"!");
+            ФлНеУдалятьФайл:=1;
+            If IsTransactionActive() Then
+              RollbackTransaction();
+            EndIf;
+          Else
+            If IsTransactionActive() Then
+              CommitTransaction();
+            EndIf;
+          EndIf;
+        EndTry;
+        
+        iLoop:=jLoop;     
       EndIf;//Нахождение загружаемой команды
       
     EndDo;//По строкам документа загрузки, внешний цикл

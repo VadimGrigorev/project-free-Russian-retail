@@ -351,7 +351,6 @@ Function DriverConnect(спНастройки)
     EndIf;
     спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=?(IsEmpty(Ини),0,Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0")));
     спНастройки["FFDVersion"]:=?(IsEmpty(Ини),"",Number(Ини.GetData("FFDVersion","")));
-    спНастройки["ТочнаяСуммаЧека"]:=1; 
     
     //Исправление текущей даты и времени в ККМ -- Атол не дайет возможности исправить дату и время программно
     ТекДата0:=Date();
@@ -559,9 +558,20 @@ Function OpenShift(спНастройки)
     аДрайвер.libfptr_set_param_str(aHandle,1021,"Кассир "+Кассир.ПолнНаименование);
     аДрайвер.libfptr_set_param_str(aHandle,1203,стрИНН);
     аДрайвер.libfptr_operator_login(aHandle);
-    If аДрайвер.libfptr_open_shift(aHandle)<>0 Then
-      Exit "Ошибка открытия смены: "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
+    If IsExecutingInSeparateProcess Then //Иногда смена открывается очень долго
+      аНовый:=InterProcessServerTimeout();
+      аНовый:=?(аНовый>0,Max(аНовый,300000));
+      аСтарый:=InterProcessServerTimeout(аНовый);
     EndIf;
+    Try
+      If аДрайвер.libfptr_open_shift(aHandle)<>0 Then
+        Exit "Ошибка открытия смены: "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
+      EndIf;
+    Finally
+      If IsExecutingInSeparateProcess Then
+        InterProcessServerTimeout(аСтарый);
+      EndIf;
+    EndTry;
     аДрайвер.libfptr_check_document_closed(aHandle);
   Except
     Exit PopError()+_NEWLINE+"Неудачная попытка открыть смену!";
@@ -871,7 +881,6 @@ Function PrintReceipt(спНастройки)
           //1023: для марок упаковки при продаже единицы может записываться как "1/x", где x -- количество в упаковке
           //аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY"],"1/2");
           If аДрайвер.libfptr_begin_marking_code_validation(aHandle)<>0 Then
-            //Exit "beginMarkingCodeValidation. Ошибка "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
             ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"beginMarkingCodeValidation. Ошибка "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle));
             Continue;
           EndIf;
@@ -880,7 +889,6 @@ Function PrintReceipt(спНастройки)
           аДата:=Date();
           While 1 Do
             If аДрайвер.libfptr_get_marking_code_validation_status(aHandle)<>0 Then
-              //Exit "getMarkingCodeValidationStatus. Ошибка "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
               ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"getMarkingCodeValidationStatus. Ошибка "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle));
               Continue 2;
             EndIf;
@@ -890,7 +898,6 @@ Function PrintReceipt(спНастройки)
             EndIf;
             If GetPeriodMs(аДата)>7000 Then //7 с. максимум (Атол отменяет по таймаут менее чем через 6 секунд)
               аДрайвер.libfptr_cancel_marking_code_validation(aHandle);
-              //Exit "getMarkingCodeValidationStatus не возвращает готовность длительное время!";
               ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"getMarkingCodeValidationStatus не возвратил готовность длительное время. Проверка прекращена!");
               Continue 2;
             EndIf;
@@ -919,18 +926,20 @@ Function PrintReceipt(спНастройки)
           
       //Позиции
       ФлНДС:=спНастройки["ЮрЛицо"].УчитыватьНДС<>0;
-      См:=0;
       If (аТип0=10)Or(аТип0=13) Then
         См:=спНастройки["Сумма"];
         аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_NAME"],?(аТип0=10,"Аванс за товары","Закрытие кредита за товары"));
         аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],Round(См,2));
         аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],1);
+        If ФФД11 Then
+          аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MEASUREMENT_UNIT"],спПеременные["LIBFPTR_IU_PIECE"]);
+        EndIf;
         If ФлНДС Then
           аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_TAX_TYPE"],спПеременные["LIBFPTR_TAX_VAT20"]);
         Else
           аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_TAX_TYPE"],спПеременные["LIBFPTR_TAX_NO"]);
         EndIf;
-        аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],Round(См,2));
+        //аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],Round(См,2));
         аДрайвер.libfptr_set_param_int(aHandle,1214,?(аТип0=13,7,4));
         аДрайвер.libfptr_set_param_int(aHandle,1212,10);
         If аДрайвер.libfptr_registration(aHandle)<>0 Then
@@ -945,8 +954,11 @@ Function PrintReceipt(спНастройки)
             аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],Round(aTab.Сумма/aTab.Количество,2));
             аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],aTab.Количество);
             аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_TAX_TYPE"],?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),спПеременные["LIBFPTR_TAX_NO"]));
-            аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],aTab.Сумма);
+            //аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],aTab.Сумма);
             аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_PIECE"],?(aTab.Номенклатура.флВесовойТовар,0,1));
+            If ФФД11 Then
+              аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MEASUREMENT_UNIT"],спПеременные["LIBFPTR_IU_PIECE"]);
+            EndIf;
             If (aTab.Номенклатура.флПодлежитПрослеживаемости)And(not ФФД10) Then
               аДрайвер.libfptr_set_param_int(aHandle,1212,2);               //См. выше (1212) предмет расчета: акцизный товар
             Else
@@ -965,7 +977,7 @@ Function PrintReceipt(спНастройки)
               аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],зЦ);
               аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],1);
               аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_TAX_TYPE"],?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),спПеременные["LIBFPTR_TAX_NO"]));
-              аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],зЦ);
+              //аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],зЦ);
               аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_PIECE"],1);
               If ФФД11 Then
                 аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MEASUREMENT_UNIT"],спПеременные["LIBFPTR_IU_PIECE"]);
@@ -1003,11 +1015,13 @@ Function PrintReceipt(спНастройки)
               EndIf;
             EndDo;
           EndIf;
-          См:=См+aTab.Сумма;
         EndDo;
       EndIf;
-      If Round(спНастройки["Сумма"],2)<>Round(См,2) Then
-        Exit "Неверная сумма строк "+См+", не совпадает с суммой документа "+спНастройки["Сумма"];
+      
+      См:=Round(спНастройки["Сумма"],2);
+      аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_SUM"],См);
+      If аДрайвер.libfptr_receipt_total(aHandle)<0 Then
+        Exit "Невозможно зарегистрировать сумму итого. Ошибка "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
       EndIf;
       
       //Оплата
@@ -1075,9 +1089,10 @@ Function PrintReceipt(спНастройки)
       EndIf;
       Try
         If аДрайвер.libfptr_close_receipt(aHandle)<>0 Then
+          Стр:="Ошибка закрытия чека: "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
           аДрайвер.libfptr_cancel_receipt(aHandle);
           ФлОтменитьЧек:=0;
-          Exit "Ошибка закрытия чека: "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
+          Exit Стр;
         EndIf;
       Finally
         If IsExecutingInSeparateProcess Then

@@ -80,7 +80,6 @@ Function DriverConnect(спНастройки)
     EndIf;
     спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=?(IsEmpty(Ини),0,Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0")));
     спНастройки["FFDVersion"]:=?(IsEmpty(Ини),"",Number(Ини.GetData("FFDVersion","")));
-    спНастройки["ТочнаяСуммаЧека"]:=1; 
     
     //Исправление текущей даты и времени в ККМ -- Атол не дайет возможности исправить дату и время программно
     ТекДата0:=Date();
@@ -242,9 +241,20 @@ Function OpenShift(спНастройки)
     аДрайвер.setParam(1021,"Кассир "+Кассир.ПолнНаименование);
     аДрайвер.setParam(1203,стрИНН);
     аДрайвер.operatorLogin;
-    If аДрайвер.openShift<>0 Then
-      Exit "Ошибка открытия смены: "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
+    If IsExecutingInSeparateProcess Then //Иногда смена открывается очень долго
+      аНовый:=InterProcessServerTimeout();
+      аНовый:=?(аНовый>0,Max(аНовый,300000));
+      аСтарый:=InterProcessServerTimeout(аНовый);
     EndIf;
+    Try
+      If аДрайвер.openShift<>0 Then
+        Exit "Ошибка открытия смены: "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
+      EndIf;
+    Finally
+      If IsExecutingInSeparateProcess Then
+        InterProcessServerTimeout(аСтарый);
+      EndIf;
+    EndTry;
     аДрайвер.checkDocumentClosed;
   Except
     Exit PopError()+_NEWLINE+"Неудачная попытка открыть смену!";
@@ -538,7 +548,6 @@ Function PrintReceipt(спНастройки)
           //1023: для марок упаковки при продаже единицы может записываться как "1/x", где x -- количество в упаковке
           //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY,"1/2");
           If аДрайвер.beginMarkingCodeValidation()<>0 Then
-            //Exit "beginMarkingCodeValidation. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
             ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"beginMarkingCodeValidation. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription);
             Continue;
           EndIf;
@@ -548,7 +557,6 @@ Function PrintReceipt(спНастройки)
           While 1 Do
             If аДрайвер.getMarkingCodeValidationStatus()<>0 Then
               аДрайвер.cancelMarkingCodeValidation();
-              //Exit "getMarkingCodeValidationStatus. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
               ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"getMarkingCodeValidationStatus. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription);
               Continue 2;
             Endif;
@@ -558,7 +566,6 @@ Function PrintReceipt(спНастройки)
             EndIf;
             If GetPeriodMs(аДата)>7000 Then //7 с. максимум (Атол отменяет по таймаут менее чем через 6 секунд)
               аДрайвер.cancelMarkingCodeValidation();
-              //Exit "getMarkingCodeValidationStatus не возвращает готовность длительное время!";
               ТабОшибкиПроверкиМарок.AddLine("Марка,Причина",ТабИСМП.Марка,"getMarkingCodeValidationStatus не возвратил готовность длительное время. Проверка прекращена!");
               Continue 2;
             EndIf;
@@ -582,18 +589,20 @@ Function PrintReceipt(спНастройки)
     
       //Позиции
       ФлНДС:=спНастройки["ЮрЛицо"].УчитыватьНДС<>0;
-      См:=0;
       If (аТип0=10)Or(аТип0=13) Then
         См:=спНастройки["Сумма"];
         аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_NAME,?(аТип0=10,"Аванс за товары","Закрытие кредита за товары"));
         аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PRICE,Round(См,2));
         аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_QUANTITY,1);
+        If ФФД11 Then
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MEASUREMENT_UNIT,аДрайвер.LIBFPTR_IU_PIECE);
+        EndIf;
         If ФлНДС Then
           аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,аДрайвер.LIBFPTR_TAX_VAT20);
         Else
           аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,аДрайвер.LIBFPTR_TAX_NO);
         EndIf;
-        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,Round(См,2));
+        //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,Round(См,2));
         аДрайвер.setParam(1214,?(аТип0=13,7,4));
         аДрайвер.setParam(1212,10);
         If аДрайвер.registration()<0 Then
@@ -608,8 +617,11 @@ Function PrintReceipt(спНастройки)
             аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PRICE,Round(aTab.Сумма/aTab.Количество,2));
             аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_QUANTITY,aTab.Количество);
             аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),аДрайвер.LIBFPTR_TAX_NO));
-            аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,aTab.Сумма);
+            //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,aTab.Сумма);
             аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_PIECE,?(aTab.Номенклатура.флВесовойТовар,0,1));
+            If ФФД11 Then
+              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MEASUREMENT_UNIT,аДрайвер.LIBFPTR_IU_PIECE);
+            EndIf;
             If (aTab.Номенклатура.флПодлежитПрослеживаемости)And(not ФФД10) Then
               аДрайвер.setParam(1212,2);              //См. выше (1212) предмет расчета: акцизный товар
             Else
@@ -628,7 +640,7 @@ Function PrintReceipt(спНастройки)
               аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PRICE,зЦ);
               аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_QUANTITY,1);
               аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),аДрайвер.LIBFPTR_TAX_NO));
-              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,зЦ);
+              //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,зЦ);
               аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_PIECE,1);
               If ФФД11 Then
                 аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MEASUREMENT_UNIT,аДрайвер.LIBFPTR_IU_PIECE);
@@ -670,11 +682,13 @@ Function PrintReceipt(спНастройки)
               EndIf;
             EndDo;
           EndIf;
-          См:=См+aTab.Сумма;
         EndDo;
       EndIf;
-      If Round(спНастройки["Сумма"],2)<>Round(См,2) Then
-        Exit "Неверная сумма строк "+См+", не совпадает с суммой документа "+спНастройки["Сумма"];
+      
+      См:=Round(спНастройки["Сумма"],2);
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_SUM,См);
+      If аДрайвер.receiptTotal()<0 Then
+        Exit "Невозможно зарегистрировать сумму итого. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
       EndIf;
       
       //Оплата
@@ -742,9 +756,10 @@ Function PrintReceipt(спНастройки)
       EndIf;
       Try
         If аДрайвер.closeReceipt<>0 Then
+          Стр:="Ошибка закрытия чека: "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
           аДрайвер.cancelReceipt;
           ФлОтменитьЧек:=0;
-          Exit "Ошибка закрытия чека: "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
+          Exit Стр;
         EndIf;
       Finally
         If IsExecutingInSeparateProcess Then

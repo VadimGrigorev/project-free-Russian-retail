@@ -77,6 +77,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=16
   LoadModes=0
+  CompileModule=
   Object GROUPBOX
     LayerName=4D00610069006E00
     Left=5
@@ -401,7 +402,7 @@ Object FORM
       @G@"G@#GvG@,G@-G@*GvG#RERdSEREEEdUEREEE#DC|CwCECwCtC|CxCEC#R#"R#R#S#R#R#S#R#R#R#R
       @#T#SRRRR#SVW#eGvG@*G@,G~G@9G####eGvG@*G@,G~G@9G#RERdSEREEEdUEREEE#DC|CwCECwCtCwC
       @{CvCEC#R#"R#R#S#R#S#S#R#S#R#R#T#STR#SRW#]G@(G@#G~G@1G{G@+G@,GxG@(G####]G@(G@#G~G
-      @@1G{G@+G@,GxG@(G#RERdWEREEE#DCwCECECwCvCtCvC#S#"R#R#R#R#R#R#R#R#R#R#T#SRRRR#SV[#
+      @@1G{G@+G@,GxG@(G#RERdWEREEE#DCwCECECwC{CtCyC#S#"R#R#R#R#R#R#R#R#R#R#T#SRRRR#SV[#
       @nG@,G@*G~G@/G@"G@(GzG####nG@,G@*G~G@/G@"G@(GzG###R#
     End
   End

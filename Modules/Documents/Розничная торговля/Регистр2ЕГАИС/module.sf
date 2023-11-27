@@ -166,6 +166,10 @@ Function OnBeforeChangeOperationCode(ByRef Стр)
   Exit 1;
 EndFunction
 
+Function OnAfterChangeOperationCode()
+  Видимость();
+EndFunction
+
 Function OnSaveRequest()
   Param["Ответ"]:=1;
   Param["Таблица"]:=Form.MainTab.Value.Copy();

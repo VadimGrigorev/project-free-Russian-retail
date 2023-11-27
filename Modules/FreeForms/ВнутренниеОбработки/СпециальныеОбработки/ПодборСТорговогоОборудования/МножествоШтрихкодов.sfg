@@ -9,22 +9,24 @@ Object FORM
   Width=625
   Height=325
   OnOpen
-    @@>@e@f@[s@5_>d1_0_S@yIF@4=Lr7@ph@I_1@7@33[_!_a_2@mD@8_GB@cQ@Gl2l@3@J_=x@I@5_:@5_
-    @1<_&e_U"5@v@|]U]_[_8@d@z@B_=@Z@n_H@|@E_5._m@H@:@*_XHP@'yP@8@j_&@8,r@P,@*_V+_C_2\
-    @@9g_9@#@(_K_]_i_G_l7o@K@+_L@8_9_Ue@M@O@\_M_6Z_Q_/(v_\p.o@5Q@z@C_+cC@k@8Q_Q&_X@A_
-    @^_5@T/^@Q_;_Jw@U@P_0_:a_-@W_Hw_j4{XlC[P_DK@<B~_K@B_\T@)_A@j@I_7@f@Y_cfX_^i_B@{_N
-    @@FE_"@8_9@9M@=z@)@GPC[g_&W_a_&C_dt5U@W_)@:@n@wb@W9@5_J_Lay@.@._J_-9@]@4pp@Li:@o@
-    @6n-I@z/_?_H_A@hV~@C@I_K@]@;@-l_F@~@f_j@G_Q_(_S@6_4@E@T_mzb_>_:(@?@*_"@|_D@Dz@+_B
-    @@0@o@>[_:@zS@s_k_5N_^_D@L_U[R_co_9@r]_eW^@p@\_V_f@x>@R_39_i*@b_-@+@:R@B@-_1@k_L@
-    @<@U_Y_m_iy_eD@{P_Y_cN@3f(_)_A@|_hA_W}@*_'@[@7@(@\^_Y_^_=N@zi-@u_"_2@-@"@tZ"_*_1
-    @n_X@f}@AyPO@E@E@[@X~_i@6@P}U_"@F_OD@t@=@'uy@l@3@L@p_BU@8A@P_*@{@S@s_2@b_CI_.@A@0
-    @@c_T~_3Y|@v_P_"@D4@w@b@hO@c_"@Z_C@\p+@?@J_h,_'M@<;_k_I_)A@Ac_L_Crgm@%Xp_N.[f_Z@U
-    @@c@a_$_j@(@<@=_JT_S_d_F@yk.@Z_+_:@1n@T@s_D*@;@r@<@fHs@Rw_#_C@>@(_>_b;@}@f_g_)_^'
-    @^l<_m(J?@e@n
+    @@>@e@vx_6@4_>t1@f_0@u@W_DCu@;@H@u@u3*3_2@~@P_Q{?@4LD_"*@k_g@H@Q5@q_?XJ.3_ja@-_1Y
+    @_!4=@*t6@#_2@=@$_S_7_6a_V_<@I?@7_)_>O_lO@0_>@Wk_X_M@*_X@y_8@9@g_M_R@zi@)r_#0_U@K
+    @@D_H]@y@D@N_K@j_jOF/F$@U@70_dDZZ2@:2@4S_XOn_\-5o_'8@W@egc@Ii_1Q_U&_D_c_T6@N@B;eJ
+    @_k@K@l@p_dw@J_LE_d9_h2@p&@Y@T9@^@>4@2@RF_*_e_+@R@[y<:h_Hi_?o~_>.@v@.@P_mW_I_>&@g
+    @<@A_;=O_?_0jp_(H_R_8@N_HH_,@}@qs>_5@|_"_3@LXP_\@s6_^y@dJ_.@[@N@y_4B2@M"Z@?@Q_O@
+    @/(@8_Z@k_e@Q~@C%_*._9@JDm_C_!@:(@]@V@M_.6_J{_;_K_>I_b_a@P@E_L@3@t_!_&@q_-@u@u@b_
+    @L_0@>/@\u@w8@,@U_,r@}@g$@v@E@Q@B_+8H@N@)@~@Y\_l@1_2=h@:_8@K@S_,G_H@d_(U@+@X_+]@M
+    @_X_m_i@\_e_-_<P_Y_V@b_V@K/p_"@{@l_c@x_W@b@l_'@K@z@p@bx_&_'t@P@t7$_Y@3_k@So7I_+_:
+    @@z^_I@b@L@r_5@\_Fs@1:@P@}0PP_9@K@=<_S@._)U@~_5@Q_F@,_;_P_c@:_f$_X_S;u_V@7@,_V4e_
+    @F_A@c_3@b_<8@y~_=Q_kH@"@)@EX@q@?[@?>@QJ@j7@sc@J@<@PY@z_l@o_K0_]_"_\M@pCi@%_B@a_/
+    @_/@y_M<7Xw_h@P_E_I;_45_JM_0/0@a@[_3@#_H_[_?@4#@<@9@\m_H7t@4L_&_;#r@k@B_gY@$y@V@
+    @G_Na@e@x_\_FXd@?/_Z@x_<$@b_]1k_h9@64_l*_m_U_CN@R@A_'_S_3_P.@<_._2b_D\_2@$_.^/_(@
+    @c@+u@N@;^(_6@C_g#@2@R_X_J*_'@*,_G@L{@\_<KV@w@4_S@~@(@R_ZU_)@nsx_F_m'@70_[\
   End
   OnTimerInterval=0
   MaxControlSerial=15
   LoadModes=0
+  CompileModule=
   Object BUTTON
     LayerName=4D00610069006E00
     Left=105
@@ -59,7 +61,7 @@ Object FORM
     AnchorType=15
     Flags=8
     Hint=
-    Name=
+    Name=3E041E043F043804410430043D0438043504
     ControlSerial=2
     Caption=200014043B044F04200041043A0430043D04350440043E0432042C00200037043004330440044304360430044E0449043804450420003304400443043F043F0443042000480442044004380445043A043E0434043E0432042C002000400435043A043E043C0435043D04340443043504420441044F042000380441043F043E043B044C0437043E043204300442044C0420004D0442044304200044043E0440043C0443043A00
   End

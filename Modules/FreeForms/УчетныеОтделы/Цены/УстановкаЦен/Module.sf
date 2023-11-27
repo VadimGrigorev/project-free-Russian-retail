@@ -109,6 +109,7 @@ Function OnExecute()
     EndIf;
     
     Высота:=1;
+    Т.Options.FixedColumn:=3;
     Т.CopyByX("v1",1);
     Т.CopyByX("v2|h1",1);
     For а:=1 to спОсновныеЦены.Size() Do

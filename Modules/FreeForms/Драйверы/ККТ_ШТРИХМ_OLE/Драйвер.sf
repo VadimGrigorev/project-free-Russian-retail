@@ -816,6 +816,7 @@ Function PrintReceipt(спНастройки)
               аДрайвер.MeasureUnit:=0;
             Else
               аДрайвер.PaymentItemSign:=2;//Подакцизный товар
+              аДрайвер.MeasureUnit:=0;
             EndIf;
             
             If аДрайвер.FNOperation()<>0 Then
