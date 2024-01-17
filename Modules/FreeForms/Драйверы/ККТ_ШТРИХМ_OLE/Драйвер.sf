@@ -525,11 +525,14 @@ Function PrintReceipt(спНастройки)
     //42 - м3    (113)
     //...
     спЕдиница:=List.Create();
-    спЕдиница["166"]:=11;
-    спЕдиница["006"]:=22;
-    спЕдиница["055"]:=32;
-    спЕдиница["112"]:=41;
-    спЕдиница["113"]:=42;
+    If ФФД12 Then
+      спЕдиница.Add(0);
+      спЕдиница["166"]:=11;
+      спЕдиница["006"]:=22;
+      спЕдиница["055"]:=32;
+      спЕдиница["112"]:=41;
+      спЕдиница["113"]:=42;
+    EndIf;
     
     //Тип чека:                                 Штрих-М
     //1 -- ПКО (продажа)                      = CheckType=0
@@ -680,7 +683,18 @@ Function PrintReceipt(спНастройки)
         //3 -Штучный товар, подлежащий обязательной маркировке средством идентификации, возвращен
         //4 -Часть товара, подлежащего обязательной маркировке средством идентификации, возвращена
         //255 -Статус товара, подлежащего обязательной маркировке средством идентификации, не изменился
-        аДрайвер.ItemStatus:=?((аТип0=2)Or(аТип0=5),3,1);
+        If ТабИСМП.Номенклатура.флВесовойТовар Then
+          аДрайвер.ItemStatus:=?((аТип0=2)Or(аТип0=5),4,2);
+          аДрайвер.Quantity:=ТабИСМП.Количество;
+        Else
+          аДрайвер.ItemStatus:=?((аТип0=2)Or(аТип0=5),3,1);
+          аДрайвер.Quantity:=1;
+        EndIf;
+        аЕдиница:=спЕдиница[ТабИСМП.Номенклатура.базЕдиница.ВнешнийКод];
+        If IsEmpty(аЕдиница) Then
+          аЕдиница:=0;
+        EndIf;
+        аДрайвер.MeasureUnit:=аЕдиница;
         аДрайвер.CheckItemMode:=0;
         аДрайвер.DivisionalQuantity:=0;
         //1023: для марок упаковки при продаже единицы может записываться как "1/x", где x -- количество в упаковке
@@ -790,7 +804,11 @@ Function PrintReceipt(спНастройки)
           If ФФД12 Then
             аДрайвер.DivisionalQuantity:=0;
           EndIf;
-          аДрайвер.MeasureUnit:=0;
+          аЕдиница:=спЕдиница[ТабИСМП.Номенклатура.базЕдиница.ВнешнийКод];
+          If IsEmpty(аЕдиница) Then
+            аЕдиница:=0;
+          EndIf;
+          аДрайвер.MeasureUnit:=аЕдиница;
           If аДрайвер.FNOperation()<>0 Then
             Raise "(2)FNOperation: "+аДрайвер.ResultCodeDescription;
           EndIf;
@@ -800,8 +818,12 @@ Function PrintReceipt(спНастройки)
           зК:=aTab.Количество;
           While зК>0 Do
             аДрайвер.StringForPrinting:=aTab.Номенклатура.Name;
-            аДрайвер.Quantity:=1;
             аДрайвер.Price:=зЦ;
+            If aTab.Номенклатура.флВесовойТовар Then
+              аДрайвер.Quantity:=зК;
+            Else
+              аДрайвер.Quantity:=1;
+            EndIf;
             аДрайвер.Tax1:=?(ФлНДС,спНДС[Max(aTab.СтавкаНДС.Index(),1)],спНДС[1]);
             аДрайвер.Department:=1;
             аДрайвер.TaxValueEnabled:=0;
@@ -813,11 +835,14 @@ Function PrintReceipt(спНастройки)
             If ФФД12 Then
               аДрайвер.PaymentItemSign:=33;//Марочный товар
               аДрайвер.DivisionalQuantity:=0;
-              аДрайвер.MeasureUnit:=0;
             Else
               аДрайвер.PaymentItemSign:=2;//Подакцизный товар
-              аДрайвер.MeasureUnit:=0;
             EndIf;
+            аЕдиница:=спЕдиница[ТабИСМП.Номенклатура.базЕдиница.ВнешнийКод];
+            If IsEmpty(аЕдиница) Then
+              аЕдиница:=0;
+            EndIf;
+            аДрайвер.MeasureUnit:=аЕдиница;
             
             If аДрайвер.FNOperation()<>0 Then
               Raise "(3)FNOperation: "+аДрайвер.ResultCodeDescription;
@@ -830,7 +855,7 @@ Function PrintReceipt(спНастройки)
             ElseIf not ФФД10 Then
               //https://docs.google.com/document/d/1m3gHyKvM0gBMPgpzG-1cFsfVDnecouCtzQBJVDooGuM
               //TODO: BarcodeHex?
-              аДрайвер.BarCode:=ТабИСМП.Марка;//"00000046198???X??????????";
+              аДрайвер.BarCode:=Left(ТабИСМП.Марка,30);//"00000046198???X??????????"; Макс. размер 1162 до 30 байт
               If аДрайвер.FNSendItemBarcode()<>0 Then
                 Raise "FNSendItemBarcode: "+аДрайвер.ResultCodeDescription;
               EndIf;
@@ -856,7 +881,11 @@ Function PrintReceipt(спНастройки)
               //  Raise "FNSendTagOperation: "+аДрайвер.ResultCodeDescription;
               //EndIf;
             EndIf;
-            зК:=зК-1;
+            If aTab.Номенклатура.флВесовойТовар Then
+              зК:=0;
+            Else
+              зК:=зК-1;
+            EndIf;
             ТабИСМП.Remove(ТабИСМП.CurLine);
           EndDo;
         EndIf;
@@ -993,15 +1022,20 @@ Function PrintReceipt(спНастройки)
       EndDo;
     Finally  
       If ФлОтменитьЧек=1 Then
+        Стр:=PopError();
         If аДрайвер.GetECRStatus()<>0 Then
-          Raise "(2)GetECRStatus: "+аДрайвер.ResultCodeDescription;
+          Exit ?(not IsEmpty(Стр),Стр+", ","")+"(2)GetECRStatus: "+аДрайвер.ResultCodeDescription;
         EndIf;
         If аДрайвер.ECRMode=8 Then
           If аДрайвер.SysAdminCancelCheck()<>0 Then
-            Raise "(8)ECRMode: "+аДрайвер.ResultCodeDescription;
+            Exit ?(not IsEmpty(Стр),Стр+", ","")+"(8)ECRMode: "+аДрайвер.ResultCodeDescription;
           EndIf;
         EndIf;
-        Exit;
+        If not IsEmpty(Стр) Then
+          Exit Стр;
+        Else
+          Exit;
+        EndIf;
       EndIf;
     EndTry;  
     спНастройки["НомерДокумента"]:="";

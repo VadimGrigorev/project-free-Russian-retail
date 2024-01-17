@@ -119,6 +119,7 @@ Function Выгрузить()
   оТаб:=Form.оТаб.Value;
   оЮЛ:=Form.оЮЛ.Value;
   оТипы:=Form.оТипы.Value;
+  оФлСуммыНДС:=Form.оФлСуммыНДС.Value;
   
   If оТаб.Size()=0 Then
     Box("Выберите по крайней мере один документ!",Q_STOP);
@@ -280,7 +281,11 @@ Function Выгрузить()
     СпПар.SetByName("TakerBankBIC",""+Trim(СчКнт.Банк.БИК));
     СпПар.SetByName("TakerBankCorrAcc",""+Trim(СчКнт.Банк.КоррСчет));
     //НДС?
-    If д.ЮрЛицо.УчитыватьНДС=0 Then
+    If оФлСуммыНДС Then
+      СпПар.SetByName("TINSUMDESC","");
+      СпПар.SetByName("TINDESC","");
+      СпПар.SetByName("TINSUM","");
+    ElseIf д.ЮрЛицо.УчитыватьНДС=0 Then
       СпПар.SetByName("TINSUMDESC","без НДС");//в т.ч. НДС(18%) - 2288-14
       СпПар.SetByName("TINDESC","без НДС");
       СпПар.SetByName("TINSUM","");

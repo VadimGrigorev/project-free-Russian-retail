@@ -24,8 +24,8 @@ Function Видимость()
   EndIf;  
   If aEl.УникальныйИдентификатор<>"" Then
     Form.кнГИСМТ.FontColor:=_CLR_WINDOWTEXT;
-    Form.кнГИСМТ.FontStyle:=1;
-    Form.кнГИСМТ.Glyph:=75;
+    Form.кнГИСМТ.FontStyle:=0;
+    Form.кнГИСМТ.Glyph:=1;
   Else
     Form.кнГИСМТ.FontColor:=_CLR_RED;
     Form.кнГИСМТ.FontStyle:=1;

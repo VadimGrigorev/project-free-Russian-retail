@@ -462,7 +462,7 @@ Function глПриОбработкеДокумента(aEl,Param) Export
     EndIf;
   EndIf;
   
-  If BegOfDay(aEl.DocDate)>Min(BegOfDay(CurDate())+7,EndOfWeek(CurDate())+4) Then
+  If BegOfDay(aEl.DocDate)>Min(BegOfDay(CurDate())+флМаксДнейОбработкиДокументовВперед,EndOfWeek(CurDate())+флМаксДнейОбработкиДокументовВперед div 2) Then
     If not глПользователь.общиеАдминистратор Then
       Exit "Вам запрещено обрабатывать документы будущей датой на такой удаленный срок, обратитесь к администратору!";
     ElseIf AskQuestion("Обработка документа будущей датой на такой удаленный срок может быть ошибкой! "+

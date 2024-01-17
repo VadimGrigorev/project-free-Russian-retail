@@ -351,8 +351,9 @@ Function DriverConnect(спНастройки)
     EndIf;
     спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]:=?(IsEmpty(Ини),0,Number(Ини.GetData("LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY","0")));
     спНастройки["FFDVersion"]:=?(IsEmpty(Ини),"",Number(Ини.GetData("FFDVersion","")));
+    спНастройки["ТочнаяСуммаЧека"]:=1; 
     
-    //Исправление текущей даты и времени в ККМ -- Атол не дайет возможности исправить дату и время программно
+    //Исправление текущей даты и времени в ККМ
     ТекДата0:=Date();
     аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DATA_TYPE"],спПеременные["LIBFPTR_DT_DATE_TIME"]);
     аДрайвер.libfptr_query_data(aHandle);    
@@ -758,8 +759,8 @@ Function PrintReceipt(спНастройки)
     //41 - л     (112)
     //42 - м3    (113)
     //...
+    спЕдиница:=List.Create();
     If ФФД12 Then
-      спЕдиница:=List.Create();
       спЕдиница.Add(спПеременные["LIBFPTR_IU_PIECE"]);
       спЕдиница["166"]:=спПеременные["LIBFPTR_IU_KILOGRAM"];
       спЕдиница["006"]:=спПеременные["LIBFPTR_IU_METER"];
@@ -856,7 +857,6 @@ Function PrintReceipt(спНастройки)
       ФлОтменитьЧек:=1;
       ТабИСМП:=спНастройки["ТабИСМП"];
     
-      ФлГИСМТ:=0;
       //Проверка кодов марок ГИС МТ
       спНастройки["ТабОшибкиПроверкиМарок"]:=0;
       If (аТип0<>10)And(аТип0<>13)And(ФФД12) Then
@@ -866,8 +866,18 @@ Function PrintReceipt(спНастройки)
         
         ТабИСМП.Select();
         While ТабИСМП.Next() Do
-          ФлГИСМТ:=1;
-          ТабИСМП.Поле1:=?(ФлВозврат,спПеременные["LIBFPTR_MES_PIECE_RETURN"],спПеременные["LIBFPTR_MES_PIECE_SOLD"]);
+          If ТабИСМП.Номенклатура.флВесовойТовар Then
+            ТабИСМП.Поле1:=?(ФлВозврат,спПеременные["LIBFPTR_MES_DRY_RETURN"],спПеременные["LIBFPTR_MES_DRY_FOR_SALE"]);
+            аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],ТабИСМП.Количество);
+            аЕдиница:=спЕдиница[ТабИСМП.Номенклатура.базЕдиница.ВнешнийКод];
+            If IsEmpty(аЕдиница) Then
+              аЕдиница:=спПеременные["LIBFPTR_IU_PIECE"];
+            EndIf;
+            аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MEASUREMENT_UNIT"],аЕдиница);
+          Else
+            //аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],1);//Атол категорически отказывается это принимать
+            ТабИСМП.Поле1:=?(ФлВозврат,спПеременные["LIBFPTR_MES_PIECE_RETURN"],спПеременные["LIBFPTR_MES_PIECE_SOLD"]);
+          EndIf;
           ТабИСМП.Поле2:=0;
           аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_CODE_TYPE"],спПеременные["LIBFPTR_MCT12_AUTO"]);
           аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_CODE"],ТабИСМП.Марка);
@@ -925,11 +935,12 @@ Function PrintReceipt(спНастройки)
       EndIf;
           
       //Позиции
+      См0:=0;
       ФлНДС:=спНастройки["ЮрЛицо"].УчитыватьНДС<>0;
       If (аТип0=10)Or(аТип0=13) Then
-        См:=спНастройки["Сумма"];
+        См0:=спНастройки["Сумма"];
         аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_NAME"],?(аТип0=10,"Аванс за товары","Закрытие кредита за товары"));
-        аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],Round(См,2));
+        аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],Round(См0,2));
         аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],1);
         If ФФД11 Then
           аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MEASUREMENT_UNIT"],спПеременные["LIBFPTR_IU_PIECE"]);
@@ -939,7 +950,7 @@ Function PrintReceipt(спНастройки)
         Else
           аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_TAX_TYPE"],спПеременные["LIBFPTR_TAX_NO"]);
         EndIf;
-        //аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],Round(См,2));
+        //аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],Round(См0,2));
         аДрайвер.libfptr_set_param_int(aHandle,1214,?(аТип0=13,7,4));
         аДрайвер.libfptr_set_param_int(aHandle,1212,10);
         If аДрайвер.libfptr_registration(aHandle)<>0 Then
@@ -951,13 +962,18 @@ Function PrintReceipt(спНастройки)
         While aTab.Next() Do
           If (not aTab.Номенклатура.флПодлежитПрослеживаемости)or(aTab.Номенклатура.ГИСМТТоварнаяГруппа.Selected()=0)or(ФФД10) Then
             аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_NAME"],aTab.Номенклатура.Name);
+            См0:=См0+Round(aTab.Сумма/aTab.Количество,2)*aTab.Количество;
             аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],Round(aTab.Сумма/aTab.Количество,2));
             аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],aTab.Количество);
             аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_TAX_TYPE"],?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),спПеременные["LIBFPTR_TAX_NO"]));
             //аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],aTab.Сумма);
             аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_PIECE"],?(aTab.Номенклатура.флВесовойТовар,0,1));
             If ФФД11 Then
-              аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MEASUREMENT_UNIT"],спПеременные["LIBFPTR_IU_PIECE"]);
+              аЕдиница:=спЕдиница[aTab.Номенклатура.базЕдиница.ВнешнийКод];
+              If IsEmpty(аЕдиница) Then
+                аЕдиница:=спПеременные["LIBFPTR_IU_PIECE"];
+              EndIf;
+              аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MEASUREMENT_UNIT"],аЕдиница);
             EndIf;
             If (aTab.Номенклатура.флПодлежитПрослеживаемости)And(not ФФД10) Then
               аДрайвер.libfptr_set_param_int(aHandle,1212,2);               //См. выше (1212) предмет расчета: акцизный товар
@@ -975,12 +991,22 @@ Function PrintReceipt(спНастройки)
             While зК>0 Do
               аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_NAME"],aTab.Номенклатура.Name);
               аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],зЦ);
-              аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],1);
+              If aTab.Номенклатура.флВесовойТовар Then
+                См0:=См0+Round(зЦ*зК,2);
+                аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],зК);
+              Else
+                См0:=См0+зЦ;
+                аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],1);
+              EndIf;
               аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_TAX_TYPE"],?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),спПеременные["LIBFPTR_TAX_NO"]));
               //аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],зЦ);
-              аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_PIECE"],1);
+              аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_PIECE"],?(aTab.Номенклатура.флВесовойТовар,0,1));
               If ФФД11 Then
-                аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MEASUREMENT_UNIT"],спПеременные["LIBFPTR_IU_PIECE"]);
+                аЕдиница:=спЕдиница[aTab.Номенклатура.базЕдиница.ВнешнийКод];
+                If IsEmpty(аЕдиница) Then
+                  аЕдиница:=спПеременные["LIBFPTR_IU_PIECE"];
+                EndIf;
+                аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MEASUREMENT_UNIT"],аЕдиница);
               EndIf;
               //аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY"],"1/2");
               аДрайвер.libfptr_set_param_int(aHandle,1214,?(аТип0=12,5,4));//4 -- полная оплата
@@ -1002,13 +1028,18 @@ Function PrintReceipt(спНастройки)
                 аДрайвер.libfptr_set_param_bytearray(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_CODE"],Buf,Length(ТабИСМП.Марка));
               Else
                 аДрайвер.libfptr_set_param_int(aHandle,1212,2);//"Подакцизный товар"
-                Buf:=Buffer.Create(Length(ТабИСМП.Марка)+2);
+                Стр:=Left(ТабИСМП.Марка,30);//Макс. размер 1162 до 30 байт
+                Buf:=Buffer.Create(Length(Стр)+2);
                 Buf.SetByte(0,$44);//GS1 Data Matrix (DM)
                 Buf.SetByte(0,$4D);
-                Buf.SetString(2,ТабИСМП.Марка);
-                аДрайвер.libfptr_set_param_bytearray(aHandle,1162,Buf,Length(ТабИСМП.Марка));
+                Buf.SetString(2,Стр);
+                аДрайвер.libfptr_set_param_bytearray(aHandle,1162,Buf,Length(Стр));
               EndIf;
-              зК:=зК-1;
+              If aTab.Номенклатура.флВесовойТовар Then
+                зК:=0;
+              Else
+                зК:=зК-1;
+              EndIf;
               ТабИСМП.Remove(ТабИСМП.CurLine);
               If аДрайвер.libfptr_registration(aHandle)<>0 Then
                 Exit "Невозможно зарегистрировать товар. Ошибка "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
@@ -1021,7 +1052,7 @@ Function PrintReceipt(спНастройки)
       См:=Round(спНастройки["Сумма"],2);
       аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_SUM"],См);
       If аДрайвер.libfptr_receipt_total(aHandle)<0 Then
-        Exit "Невозможно зарегистрировать сумму итого. Ошибка "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
+        Exit "Невозможно зарегистрировать сумму итого (сумма строк: "+глФРМ(См0)+", сумма итого: "+глФРМ(См)+"). Ошибка "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
       EndIf;
       
       //Оплата
