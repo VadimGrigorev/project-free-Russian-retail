@@ -42,7 +42,7 @@ EndFunction
 Function OnOpen()
   aEl:=Form.Object;
   If aEl.Status()<0 Then
-    aEl.УчитыватьВНалоговомУчете:=1;
+    aEl.УчитыватьВНалоговомУчете:=0;
     If aEl.КодОперации.Selected()=0 Then
       If not глВыбратьВидОперацииВДокументе(aEl,0) Then
         Result:=0;
@@ -116,7 +116,7 @@ Function OnCreateFromObject()
       EndTry;  
     EndIf;
   EndIf;
-  aEl.УчитыватьВНалоговомУчете:=1;
+  aEl.УчитыватьВНалоговомУчете:=0;
 EndFunction
 
 

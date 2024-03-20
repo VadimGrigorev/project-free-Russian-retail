@@ -124,7 +124,7 @@ Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПара
     If aTab.Номенклатура.Selected()+aTab.Партия.Selected()<2 Then
       Message("В строке "+aTab.CurLine+" не выбрана номенклатура или партия!","!");
       Фл:=0;
-    ElseIf _Or(aTab.Номенклатура.флАлкогольнаяПродукция=0,aTab.Партия.флМарочныйУчет=1) Then
+    ElseIf aTab.Номенклатура.флАлкогольнаяПродукция=0 Then
       Message("В строке "+aTab.CurLine+" выбрана неверная номенклатура или партия!","!");
       Фл:=0;
     EndIf;

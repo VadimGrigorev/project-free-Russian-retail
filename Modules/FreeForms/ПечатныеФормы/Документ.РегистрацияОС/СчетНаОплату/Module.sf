@@ -4,6 +4,25 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 Var Д Export;
 Var Т Export;
+Var СуммаТовар Export;
+
+Function OnFinishCopyObject(Name,Index,Т)
+  If Name="пШК" Then
+    If Д.ЮрЛицо.ОсновнойСчет.Selected()=0 Then
+      Exit;
+    EndIf;
+    Try
+      КПП:=Д.ЮрЛицо.ИНН;
+      ИНН:=TearStr(КПП,"/");
+      Сч:=Д.ЮрЛицо.ОсновнойСчет;
+      Стр:="ST00012|Name="+Д.ЮрЛицо+"|PersonalAcc="+Сч.НомерСчета+"|BankName="+Сч.Банк.Name+"|BIC="+Сч.Банк.БИК+
+        "|CorrespAcc="+Сч.Банк.КоррСчет+"|PayeeINN="+ИНН+"|PayeeKPP="+КПП+"|Purpose=Оплата товара по счету "+Д.DocNum+" от "+Д.DocDate+"|TechCode=15|Sum="+Round(СуммаТовар*100);
+      аКартинка:=Generate2DBarcode("QR",-1,-1,Unicode(Стр),"BR:2,SCALE:5,BRT:0,ECIMODE:3,KANJI:0");
+      Т.Objects(Index).Picture.Assign(аКартинка);
+    Except
+    EndTry;
+  EndIf;
+EndFunction
 
 Function Печать(Д)
   Т:=Table.Create();
@@ -40,11 +59,10 @@ Function Печать(Д)
   
   пЗаголовок:="Счет на оплату № "+Д.DocNum+" от "+Д.DocDate;
   пКомментарий:=?(Trim(Д.Комментарий)<>"","Комментарий: "+Trim(Д.Комментарий),"");
-  
+  aTab:=Д.LineParts("Номенклатура").Copy();  
+  СуммаТовар:=Round(aTab.Sum("Сумма"),2);
   Т.CopyByX("v1",1);
   
-  aTab:=Tab.Create();
-  Д.LineParts("Номенклатура").CopyTo(aTab);
   СуммаТовар:=0;СуммаНДС:=0;
   пН:=0;Масса:=0;
   aTab.Select();

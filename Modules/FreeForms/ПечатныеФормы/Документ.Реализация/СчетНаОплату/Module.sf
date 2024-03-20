@@ -5,6 +5,7 @@
 Var Д Export;
 Var Т Export;
 Var флБезЦен Export;
+Var СуммаТовар Export;
 
 Function ДобавитьДокумент(аДок,ТВ);
   If аДок.DBName()="ВозвратОтПокупателя" Then
@@ -23,6 +24,23 @@ Function ДобавитьДокумент(аДок,ТВ);
   EndIf;
 EndFunction
 
+Function OnFinishCopyObject(Name,Index,Т)
+  If Name="пШК" Then
+    If Д.ЮрЛицо.ОсновнойСчет.Selected()=0 Then
+      Exit;
+    EndIf;
+    Try
+      КПП:=Д.ЮрЛицо.ИНН;
+      ИНН:=TearStr(КПП,"/");
+      Сч:=Д.ЮрЛицо.ОсновнойСчет;
+      Стр:="ST00012|Name="+Д.ЮрЛицо+"|PersonalAcc="+Сч.НомерСчета+"|BankName="+Сч.Банк.Name+"|BIC="+Сч.Банк.БИК+
+        "|CorrespAcc="+Сч.Банк.КоррСчет+"|PayeeINN="+ИНН+"|PayeeKPP="+КПП+"|Purpose=Оплата товара по счету "+Д.DocNum+" от "+Д.DocDate+"|TechCode=15|Sum="+Round(СуммаТовар*100);
+      аКартинка:=Generate2DBarcode("QR",-1,-1,Unicode(Стр),"BR:2,SCALE:5,BRT:0,ECIMODE:3,KANJI:0");
+      Т.Objects(Index).Picture.Assign(аКартинка);
+    Except
+    EndTry;
+  EndIf;
+EndFunction
 
 
 Function Печать(Д)
@@ -62,9 +80,10 @@ Function Печать(Д)
   пКомментарий:=?(Trim(Д.Комментарий)<>"","Комментарий: "+Trim(Д.Комментарий),"");
   
   пЗаголовок:="Счет на оплату № "+Д.DocNum+" от "+Д.DocDate;
+  ТД:=Д.LineParts("Номенклатура").Copy();
+  СуммаТовар:=Round(ТД.Sum("Сумма"),2);
   Т.CopyByX("v1",1);
         
-  ТД:=Д.LineParts("Номенклатура").Copy();
   СуммаТовар:=0;
   СуммаНДС:=0;
   Масса:=0;

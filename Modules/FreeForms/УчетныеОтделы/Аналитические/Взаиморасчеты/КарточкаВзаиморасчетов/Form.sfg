@@ -27,6 +27,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=38
   LoadModes=0
+  CompileModule=
   Object GROUPBOX
     LayerName=4D00610069006E00
     Left=425
@@ -376,20 +377,6 @@ Object FORM
     Items
       @@>@eU@&@&@*R@&@&#g$J@O_0@Q_0@c_0@V_0@f_0@[_07)_(@H@}#@J21"@?7N_1d@]a@R$@R>@R*@
       @R"@R:@Rb@W@-(_?_O_7#@j@X_8@Y@&@7_/@0@c&@R[@P_R"!t_[1_)
-    End
-    OnAfterChange
-      @@>@e@T@[_6@4_>t1@M@-SMFX_\#z@'u@R@$@eXKz;_G@Pw#u@RgK8@zf@H@Mv@~5@P_!3@V_:Y_O@a\r
-      @L_;_<J@-_l_$_f@h_6_4_!@2_6h@w@*B_K_Pj@,_^o@M_^@#@oB@-@.@H@uo@o@D_YB@N_%@l@X7\j_W
-      @@.B$q@~&@c@1@S?_N_&_4@/_N<B]B_:We_[P@*_3_+(_%c_*_e@zI\_]_#*l@I_[?v_U@#^EZ_/_h+S@
-      @,Sl_X@]x@B@C_>_NE>_]V_jgS?_R_I_-@=_]_6_1_4T_XD@dW@hX@S@M@U_Z_%?wg@V@O_/@n_P_b_F
-      @@9@[@.r@g@N_^dv@#_.@c_U4@D*@4@.{3:_4s@A_ig_!z_D_"_P$>_*@[\_)Q@]@)_7V#@P@]^@B@Y@
-      @w@ScC_^3_g_VU^@\E[@-@IX_*@=p@9_1_I@{'@eK_3x_)l@Z_>@)@xX_O=@w_L@)@Xs@r_A@k@k;z@+
-      @@*@yP@'_8_SE-_9_Iz_eQ_;@F_:@D$[@Gm_Q@5@p@u_m._TW?@1_)@LK_Kc@('C_hjO_>>_a@a_5_/@
-      @3@k@jU@#@w_*\g@8@%_]@D_W_>@(@f@<@$@G@g\@Ri_'_Ve@t@H_S_b@7'@h@R;@$_R@y_5_Z@y@{P_6
-      @@{@c}@/At_c@L=]@x@1_S@.@"@v0@V@O@|@P_"@C_ak_)_*>X[@pU@H_Dr@^@5_:_\$@T_(@)_$_*@#_
-      @G@F_G_^=_U_:a~_b@v@T_P_H_Y7_gXI|@t_e_#_'_c@zU@y_k@R^@s_Fe_6@h@?_m_Gb@ra@C@Sy_R_>
-      @\@]_:_3@B@A@8f_I@)_l@7+@?_R_TI_2+@Wt@2_&_K_l_0_Z@h_I_m_)@n_i_K@L_[_]v_X_*@=@i@PW
-      @@;@Zc_a_"@rd
     End
   End
   Object LABEL
