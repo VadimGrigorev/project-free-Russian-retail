@@ -247,7 +247,7 @@ Function DriverInit(спНастройки)
     ";libfptr_exec_driver_script;libfptr_upload_driver_script;libfptr_exec_driver_script_by_id;libfptr_write_universal_counters_settings;libfptr_read_universal_counters_settings;libfptr_query_universal_counters_state"+
     ";libfptr_reset_universal_counters;libfptr_cache_universal_counters;libfptr_read_universal_counter_sum;libfptr_read_universal_counter_quantity;libfptr_clear_universal_counters_cache;libfptr_disable_ofd_channel"+
     ";libfptr_enable_ofd_channel;libfptr_validate_json;libfptr_reflection_call;libfptr_get_remote_server_info;-libfptr_begin_marking_code_validation;-libfptr_cancel_marking_code_validation;-libfptr_get_marking_code_validation_status"+
-    ";-libfptr_accept_marking_code;-libfptr_check_marking_code_validations_ready;-libfptr_clear_marking_code_validation_result";
+    ";-libfptr_accept_marking_code;-libfptr_check_marking_code_validations_ready;-libfptr_clear_marking_code_validation_result;-libfptr_write_sales_notice";
     
     While СтрФункции<>"" Do
       СтрФункция:=TearStr(СтрФункции,";");
@@ -694,7 +694,7 @@ EndFunction
 //ЕГАИССылка -- URL типа "https://check.egais.ru?id=cf1b1096-3cbc-11e7-b3c1-9b018b2ba3f7", если не пустая, будет выведено дополнение к чеку.
 //ЕГАИСПодпись -- строка типа "79DED4A448069B0BFF602FF646F4E9B24D253D311679EA15307AEF38AEEE7933C9175DE5814C3DCF89BF63853CB75003D9FD979F3BEBBC93AFADF1D9A429623F"
 //ДополнительнаяИнформация -- текст для печати после всех чеков
-//ТабИСМП -- таблица "Номенклатура,Марка,ФлНеПрошлаПроверку,Причина,Поле1,Поле2" для проверки и прикрепления к чеку
+//ТабИСМП -- таблица "Номенклатура,Марка,ФлНеПрошлаПроверку,Причина,Поле1,Поле2,Тег1262,Тег1263,Тег1264,Тег1265" для проверки и прикрепления к чеку
 //ТабОшибкиПроверкиМарок -- исходящая таблица со столбцами "Марка,Причина"
 //Таблица -- Номенклатура,Количество,Сумма,СтавкаНДС
 //Сумма -- сумма документа
@@ -989,6 +989,22 @@ Function PrintReceipt(спНастройки)
             зЦ:=Round(aTab.Сумма/aTab.Количество,2);
             зК:=aTab.Количество;
             While зК>0 Do
+              аМассив:=0;
+              аРазмер:=0;
+              If (ФФД12)And(not IsEmpty(ТабИСМП.Тег1265)) Then
+                аДрайвер.libfptr_set_param_str(aHandle,1262,ТабИСМП.Тег1262);
+                аДрайвер.libfptr_set_param_str(aHandle,1263,ТабИСМП.Тег1263);
+                аДрайвер.libfptr_set_param_str(aHandle,1264,ТабИСМП.Тег1264);
+                аДрайвер.libfptr_set_param_str(aHandle,1265,ТабИСМП.Тег1265);
+                аДрайвер.libfptr_util_form_tlv(aHandle);
+                аМассив:=Buffer.Create(128);
+                аРазмер:=аДрайвер.libfptr_get_param_bytearray(aHandle,спПеременные["LIBFPTR_PARAM_TAG_VALUE"],аМассив,аМассив.Size());
+                If аРазмер>аМассив.Size() Then
+                  аМассив:=Buffer.Create(аРазмер);
+                  аРазмер:=аДрайвер.libfptr_get_param_bytearray(aHandle,спПеременные["LIBFPTR_PARAM_TAG_VALUE"],аМассив,аМассив.Size());
+                EndIf;
+              EndIf;
+            
               аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_NAME"],aTab.Номенклатура.Name);
               аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],зЦ);
               If aTab.Номенклатура.флВесовойТовар Then
@@ -1014,12 +1030,16 @@ Function PrintReceipt(спНастройки)
                 Exit "Не все марки заданы для позиции "+aTab.Номенклатура+", внутренняя ошибка!";
               EndIf;
               If ФФД12 Then
-                //аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_CODE_TYPE"],спПеременные["LIBFPTR_MCT12_AUTO"]);
                 аДрайвер.libfptr_set_param_int(aHandle,1212,33); //Марочный товар
+                //аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_CODE_TYPE"],спПеременные["LIBFPTR_MCT12_AUTO"]);
                 аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_CODE"],ТабИСМП.Марка);
                 аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_CODE_STATUS"],ТабИСМП.Поле1);
                 аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_RESULT"],ТабИСМП.Поле2);
                 аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_PROCESSING_MODE"],0);
+                
+                If аРазмер>0 Then
+                  аДрайвер.libfptr_set_param_bytearray(aHandle,1260,аМассив,аРазмер);
+                EndIf;
               ElseIf ФФД11 Then
                 аДрайвер.libfptr_set_param_int(aHandle,1212,2);//"Подакцизный товар"
                 аДрайвер.libfptr_set_param_int(аДрайвер,спПеременные["LIBFPTR_PARAM_MARKING_CODE_TYPE"],спПеременные["LIBFPTR_MCT_OTHER"]);

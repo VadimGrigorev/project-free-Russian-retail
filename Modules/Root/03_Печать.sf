@@ -1960,6 +1960,7 @@ Function глФормулаРасшифровкиОтчета(ТабФорма,�
   а.SetByName("Таблица",Т);
   а.SetByName("Выполнить",1);
   LoadModule(0,"Modules\FreeForms\"+тФайл,а,0,"Module","Form");
+  Exit 1;
 EndFunction
 
 

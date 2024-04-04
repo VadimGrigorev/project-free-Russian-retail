@@ -7,6 +7,7 @@ Var ТБаланс Export;
 Var ТабТек Export;
 Var флДваУровня Export;
 Var флДопВычисления Export;
+Var флПростойРедактор Export;
 Var ТабТек Export;
 Var флИзменения Export;
 

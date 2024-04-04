@@ -365,7 +365,7 @@ EndFunction
 //ЕГАИССылка -- URL типа "https://check.egais.ru?id=cf1b1096-3cbc-11e7-b3c1-9b018b2ba3f7", если не пустая, будет выведено дополнение к чеку.
 //ЕГАИСПодпись -- строка типа "79DED4A448069B0BFF602FF646F4E9B24D253D311679EA15307AEF38AEEE7933C9175DE5814C3DCF89BF63853CB75003D9FD979F3BEBBC93AFADF1D9A429623F"
 //ДополнительнаяИнформация -- текст для печати после всех чеков
-//ТабИСМП -- таблица "Номенклатура,Марка,ФлНеПрошлаПроверку,Причина,Поле1,Поле2" для проверки и прикрепления к чеку
+//ТабИСМП -- таблица "Номенклатура,Марка,ФлНеПрошлаПроверку,Причина,Поле1,Поле2,Тег1262,Тег1263,Тег1264,Тег1265" для проверки и прикрепления к чеку
 //ТабОшибкиПроверкиМарок -- исходящая таблица со столбцами "Марка,Причина"
 //Таблица -- Номенклатура,Количество,Сумма,СтавкаНДС
 //Сумма -- сумма документа
@@ -654,6 +654,16 @@ Function PrintReceipt(спНастройки)
             зЦ:=Round(aTab.Сумма/aTab.Количество,2);
             зК:=aTab.Количество;
             While зК>0 Do
+              аМассив:=0;
+              If (ФФД12)And(not IsEmpty(ТабИСМП.Тег1265)) Then
+                аДрайвер.setParam(1262,ТабИСМП.Тег1262);
+                аДрайвер.setParam(1263,ТабИСМП.Тег1263);
+                аДрайвер.setParam(1264,ТабИСМП.Тег1264);
+                аДрайвер.setParam(1265,ТабИСМП.Тег1265);
+                аДрайвер.utilFormTlv;
+                аМассив:=аДрайвер.getParamByteArray(аДрайвер.LIBFPTR_PARAM_TAG_VALUE);
+              EndIf;
+            
               аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_NAME,aTab.Номенклатура.Name);
               аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PRICE,зЦ);
               If aTab.Номенклатура.флВесовойТовар Then
@@ -685,6 +695,10 @@ Function PrintReceipt(спНастройки)
                 аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_STATUS,ТабИСМП.Поле1);
                 аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_RESULT,ТабИСМП.Поле2);
                 аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_PROCESSING_MODE,0);
+                
+                If not IsEmpty(аМассив) Then
+                  аДрайвер.setParam(1260,OLEVariant(аМассив,_OLE_VT_ARRAY+_OLE_VT_UI1));
+                EndIf;                
               ElseIf ФФД11 Then
                 аДрайвер.setParam(1212,2);//"Подакцизный товар"
                 аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_TYPE,аДрайвер.LIBFPTR_MCT_OTHER);
