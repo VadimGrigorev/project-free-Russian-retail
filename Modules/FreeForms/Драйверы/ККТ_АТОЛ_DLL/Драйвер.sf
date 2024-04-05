@@ -989,6 +989,10 @@ Function PrintReceipt(спНастройки)
             зЦ:=Round(aTab.Сумма/aTab.Количество,2);
             зК:=aTab.Количество;
             While зК>0 Do
+              If not ТабИСМП.FindAndGoto(aTab.Номенклатура,,"Номенклатура",1) Then
+                Exit "Не все марки заданы для позиции "+aTab.Номенклатура+", внутренняя ошибка!";
+              EndIf;
+            
               аМассив:=0;
               аРазмер:=0;
               If (ФФД12)And(not IsEmpty(ТабИСМП.Тег1265)) Then
@@ -1026,9 +1030,6 @@ Function PrintReceipt(спНастройки)
               EndIf;
               //аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY"],"1/2");
               аДрайвер.libfptr_set_param_int(aHandle,1214,?(аТип0=12,5,4));//4 -- полная оплата
-              If not ТабИСМП.FindAndGoto(aTab.Номенклатура,,"Номенклатура",1) Then
-                Exit "Не все марки заданы для позиции "+aTab.Номенклатура+", внутренняя ошибка!";
-              EndIf;
               If ФФД12 Then
                 аДрайвер.libfptr_set_param_int(aHandle,1212,33); //Марочный товар
                 //аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MARKING_CODE_TYPE"],спПеременные["LIBFPTR_MCT12_AUTO"]);

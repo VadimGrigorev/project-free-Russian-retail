@@ -654,6 +654,10 @@ Function PrintReceipt(спНастройки)
             зЦ:=Round(aTab.Сумма/aTab.Количество,2);
             зК:=aTab.Количество;
             While зК>0 Do
+              If not ТабИСМП.FindAndGoto(aTab.Номенклатура,,"Номенклатура",1) Then
+                Exit "Не все марки заданы для позиции "+aTab.Номенклатура+", внутренняя ошибка!";
+              EndIf;
+            
               аМассив:=0;
               If (ФФД12)And(not IsEmpty(ТабИСМП.Тег1265)) Then
                 аДрайвер.setParam(1262,ТабИСМП.Тег1262);
@@ -685,9 +689,6 @@ Function PrintReceipt(спНастройки)
               EndIf;
               //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY,"1/2");
               аДрайвер.setParam(1214,?(аТип0=12,5,4));//4 -- полная оплата
-              If not ТабИСМП.FindAndGoto(aTab.Номенклатура,,"Номенклатура",1) Then
-                Exit "Не все марки заданы для позиции "+aTab.Номенклатура+", внутренняя ошибка!";
-              EndIf;
               If ФФД12 Then
                 аДрайвер.setParam(1212,33);//Марочный товар
                 //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MARKING_CODE_TYPE,аДрайвер.LIBFPTR_MCT12_AUTO);            
