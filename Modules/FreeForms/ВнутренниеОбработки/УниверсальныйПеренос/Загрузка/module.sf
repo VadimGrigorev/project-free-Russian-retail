@@ -467,6 +467,20 @@ Function СоздатьНовыйЭлементИлиОбновить(Стр,Э�
     Exit аСпр;
   EndIf;
   
+  //Очищаем элемент
+  If not ФлНовый Then
+    For i3:=1 to Struct.Ref(Вид).Props.Count() Do
+      Ид:=Struct.Ref(Вид).Props(i3).Name;
+      If (Ид<>"Code")And(Ид<>"Name") Then
+        аСпр.SetValue(Ид,GetNothing());
+      EndIf;  
+    EndDo;
+    For i2:=1 to Struct.Ref(Вид).LineParts.Count() Do
+      iLP:=Struct.Ref(Вид).LineParts(i2);
+      аСпр.LineParts(iLP.Name).ClearLines();
+    EndDo;
+  EndIf;
+  
   ФлПолностью:=1;
   аАтр:="";
   If not isEmpty(Struct.Ref(Вид).Props("Name")) Then

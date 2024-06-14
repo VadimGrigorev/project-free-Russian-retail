@@ -25,6 +25,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=42
   LoadModes=0
+  CompileModule=
   Object GROUPBOX
     LayerName=4D00610069006E00
     Left=5
@@ -159,7 +160,7 @@ Object FORM
     Font=440065006600610075006C0074002C0020003800
     Color=FF000005
     AnchorType=9
-    Flags=72
+    Flags=328
     Hint=
     Name=3E04140430043D043D044B043504
     ControlSerial=11

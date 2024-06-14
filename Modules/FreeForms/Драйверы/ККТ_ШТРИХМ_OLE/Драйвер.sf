@@ -8,6 +8,7 @@
 //  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer, SeparateProcessServer
 
 //Документация: http://doc.shtrih-m.ru/, http://doc.shtrih-m.ru/Files/Programmer.pdf
+//              https://doc.shtrih-m.ru/Files/manual.pdf (таблицы)
 
 Function DriverInit(спНастройки)
   Try
@@ -84,6 +85,7 @@ Function DriverConnect(спНастройки)
     спНастройки["_Password"]:=Number(Ини.GetData("Password","30"));
     спНастройки["_FFDVersion"]:=Number(Ини.GetData("FFDVersion","105"));
     аДрайвер.Password:=спНастройки["_Password"];
+    спНастройки["NoPaperWhenUsingEmail"]:=Number(Ини.GetData("NoPaperWhenUsingEmail","0"));
     
     //Доп. параметры
     аДрайвер.DrawerNumber:=Number(Ини.GetData("DrawerNumber","0"));
@@ -732,13 +734,33 @@ Function PrintReceipt(спНастройки)
       EndDo;
     EndIf;
     
+    ФлПочта:=0;
     If Trim(спНастройки["ПочтаИлиТелефонКлиента"])<>"" Then
       //"client@mail.ru" или "+79161234567"
       аДрайвер.CustomerEmail:=Trim(спНастройки["ПочтаИлиТелефонКлиента"]);
       If аДрайвер.FNSendCustomerEmail()<>0 Then
         Raise "FNSendCustomerEmail: "+аДрайвер.ResultCodeDescription;
       EndIf;
+      ФлПочта:=спНастройки["NoPaperWhenUsingEmail"];
     EndIf;
+    
+    //Не печатать чек?
+    аДрайвер.TableNumber:=17;
+    аДрайвер.RowNumber:=1;
+    аДрайвер.FieldNumber:=7;
+    If аДрайвер.GetFieldStruct()<>0 Then
+      Raise "(4) "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    If аДрайвер.ReadTable()<>0 Then
+      Raise "(5) "+аДрайвер.ResultCodeDescription;
+    EndIf;
+    If аДрайвер.ValueOfFieldInteger<>ФлПочта Then
+      аДрайвер.ValueOfFieldInteger:=ФлПочта;
+      If аДрайвер.WriteTable()<>0 Then
+        Raise "(6) "+аДрайвер.ResultCodeDescription;
+      EndIf;
+    EndIf;
+    
     
     ФлРозничныйПокупатель:=Number(спНастройки["ФлРозничныйПокупатель"]);
     //Заполняем: 1227, 1228
@@ -801,7 +823,9 @@ Function PrintReceipt(спНастройки)
       aTab:=спНастройки["Таблица"];
       aTab.Select();
       While aTab.Next() Do
-        If (not aTab.Номенклатура.флПодлежитПрослеживаемости)or(aTab.Номенклатура.ГИСМТТоварнаяГруппа.Selected()=0)or(ФФД10) Then
+//Удалить ТабИСМП.FindAndGoto 01.01.2025
+        If _Or(not aTab.Номенклатура.флПодлежитПрослеживаемости,aTab.Номенклатура.ГИСМТТоварнаяГруппа.Selected()=0,ФФД10,ТабИСМП.FindAndGoto(aTab.Номенклатура,,"Номенклатура",1)=0) Then
+//Удалить ТабИСМП.FindAndGoto 01.01.2025
           аДрайвер.StringForPrinting:=aTab.Номенклатура.Name;
           аДрайвер.Quantity:=aTab.Количество;
           аДрайвер.Price:=Round(aTab.Сумма/aTab.Количество,2);

@@ -142,13 +142,17 @@ Function OnBeforeDocumentSaveOrPublish(флОбработка,byRef флПара
     If (aTab.Номенклатура.флПартионныйУчет=1)And(aTab.Партия.Selected()=0) Then
       If aTab.Номенклатура.флАлкогольнаяПродукция Then
         Message("Для строки документа "+aTab.CurLine+" не указана партия для товара с партионным учетом!","!");
-        Фл:=1;
+        If not глРаботаетРобот Then
+          Фл:=1;
+        EndIf;
       Else
         аПартия:=Ref.тмцПартииТМЦ;
         аПартия.UseOrder("Code-");
         If not аПартия.Find("~(@Status=0)And(@Parent=aTab.Номенклатура)") Then
           Message("Для строки документа "+aTab.CurLine+" не задано ни одной партии для товара с партионным учетом!","!");
-          Фл:=1;
+          If not глРаботаетРобот Then
+            Фл:=1;
+          EndIf;
         Else
           aTab.Партия:=аПартия;
         EndIf;

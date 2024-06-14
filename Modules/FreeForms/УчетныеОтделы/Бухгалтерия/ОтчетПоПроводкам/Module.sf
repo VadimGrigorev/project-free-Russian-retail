@@ -2,6 +2,20 @@
 //Переменные, объявленные с постфиксом export, будут доступны в любой форме или в модулях и формах потомках.
 //Модуль может содержать общие функции, используемые формами, или специальные предопределенные функции, вызываемые системой при наступлении разнообразных событий.
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
+Var СтарыеСчета Export;
+
+Function ОдинаковыеВидыСубконто(Сп,Тип=1)
+  If Сп.Size()=0 Then
+    Exit 0;
+  EndIf;
+  Сч:=Сп[1];
+  For i:=2 To Сп.Size() Do
+    If Сч.GetValue("ВидСубконто"+Тип)<>Сп[i].GetValue("ВидСубконто"+Тип) Then
+      Exit 0;
+    EndIf;
+  EndDo;
+  Exit 1;
+EndFunction
 
 Function ПолучитьТип(аНомер)
 
@@ -14,15 +28,9 @@ Function ПолучитьТип(аНомер)
   EndFunction
   
   оСч:=Form.оСч.Value;
-  If (оСч.Get(1).Size()=1)And(оСч.Get(2).Size()=0) Then
+  If (оСч.Get(1).Size()>0)And(ОдинаковыеВидыСубконто(оСч.Get(1))) Then
     аСчет:=оСч.Get(1).Get(1);
-    If аНомер=1 Then
-      Exit ПолучитьТипРекв(аСчет.ВидСубконто1);
-    ElseIf аНомер=2 Then
-      Exit ПолучитьТипРекв(аСчет.ВидСубконто2);
-    ElseIf аНомер=3 Then
-      Exit ПолучитьТипРекв(аСчет.ВидСубконто3);
-    EndIf;
+    Exit ПолучитьТипРекв(аСчет.GetValue("ВидСубконто"+аНомер));
   EndIf;
 
   Exit "";
@@ -36,7 +44,7 @@ Function ОбновитьТексты()
   оСуб3:=Form.оСуб3.Value;
   
   Фл:=0;
-  If (оСч.Get(1).Size()=1)And(оСч.Get(2).Size()=0) Then
+  If оСч.Get(1).Size()>0 Then
     Фл:=1;
   Else
     оСуб1.Get(1).Clear();
@@ -62,41 +70,56 @@ Function ОбновитьТексты()
   If Фл Then
     Сч:=оСч.Get(1).Get(1);
     
-    If Сч.ВидСубконто1.Selected()=0 Then
+    If _Or(Сч.ВидСубконто1.Selected()=0,not ОдинаковыеВидыСубконто(оСч.Get(1))) Then
       Form.тС1.isDisabled:=1;
       Form.оСуб1.isDisabled:=1;
       Form.тСуб1.Caption:="";
       оСуб1.Get(1).Clear();
       оСуб1.Get(2).Clear();
     Else
+      If _Or(isEmpty(СтарыеСчета),СтарыеСчета.ВидСубконто1<>Сч.ВидСубконто1) Then
+        оСуб1.Get(1).Clear();
+        оСуб1.Get(2).Clear();
+      EndIf;
       Form.тСуб1.Caption:=Сч.ВидСубконто1.Name;
       Form.тС1.isDisabled:=0;
       Form.оСуб1.isDisabled:=0;
     EndIf;
     
-    If Сч.ВидСубконто2.Selected()=0 Then
+    If _Or(Сч.ВидСубконто2.Selected()=0,not ОдинаковыеВидыСубконто(оСч.Get(1),2)) Then
       Form.тС2.isDisabled:=1;
       Form.оСуб2.isDisabled:=1;
       Form.тСуб2.Caption:="";
       оСуб2.Get(1).Clear();
       оСуб2.Get(2).Clear();
     Else
+      If _Or(isEmpty(СтарыеСчета),СтарыеСчета.ВидСубконто2<>Сч.ВидСубконто2) Then
+        оСуб2.Get(1).Clear();
+        оСуб2.Get(2).Clear();
+      EndIf;
       Form.тСуб2.Caption:=Сч.ВидСубконто2.Name;
       Form.тС2.isDisabled:=0;
       Form.оСуб2.isDisabled:=0;
     EndIf;
     
-    If Сч.ВидСубконто3.Selected()=0 Then
+    If _Or(Сч.ВидСубконто3.Selected()=0,not ОдинаковыеВидыСубконто(оСч.Get(1),3)) Then
       Form.тС3.isDisabled:=1;
       Form.оСуб3.isDisabled:=1;
       Form.тСуб3.Caption:="";
       оСуб3.Get(1).Clear();
       оСуб3.Get(2).Clear();
     Else
+      If _Or(isEmpty(СтарыеСчета),СтарыеСчета.ВидСубконто3<>Сч.ВидСубконто3) Then
+        оСуб3.Get(1).Clear();
+        оСуб3.Get(2).Clear();
+      EndIf;
       Form.тСуб3.Caption:=Сч.ВидСубконто3.Name;
       Form.тС3.isDisabled:=0;
       Form.оСуб3.isDisabled:=0;
     EndIf;
+    СтарыеСчета:=Сч;
+  Else
+    СтарыеСчета:=0;
   EndIf;
 EndFunction;
 

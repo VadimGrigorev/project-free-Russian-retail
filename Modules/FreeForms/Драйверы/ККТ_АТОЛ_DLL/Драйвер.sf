@@ -960,7 +960,9 @@ Function PrintReceipt(спНастройки)
         aTab:=спНастройки["Таблица"];
         aTab.Select();
         While aTab.Next() Do
-          If (not aTab.Номенклатура.флПодлежитПрослеживаемости)or(aTab.Номенклатура.ГИСМТТоварнаяГруппа.Selected()=0)or(ФФД10) Then
+//Удалить ТабИСМП.FindAndGoto 01.01.2025
+          If _Or(not aTab.Номенклатура.флПодлежитПрослеживаемости,aTab.Номенклатура.ГИСМТТоварнаяГруппа.Selected()=0,ФФД10,ТабИСМП.FindAndGoto(aTab.Номенклатура,,"Номенклатура",1)=0) Then
+//Удалить ТабИСМП.FindAndGoto 01.01.2025
             аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_NAME"],aTab.Номенклатура.Name);
             См0:=См0+Round(aTab.Сумма/aTab.Количество,2)*aTab.Количество;
             аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],Round(aTab.Сумма/aTab.Количество,2));

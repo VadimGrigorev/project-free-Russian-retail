@@ -541,7 +541,7 @@ Function глПриЗаписиДокумента(aEl) Export
     Exit 0;
   EndIf;
   
-  If BegOfDay(aEl.DocDate)<=ДатаЗапретаСТочкиЗренияПолномочий(aEl) Then
+  If (BegOfDay(aEl.DocDate)<=ДатаЗапретаСТочкиЗренияПолномочий(aEl))And(not глРаботаетРобот) Then
     Box("Нельзя записывать документы до даты запрета редактирования документов!",Q_STOP);
     Exit 0;
   EndIf;
@@ -648,7 +648,7 @@ Function глПроверкаРазрешенияРедактирования(aE
     Exit 0;
   EndIf;
     
-  If aEl.Selected()>0 Then
+  If (aEl.Selected()>0)And(not глРаботаетРобот) Then
     If (Pos(aEl.DBName()+"@",глПользователь.ДокументыТолькоДляЧтения)>0)And(not глПользователь.бухГлавныйБухгалтер) Then
       If not ФлБезФормы Then
         Form.DisableControls(1);

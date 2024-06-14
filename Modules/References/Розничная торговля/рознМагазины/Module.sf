@@ -54,25 +54,35 @@ Function OnBeforeElementSave()
   
   If aEl.Склад.Selected()=0 Then
     Message("Для корректной работы программы необходимо выбрать склад, закрепленный за магазином!","!");
-    Exit 0;
+    If aEl.Status()<>1 Then
+      Exit 0;
+    EndIf;
   EndIf;
   If aEl.ТипЦенПоступления.Selected()=0 Then
     Message("Для корректной работы программы необходимо выбрать тип цен закупок, закрепленный за магазином!","!");
-    Exit 0;
+    If aEl.Status()<>1 Then
+      Exit 0;
+    EndIf;
   EndIf;
   If aEl.ТипЦенРеализации.Selected()=0 Then
     Message("Для корректной работы программы необходимо выбрать тип цен продажи, закрепленный за магазином!","!");
-    Exit 0;
+    If aEl.Status()<>1 Then
+      Exit 0;
+    EndIf;
   EndIf;
   If _And(aEl.Склад.Магазин.Selected()<>0,(aEl.Склад.Магазин<>aEl)Or(aEl.Selected()<0)) Then
     Message("Выбранный склад уже закреплен за другим магазином!","!");
-    Exit 0;
+    If aEl.Status()<>1 Then
+      Exit 0;
+    EndIf;
   EndIf;
   If _And(Trim(aEl.КПП)="",aEl.ЮрЛицо.Selected()<>0,Length(aEl.ЮрЛицо.ИНН)<>12) Then
     Message("Для корректной работы программы необходимо выбрать КПП адреса магазина!","!");
-    Exit 0;
+    If aEl.Status()<>1 Then
+      Exit 0;
+    EndIf;
   EndIf;  
-  ФлОбновить:=(aEl.Склад.рзТипЦенПоступления<>aEl.ТипЦенПоступления)or(aEl.Склад.рзТипЦенРеализации<>aEl.ТипЦенРеализации)or(aEl.Склад.Магазин.Selected()=0);
+  ФлОбновить:=((aEl.Склад.рзТипЦенПоступления<>aEl.ТипЦенПоступления)or(aEl.Склад.рзТипЦенРеализации<>aEl.ТипЦенРеализации)or(aEl.Склад.Магазин.Selected()=0))And(aEl.Status()<>1);
   
   If _Or(aEl.Selected()<0,ФлОбновить) Then
     //Запишем сейчас
