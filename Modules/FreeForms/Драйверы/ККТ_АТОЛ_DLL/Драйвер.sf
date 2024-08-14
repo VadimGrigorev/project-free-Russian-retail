@@ -696,7 +696,7 @@ EndFunction
 //ДополнительнаяИнформация -- текст для печати после всех чеков
 //ТабИСМП -- таблица "Номенклатура,Марка,ФлНеПрошлаПроверку,Причина,Поле1,Поле2,Тег1262,Тег1263,Тег1264,Тег1265" для проверки и прикрепления к чеку
 //ТабОшибкиПроверкиМарок -- исходящая таблица со столбцами "Марка,Причина"
-//Таблица -- Номенклатура,Количество,Сумма,СтавкаНДС
+//Таблица -- Номенклатура,Количество,Сумма,СтавкаНДС,ФлЛитры
 //Сумма -- сумма документа
 //ЭлектроннаяСумма -- сумма документа электронной оплатой
 //ДругаяБезналичнаяСумма -- сумма документа с особыми оплатами (подарочные сертификаты и пр.)
@@ -852,7 +852,9 @@ Function PrintReceipt(спНастройки)
       аДрайвер.libfptr_set_param_str(aHandle,1228,стрИНН);
     EndIf;
     
-    аДрайвер.libfptr_open_receipt(aHandle);    
+    If аДрайвер.libfptr_open_receipt(aHandle)<>0 Then
+      Exit "Невозможно создать чек. Ошибка "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
+    EndIf;
     Try
       ФлОтменитьЧек:=1;
       ТабИСМП:=спНастройки["ТабИСМП"];
@@ -965,15 +967,24 @@ Function PrintReceipt(спНастройки)
 //Удалить ТабИСМП.FindAndGoto 01.01.2025
             аДрайвер.libfptr_set_param_str(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_NAME"],aTab.Номенклатура.Name);
             См0:=См0+Round(aTab.Сумма/aTab.Количество,2)*aTab.Количество;
-            аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],Round(aTab.Сумма/aTab.Количество,2));
-            аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],aTab.Количество);
+            If aTab.ФлЛитры=1 Then
+              аКоличество:=aTab.Количество*aTab.Номенклатура.ОбъемЛитров;
+              аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],Round(aTab.Сумма/аКоличество,2));
+              аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],аКоличество);
+            Else
+              аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_PRICE"],Round(aTab.Сумма/aTab.Количество,2));
+              аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],aTab.Количество);
+            EndIf;
             аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_TAX_TYPE"],?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),спПеременные["LIBFPTR_TAX_NO"]));
             //аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],aTab.Сумма);
-            аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_PIECE"],?(aTab.Номенклатура.флВесовойТовар,0,1));
+            аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_PIECE"],?((aTab.Номенклатура.флВесовойТовар)Or(aTab.ФлЛитры=1),0,1));
             If ФФД11 Then
               аЕдиница:=спЕдиница[aTab.Номенклатура.базЕдиница.ВнешнийКод];
               If IsEmpty(аЕдиница) Then
                 аЕдиница:=спПеременные["LIBFPTR_IU_PIECE"];
+              EndIf;
+              If aTab.ФлЛитры=1 Then
+                аЕдиница:=спПеременные["LIBFPTR_IU_LITER"];
               EndIf;
               аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_MEASUREMENT_UNIT"],аЕдиница);
             EndIf;

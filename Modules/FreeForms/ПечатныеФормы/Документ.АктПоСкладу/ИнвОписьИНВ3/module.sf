@@ -149,32 +149,9 @@ Function Печать(Д)
     З:=Query.Create();
     З.Execute(ТЗ);
     
-    If ФлПартии Then
-      ТЗ:="зН:=Ref.тмцПартииТМЦ.@Parent;
-      |флПапка:=Ref.тмцПартииТМЦ.@Parent.@ISFOLDER;
-      |Condition(флПапка=0);
-      |зПартия:=Ref.тмцПартииТМЦ;
-      |Condition(зН IN СпНом);
-      |Group зН;
-      |Group зПартия;";
-      З2:=Query.Create();
-      З2.Execute(ТЗ);
-    EndIf;
-      
     Form.StatusText("Вывод таблицы...");
     While З.Next(1) Do
       If not З.зН.IsFolder() Then
-        If ФлПартии Then
-          If З2.ResultTable.LocateAndGoto("зН,@LEVEL",З.зН,2)>0 Then
-            While З2.Next(2) Do
-              While б.FindAndGoto(З2.зПартия,,"Партия")>0 Do
-                ВывестиСтроку(б);
-                б.Номенклатура:=0;
-                б.Партия:=0;
-              EndDo;
-            EndDo;
-          EndIf;  
-        EndIf;  
         While б.FindAndGoto(З.зН,,"Номенклатура")>0 Do
           ВывестиСтроку(б);
           б.Номенклатура:=0;
@@ -188,7 +165,6 @@ Function Печать(Д)
         ВывестиСтроку(б0);
       EndIf;
     EndDo;
-    
   Else
     Form.StatusText("Вывод таблицы...");
     б.Select();
@@ -241,7 +217,7 @@ Function OnOpen()
       Box("Данная печатная форма используется только для документа инвентаризации по складу!",Q_STOP);
       Exit;
     EndIf;
-    ФлПартии:=1-Min(Д.Склад.БезПартионногоУчета,1);
+    ФлПартии:=(Д.Склад.БезПартионногоУчета=0)And(not Д.флОстаткиБезРазрезаПоПартиям);
     
     If not глПроверкаПраваПечати(Д,Param,?(Param.GetByName("Опции")="1",1,2)) Then
       Exit;

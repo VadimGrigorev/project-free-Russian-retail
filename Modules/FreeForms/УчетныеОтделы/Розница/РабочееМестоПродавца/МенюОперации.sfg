@@ -143,7 +143,7 @@ Object FORM
   End
   Object BUTTON
     LayerName=4D00610069006E00
-    Left=155
+    Left=10
     Top=205
     Width=120
     Height=30
@@ -301,30 +301,7 @@ Object FORM
     AnchorType=9
     Flags=2056
     Hint=
-    Name=3A043D04120441043A0440044B044204380435042204300440044B04
-    ControlSerial=17
-    Caption=120441043A0440044B0442044C04200030043B043A042E0020004204300440044304
-    HotKey=
-    Picture=0
-    OnClick
-      @@>@e@#@V_(+_-d1@K@p@an_\6F|K@.3@L_>@W@>@Pmt1_]@p8,2,_<9_;_e(_S@kX@8_X/Y]_e@7<B_+
-      @/0@[_#_O@QU@4_\_;g_3@e2O8@eU@\~@;g0_$@:_/W,q._i_5/@;_l_k@H@e@z@e@r_Ji@S:@8_6@\@C
-      @k_3h@S@mS@Z@,_d_]v_c@T=_.@b_5@Qw_5@P@c@S(M_-h_Q_T_*_&E_#@%@+@(@[_b_<j,@B@e_\xyZ@
-      @i@R@U_^@)_<+@<@7h-@R2-@YH_$h@v@*&_*_E_&_1,8_"W_h_K_g<|@QC@'
-    End
-  End
-  Object BUTTON
-    LayerName=4D00610069006E00
-    Left=10
-    Top=205
-    Width=120
-    Height=30
-    Font=440065006600610075006C0074002C0020003800
-    Color=FF000014
-    AnchorType=9
-    Flags=2056
-    Hint=
-    Name=3A043D04120441043A0440044B044204380435042204300440044B043100
+    Name=3A043D0412044B043F043E043B043D04380442044C041E0431043C0435043D04
     ControlSerial=18
     Caption=12044B043F043E043B043D04380442044C0420003E0431043C0435043D04
     HotKey=
