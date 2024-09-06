@@ -4268,6 +4268,9 @@ Function ЗакрытьЧекПринятиеЧека()
       EndDo;
       
       //Начало транзакции изменения таблиц БД
+      If IsTransactionActive() Then
+        RollbackTransaction();
+      EndIf;
       BeginTransaction();
       
       //Создание локальных документов выполняется после всех других операций, чтобы уменьшить время блокировки таблиц до минимума
@@ -4625,6 +4628,10 @@ Function ЗакрытьЧекПринятиеЧека()
       EndIf;
       SuppressException();
       СтрОшибкаОтмены:="";
+      Try
+        RollbackTransaction();
+      Except
+      EndTry;      
             
       //Если банковская оплата произведена, запретить изменять суммы
       If not IsEmpty(спОборудованиеДляОтменыЧека["ПлатежныйТерминал"]) Then
@@ -4660,10 +4667,6 @@ Function ЗакрытьЧекПринятиеЧека()
         EndTry;
       EndIf;
 
-      Try
-        RollbackTransaction();
-      Except
-      EndTry;
       Form.тСтатусОбмена.Caption:=СтрОшибкаОтмены;
       
       If ТОшибкиЧека.Size()>0 Then

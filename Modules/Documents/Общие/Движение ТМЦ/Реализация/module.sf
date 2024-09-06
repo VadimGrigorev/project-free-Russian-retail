@@ -271,7 +271,7 @@ Function OnUnknownAction(Тип)
         Exit;
       EndIf;
       If not глМаркиЗарегистрироватьДокумент(aEl,ТМаркиДокумента,4,,1) Then
-        Box("Невозможно добавить списваемые марки в документ!",Q_STOP);
+        Box("Невозможно добавить списываемые марки в документ!",Q_STOP);
       EndIf;
     Finally
       MainTab.UnLock();
