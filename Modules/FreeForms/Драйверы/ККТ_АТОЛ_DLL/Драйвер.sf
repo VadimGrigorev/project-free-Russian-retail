@@ -828,12 +828,13 @@ Function PrintReceipt(спНастройки)
     спТип:=List.Create("LIBFPTR_RT_SELL","LIBFPTR_RT_SELL_RETURN","LIBFPTR_RT_SELL_CORRECTION","LIBFPTR_RT_SELL_CORRECTION","LIBFPTR_RT_BUY","LIBFPTR_RT_BUY_RETURN","LIBFPTR_RT_BUY_CORRECTION","LIBFPTR_RT_BUY_CORRECTION","",
       "LIBFPTR_RT_SELL","LIBFPTR_RT_SELL","LIBFPTR_RT_SELL","LIBFPTR_RT_SELL");
     зЮЛ:=спНастройки["ЮрЛицо"];
+    //Без НДС, 0%, 5%, 7%, 10%, 18%, 20%
     If зЮЛ.СпециальнаяСтавкаУСН=5 Then
-      спНДС:=List.Create(спПеременные["LIBFPTR_TAX_NO"],спПеременные["LIBFPTR_TAX_VAT0"],спПеременные["LIBFPTR_TAX_VAT5"],спПеременные["LIBFPTR_TAX_VAT5"],спПеременные["LIBFPTR_TAX_VAT5"]);
+      спНДС:=List.Create(спПеременные["LIBFPTR_TAX_NO"],спПеременные["LIBFPTR_TAX_VAT0"],спПеременные["LIBFPTR_TAX_VAT5"],спПеременные["LIBFPTR_TAX_VAT5"],спПеременные["LIBFPTR_TAX_VAT5"],спПеременные["LIBFPTR_TAX_VAT5"],спПеременные["LIBFPTR_TAX_VAT5"]);
     ElseIf зЮЛ.СпециальнаяСтавкаУСН=7 Then
-      спНДС:=List.Create(спПеременные["LIBFPTR_TAX_NO"],спПеременные["LIBFPTR_TAX_VAT0"],спПеременные["LIBFPTR_TAX_VAT7"],спПеременные["LIBFPTR_TAX_VAT7"],спПеременные["LIBFPTR_TAX_VAT7"]);
+      спНДС:=List.Create(спПеременные["LIBFPTR_TAX_NO"],спПеременные["LIBFPTR_TAX_VAT0"],спПеременные["LIBFPTR_TAX_VAT7"],спПеременные["LIBFPTR_TAX_VAT7"],спПеременные["LIBFPTR_TAX_VAT7"],спПеременные["LIBFPTR_TAX_VAT7"],спПеременные["LIBFPTR_TAX_VAT7"]);
     Else
-      спНДС:=List.Create(спПеременные["LIBFPTR_TAX_NO"],спПеременные["LIBFPTR_TAX_VAT0"],спПеременные["LIBFPTR_TAX_VAT10"],спПеременные["LIBFPTR_TAX_VAT18"],спПеременные["LIBFPTR_TAX_VAT20"]);
+      спНДС:=List.Create(спПеременные["LIBFPTR_TAX_NO"],спПеременные["LIBFPTR_TAX_VAT0"],спПеременные["LIBFPTR_TAX_VAT5"],спПеременные["LIBFPTR_TAX_VAT7"],спПеременные["LIBFPTR_TAX_VAT10"],спПеременные["LIBFPTR_TAX_VAT18"],спПеременные["LIBFPTR_TAX_VAT20"]);
     EndIf;
     
     ФлРозничныйПокупатель:=Number(спНастройки["ФлРозничныйПокупатель"]);
@@ -1192,6 +1193,10 @@ Function PrintReceipt(спНастройки)
         Break;
       EndDo;
     Finally
+      Стр:=PopError();
+      If not IsEmpty(Стр) Then
+        Result:=Стр;
+      EndIf;
       If not аДрайвер.libfptr_get_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_DOCUMENT_CLOSED"]) Then
         // Документ не закрылся. Требуется его отменить (если это чек) и сформировать заново
         Стр:="Чек был аннулирован. Ошибка "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);

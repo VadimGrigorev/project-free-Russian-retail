@@ -851,6 +851,10 @@ Function PrintReceipt(спНастройки)
         Break;
       EndDo;        
     Finally  
+      Стр:=PopError();
+      If not IsEmpty(Стр) Then
+        Result:=Стр;
+      EndIf;    
       If not аДрайвер.getParamBool(аДрайвер.LIBFPTR_PARAM_DOCUMENT_CLOSED) Then
         // Документ не закрылся. Требуется его отменить (если это чек) и сформировать заново
         Стр:="Чек был аннулирован. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
