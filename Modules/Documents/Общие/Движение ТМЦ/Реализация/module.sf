@@ -5,10 +5,6 @@
 Var флВидимостьПартий Export;
 Var СтарыйСклад Export;
 
-Var ВыделятьСтроки Export;
-Var ВыделеннаяСтрокаПред Export;
-ВыделятьСтроки:=Number(RestoreValue("ВыделятьСтрокиТаблиц"));
-
 Function Видимость()
   aEl:=Form.Object;
   If aEl.КодОперации=Enum.коРеализация.РеализацияРозничная Then

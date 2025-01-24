@@ -7,11 +7,7 @@ Var флВидимостьПартий Export;
 Var флТипЦенРеализации Export;
 Var ТРозничныеЦены Export;
 
-Var ВыделятьСтроки Export;
-Var ВыделеннаяСтрокаПред Export;
-ВыделятьСтроки:=Number(RestoreValue("ВыделятьСтрокиТаблиц"));
 ТРозничныеЦены:=Tab.Create("Индекс,Цена");
-
 
 Function Видимость()
   aEl:=Form.Object;

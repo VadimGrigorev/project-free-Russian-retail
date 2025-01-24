@@ -27,8 +27,9 @@ Object FORM
     @|@Z^T_0^_C@%b_8_L@^
   End
   OnTimerInterval=0
-  MaxControlSerial=27
+  MaxControlSerial=28
   LoadModes=0
+  CompileModule=
   Object MACRO
     ModuleName=4D006F00640075006C00650073005C004D006100630072006F0073005C0021043F044004300432043E0447043D0438043A0438045C001704300433043E043B043E0432043E043A042E00730066006700
     LayerName=4D00610069006E00
@@ -281,6 +282,31 @@ Object FORM
       @#_M@T@O8?_#_O*@J#W$>a@V_H@|_C_b_V@]'e@9_040nOo_YP@:_l_g@"@*O@{_>]_2@MW@x=_0@Z@'@
       @W_<@/X@2@9_d@+_(_hi_/@{w@?@?@k@O_6]'@$@M@vL_E@F_e@*l_*;_P@O@"@(@Q*@,nY@sr^@._i_7
       @#G_F@e@D!_)t;@)
+    End
+  End
+  Object BUTTON
+    LayerName=4D00610069006E00
+    Left=290
+    Top=515
+    Width=90
+    Height=25
+    Font=440065006600610075006C0074002C0020003800
+    Color=00000000
+    AnchorType=12
+    Flags=8
+    Hint=
+    Name=
+    ControlSerial=27
+    Caption=21043F044004300432043E0447043D0438043A043804
+    HotKey=
+    Picture=0
+    OnClick
+      @@>@e@;t_6r_.R1@e_.@e@W_#@6_N_+_,_b@[n@nq,"M_,@/_FJl6_;@$_f"@g_N}F_/_m@R@z_O@}vG@
+      @*@v_C?_:_9_9@A@K2z|@l_1I_J_\@O09Fl[@l@n@)_.@Q@n@{_>@g_<@&@o^_RW_S@A_8_D8_eh@18A)
+      @@b)_$t@f@+_9@[oP@K@B@L@r5@v@8_9D_'@~|@r_kzl_1o@L@ZrO_/'@U@H@Z_-_$_-@t@=@=@x_L@#q
+      @@nu@9@O@D_X@LZ7@t@(/@N?@Y@6_!@cD8_ap_l@AJX_7@BV@c_EU@x_\@TA@C@'@q@h@>_+]@g_c0_*@
+      @X@?Jk@t@q_Cy@p_M@EL@=(_=_b_Z@RR_U@eY":,@r@:\+@|N@bh{@J@q_B@V\,_'_T@p~_Xc_*'@=@>@
+      @\@l@;@qR~_)_[j@?@p@k_Ph_I_F_4_%P@T@0@hf@x_Y_Xb_l!4_-[V
     End
   End
 End

@@ -1,0 +1,32 @@
+FormatVersion=1
+Layer 4D00610069006E00
+  isVisible=1
+  isActive=1
+End
+Object FORM
+  FormFlags=1
+  Caption=
+  Width=220
+  Height=45
+  OnTimerInterval=0
+  MaxControlSerial=3
+  LoadModes=6
+  CompileModule=
+  Object LABEL
+    LayerName=4D00610069006E00
+    Left=0
+    Top=0
+    Width=220
+    Height=45
+    Font=440065006600610075006C0074002C0020003800
+    Color=FF00000F
+    AnchorType=9
+    Flags=264
+    Hint=
+    Name=
+    ControlSerial=2
+    Caption=170430043F0440043E04410420003E0431043D043E0432043B0435043D0438044F042000410432043E043904410442043204200034043E043A0443043C0435043D04420430042C0020003E0436043804340430043904420435042E002E002E00
+    HAlign=1
+    VAlign=1
+  End
+End

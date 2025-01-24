@@ -419,10 +419,14 @@ Function PrintLastReceipt(спНастройки)
   Try
     аДрайвер:=спНастройки["Драйвер"];
     If not IsEmpty(спНастройки["НомерДокумента"]) Then
-      Exit "Печать копии произвольного чека не поддерживается!";
-    EndIf;
-    If аДрайвер.RepeatDocument()<>0 Then
-      Exit аДрайвер.ResultCodeDescription;
+      аДрайвер.DocumentNumber:=спНастройки["НомерДокумента"];
+      If аДрайвер.FNPrintDocument()<>0 Then
+        Exit аДрайвер.ResultCodeDescription;
+      EndIf;
+    Else
+      If аДрайвер.RepeatDocument()<>0 Then
+        Exit аДрайвер.ResultCodeDescription;
+      EndIf;
     EndIf;
   Except
     Exit PopError()+_NEWLINE+"Неудачная попытка печати копии чека!";
@@ -518,8 +522,20 @@ Function PrintReceipt(спНастройки)
     //4 -- Без НДС
     //5 -- НДС 20/120
     //6 -- НДС 10/110
-    //Без, 0%, 10%, 18%, 20%
-    спНДС:=List.Create(4,3,2,1,1);
+    //7 -- НДС 5%
+    //8 -- НДС 7%
+    //9 -- НДС 5/105
+    //10 -- НДС 7/107
+    //Без, 0%, 5%, 7%, 10%, 18%, 20%
+    зЮЛ:=спНастройки["ЮрЛицо"];
+    If зЮЛ.СпециальнаяСтавкаУСН=5 Then
+      спНДС:=List.Create(4,3,7,7,7,7,7);
+    ElseIf зЮЛ.СпециальнаяСтавкаУСН=7 Then
+      спНДС:=List.Create(4,3,8,8,8,8,8);
+    Else
+      спНДС:=List.Create(4,3,7,8,2,1,1);
+    EndIf;
+    
     
     //Единица измерения (2108)
     //0 -- шт    (796)
@@ -796,7 +812,7 @@ Function PrintReceipt(спНастройки)
     
     
     //Позиции
-    ФлНДС:=спНастройки["ЮрЛицо"].УчитыватьНДС<>0;
+    ФлНДС:=зЮЛ.УчитыватьНДС<>0;
     См:=0;
     If (аТип0=10)Or(аТип0=13) Then
       См:=спНастройки["Сумма"];
@@ -1088,7 +1104,7 @@ Function PrintReceipt(спНастройки)
     спНастройки["НомерДокумента"]:="";
     НомерСмены:=спНастройки["НомерСмены"];
     If аДрайвер.FNGetCurrentSessionParams()=0 Then
-      спНастройки["НомерДокумента"]:=аДрайвер.ReceiptNumber;
+      спНастройки["НомерДокумента"]:=аДрайвер.DocumentNumber;//ReceiptNumber;
       НомерСмены:=аДрайвер.SessionNumber;
     EndIf;
     
@@ -1104,7 +1120,6 @@ Function PrintReceipt(спНастройки)
         //  Raise "OpenNonfiscalDocument: "+аДрайвер.ResultCodeDescription;
         //EndIf;
       
-        зЮЛ:=спНастройки["ЮрЛицо"];
         стрКПП:=Trim(зЮЛ.ИНН);
         стрИНН:=TearStr(стрКПП,"/");
         

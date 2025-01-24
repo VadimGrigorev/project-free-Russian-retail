@@ -35,7 +35,18 @@ Function OnExecute()
     Склад:=Магазин.Склад;
     ТипЦен:=Магазин.ТипЦенРеализации;
     
-    If Form.оСкл.Value=0 Then
+    ФлКомплектации:=Form.флЦенникиКомплектаций.Value;
+    If ФлКомплектации Then
+      ТЗ:="зКм:=Ref.рознКомплектацияНоменклатуры;
+      |зН:=Ref.рознКомплектацияНоменклатуры.@Parent;
+      |зСтатус:=Ref.рознКомплектацияНоменклатуры.@Parent.@Status;
+      |зСтатус2:=Ref.рознКомплектацияНоменклатуры.@Status;
+      |Condition(зСтатус=0);
+      |Condition(зСтатус2=0);
+      |Condition(зН IN оН);
+      |Condition(зН NOT IN оННЕ);
+      |Group зКм;";
+    ElseIf Form.оСкл.Value=0 Then
       ТЗ:="зН:=Ref.тмцНоменклатура;
       |зСтатус:=Ref.тмцНоменклатура.@Status;
       |Condition(зСтатус=0);
@@ -61,13 +72,12 @@ Function OnExecute()
     СпНом:=List.Create();
     While З.Next(1) Do
       Form.StatusText(З.ResultTable.CurLine);
-    
-      зН:=З.зН;
-      If Form.оСкл.Value=1 Then
+      If _And(not ФлКомплектации,Form.оСкл.Value=1) Then
         If З.зКО<=0 Then
           Continue;
         EndIf;
       EndIf;
+      зН:=З.зН;
       
       Ц:=Ref.цЦены;
       If Ц.Find("@Parent,ТипЦен",зН,ТипЦен)=0 Then
@@ -78,93 +88,97 @@ Function OnExecute()
       //TODO: использовать скидки из акций    
       Скидка:=0;
       
-      кЦ:=Ref.цПечатьЦенников;
-      If кЦ.Find("@Parent,Магазин",зН,Магазин)=0 Then
-        //Создаем
-        кЦ.New();
-        кЦ.Parent(зН);
-        кЦ.Магазин:=Магазин;
-        глЗаписать(кЦ);
-      ElseIf Form.оНовые.Value=1 Then
-        цДатаП:=?(isEmpty(кЦ.ДатаПечати),'01.01.1981',кЦ.ДатаПечати);
-        If _And(кЦ.ОбщаяСкидка=Скидка,пЦена=Ц.GetValue("Цена",цДатаП)) Then
-          Continue;
+      If not ФлКомплектации Then
+        кЦ:=Ref.цПечатьЦенников;
+        If кЦ.Find("@Parent,Магазин",зН,Магазин)=0 Then
+          //Создаем
+          кЦ.New();
+          кЦ.Parent(зН);
+          кЦ.Магазин:=Магазин;
+          глЗаписать(кЦ);
+        ElseIf Form.оНовые.Value=1 Then
+          цДатаП:=?(isEmpty(кЦ.ДатаПечати),'01.01.1981',кЦ.ДатаПечати);
+          If _And(кЦ.ОбщаяСкидка=Скидка,пЦена=Ц.GetValue("Цена",цДатаП)) Then
+            Continue;
+          EndIf;
         EndIf;
+        ТПеч.AddLine("Номенклатура,Цена,Скидка,ЭлЦенник",зН,пЦена,Скидка,кЦ);
+        СпНом.Add(зН);
+      Else
+        ТПеч.AddLine("Номенклатура,Цена,Скидка",З.зКм,пЦена,Скидка);
       EndIf;
-      
-      ТПеч.AddLine("Номенклатура,Цена,Скидка,ЭлЦенник",зН,пЦена,Скидка,кЦ);
-      СпНом.Add(зН);
     EndDo;
   
     If ТПеч.Size()=0 Then
       If Form.оНовые.Value=1 Then
-        Box("Для магазина "+Магазин+" новые ценники по всем выбранным ТМЦ уже были распечатаны!",Q_STOP);
+        Message("Для магазина "+Магазин+" новые ценники по всем выбранным ТМЦ уже были распечатаны!","!");
       Else
-        Box("Для магазина "+Магазин+" нет ни одного ценника, который можно было бы вывести на печать!",Q_STOP);
+        Message("Для магазина "+Магазин+" нет ни одного ценника, который можно было бы вывести на печать!","!");
       EndIf;
       Continue;
     EndIf;
     
-    спPLU:=глПолучитьДрайверыПоУсловию("ВестиPLUКоды",1);
-
-    For i2:=1 To спPLU.Size() Do
-      Form.StatusText("Обновление PLU-кодов "+i2+" из "+спPLU.Size());
-      спНастройки:=спPLU[i2];
-      СпНом2:=List.Create();
-      aEl:=спНастройки["Оборудование"];
-      aTab:=aEl.LineParts("Номенклатура");
-      aTab.CopyTo(СпНом2,1,aTab.Size(),"Номенклатура");
-      If СпНом2.Size()=0 Then
-        Message("Невозможно обновить PLU коды оборудования %LINK% магазина %LINK%, так как в оборудование не выбрана номенклатура выгрузки!","!",aEl,aEl.Parent());
-        Continue;
-      EndIf;
-      ТЗ:="зН:=Ref.тмцНоменклатура;
-      |Condition(зН IN СпНом);
-      |Condition(зН IN СпНом2);
-      |Group зН;";
-      З:=Query.Create();
-      З.Execute(ТЗ);
-      
-      
-      ИмяМутанта:="PLU_"+Магазин.Code;аПольз:="";аМаш:="";аДата:="";
-      If not DBLockStringMutex(ИмяМутанта,аПольз,аМаш,аДата) Then
-        Message("Невозможно заблокировать генератор PLU-кодов для магазина, он был заблокирован пользователем "+аПольз+" ("+аМаш+") в "+аДата,"!");
-        Message("Попробуйте запустить печать еще раз!","!");
-        Exit;
-      EndIf;
-      ФлОк:=0;
-      BeginTransaction();
-      Try
-        тМаксКод:=Ref.тмцPLUКоды.Compute("","PLUКод:MAX","Магазин",Магазин);
-        МаксКод:=0;
-        if тМаксКод.Size()>0 Then
-          МаксКод:=тМаксКод["_MAX_PLUКод",1];
+    If not ФлКомплектации Then
+      спPLU:=глПолучитьДрайверыПоУсловию("ВестиPLUКоды",1);
+  
+      For i2:=1 To спPLU.Size() Do
+        Form.StatusText("Обновление PLU-кодов "+i2+" из "+спPLU.Size());
+        спНастройки:=спPLU[i2];
+        СпНом2:=List.Create();
+        aEl:=спНастройки["Оборудование"];
+        aTab:=aEl.LineParts("Номенклатура");
+        aTab.CopyTo(СпНом2,1,aTab.Size(),"Номенклатура");
+        If СпНом2.Size()=0 Then
+          Message("Невозможно обновить PLU коды оборудования %LINK% магазина %LINK%, так как в оборудование не выбрана номенклатура выгрузки!","!",aEl,aEl.Parent());
+          Continue;
         EndIf;
+        ТЗ:="зН:=Ref.тмцНоменклатура;
+        |Condition(зН IN СпНом);
+        |Condition(зН IN СпНом2);
+        |Group зН;";
+        З:=Query.Create();
+        З.Execute(ТЗ);
         
-        While З.Next(1) Do
-          зН:=З.зН;
-          bEl:=Ref.тмцPLUКоды;
-          аМагазин:=Магазин;
-          If Not bEl.FindEx(3,,"~(@Parent=зН)And(Магазин=аМагазин)") Then
-            МаксКод:=МаксКод+1;
-            
-            bEl.New();
-            bEl.Parent(зН);
-            bEl.PLUКод:=МаксКод;
-            bEl.Магазин:=Магазин;
-            bEl.Save();
-          EndIf;
-        EndDo;//Цикл по номенклатуре
-      Finally
-        If ФлОк Then
-          CommitTransaction();
-        Else
-          RollbackTransaction();
+        
+        ИмяМутанта:="PLU_"+Магазин.Code;аПольз:="";аМаш:="";аДата:="";
+        If not DBLockStringMutex(ИмяМутанта,аПольз,аМаш,аДата) Then
+          Message("Невозможно заблокировать генератор PLU-кодов для магазина, он был заблокирован пользователем "+аПольз+" ("+аМаш+") в "+аДата,"!");
+          Message("Попробуйте запустить печать еще раз!","!");
+          Exit;
         EndIf;
-        DBUnlockStringMutex(ИмяМутанта);
-      EndTry
-      
-    EndDo; //По устройствам с PLU кодами
+        ФлОк:=0;
+        BeginTransaction();
+        Try
+          тМаксКод:=Ref.тмцPLUКоды.Compute("","PLUКод:MAX","Магазин",Магазин);
+          МаксКод:=0;
+          if тМаксКод.Size()>0 Then
+            МаксКод:=тМаксКод["_MAX_PLUКод",1];
+          EndIf;
+          
+          While З.Next(1) Do
+            зН:=З.зН;
+            bEl:=Ref.тмцPLUКоды;
+            аМагазин:=Магазин;
+            If Not bEl.FindEx(3,,"~(@Parent=зН)And(Магазин=аМагазин)") Then
+              МаксКод:=МаксКод+1;
+              
+              bEl.New();
+              bEl.Parent(зН);
+              bEl.PLUКод:=МаксКод;
+              bEl.Магазин:=Магазин;
+              bEl.Save();
+            EndIf;
+          EndDo;//Цикл по номенклатуре
+        Finally
+          If ФлОк Then
+            CommitTransaction();
+          Else
+            RollbackTransaction();
+          EndIf;
+          DBUnlockStringMutex(ИмяМутанта);
+        EndTry
+      EndDo; //По устройствам с PLU кодами
+    EndIf;
     
     aList:=List.Create();
     aList.Add(1,"КоличествоКопий");
@@ -191,7 +205,7 @@ Function OnExecute()
       ФлОтвет:=1;
     EndIf;
     
-    If ФлОтвет Then
+    If _And(ФлОтвет,not ФлКомплектации) Then
       Дата:=Date();
       ТПеч.Select();
       While ТПеч.Next() Do

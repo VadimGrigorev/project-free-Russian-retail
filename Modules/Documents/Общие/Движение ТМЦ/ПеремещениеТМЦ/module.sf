@@ -7,10 +7,6 @@ Var флТипЦенРеализации Export;
 Var флТипЦенРеализацииПолучатель Export;
 Var ТОсновныеЦены Export;
 
-Var ВыделятьСтроки Export;
-Var ВыделеннаяСтрокаПред Export;
-ВыделятьСтроки:=Number(RestoreValue("ВыделятьСтрокиТаблиц"));
-
 Function Видимость()
   aEl:=Form.Object;
   MainTab:=Form.ControlByName("MainTab").Value;

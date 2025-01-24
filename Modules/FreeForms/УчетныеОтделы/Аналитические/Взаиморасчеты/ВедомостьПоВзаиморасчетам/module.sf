@@ -345,6 +345,8 @@ Function Печать(СпУстановки)
     ндс10:=Enum.СтавкиНДС.НДС10;
     ндс18:=Enum.СтавкиНДС.НДС18;
     ндс20:=Enum.СтавкиНДС.НДС20;
+    ндс5:=Enum.СтавкиНДС.НДС5;
+    ндс7:=Enum.СтавкиНДС.НДС7;
     If оСтавкаНДС>1 Then
       If pos("зНДС:=",ТЗ)=0 Then
         ТЗ:=ТЗ+"зНДС:=Stor.Взаиморасчеты.СтавкаНДС;";
@@ -365,6 +367,10 @@ Function Печать(СпУстановки)
         ТЗ:=ТЗ+"Condition(зНДС=ндс18);"+_NEWLINE;
       ElseIf оСтавкаНДС=9 Then
         ТЗ:=ТЗ+"Condition(зНДС=ндс20);"+_NEWLINE;
+      ElseIf оСтавкаНДС=10 Then
+        ТЗ:=ТЗ+"Condition(зНДС=ндс5);"+_NEWLINE;
+      ElseIf оСтавкаНДС=11 Then
+        ТЗ:=ТЗ+"Condition(зНДС=ндс7);"+_NEWLINE;
       EndIf;
     EndIf;
     
@@ -403,8 +409,8 @@ Function Печать(СпУстановки)
       |зКонОст:=0;
       |Postprocessing (
       |ForceAggregateSingleLineLev1 1;
-      |Aggregate1 зРасход As SUM(зРасход*(CASE зНДС WHEN ндс10 THEN 10/110 WHEN ндс18 THEN 18/118 WHEN ндс20 THEN 20/120 ELSE 0 END));
-      |Aggregate1 зПриход As SUM(зПриход*(CASE зНДС WHEN ндс10 THEN 10/110 WHEN ндс18 THEN 18/118 WHEN ндс20 THEN 20/120 ELSE 0 END));
+      |Aggregate1 зРасход As SUM(зРасход*(CASE зНДС WHEN ндс10 THEN 10/110 WHEN ндс18 THEN 18/118 WHEN ндс20 THEN 20/120 WHEN ндс5 THEN 5/105 WHEN ндс7 THEN 7/107 ELSE 0 END));
+      |Aggregate1 зПриход As SUM(зПриход*(CASE зНДС WHEN ндс10 THEN 10/110 WHEN ндс18 THEN 18/118 WHEN ндс20 THEN 20/120 WHEN ндс5 THEN 5/105 WHEN ндс7 THEN 7/107 ELSE 0 END));
       |)");
   
     З:=Query.Create();

@@ -4,7 +4,7 @@
 //Предопределенные функции имеют свой набор переменных. Дальнейшее описание ищите в документации.
 
 //Функции:
-//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, CertificatesList, CheckCertificate, SetCertificate, ExportSertificate, SignMessage, VerifySignature, EncryptData, DecryptData, CreateHash, GetCertificatePrint
+//DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, CertificatesList, CheckCertificate, SetCertificate, ExportCertificate, SignMessage, VerifySignature, EncryptData, DecryptData, CreateHash, GetCertificatePrint
 
 Function DriverInit(спНастройки)
   Try
@@ -115,7 +115,7 @@ EndFunction;
 
 //спНастройки["ТекСертификат"] -- идентификатор сертификата
 //X.509, Base64
-Function ExportSertificate(спНастройки)
+Function ExportCertificate(спНастройки)
   Try
     If IsEmpty(спНастройки["ТекСертификат"]) Then
       Exit "Сертификат для подписи не выбран или не найден!";

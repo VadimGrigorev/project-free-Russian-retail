@@ -31,6 +31,10 @@ Function ПолучитьСтавкуНДС(зНДС)
     Exit 20;
   ElseIf зНДС=Enum.СтавкиНДС.НДС18 Then
     Exit 18;
+  ElseIf зНДС=Enum.СтавкиНДС.НДС5 Then
+    Exit 5;
+  ElseIf зНДС=Enum.СтавкиНДС.НДС7 Then
+    Exit 7;
   EndIf;
   Exit 0;
 EndFunction

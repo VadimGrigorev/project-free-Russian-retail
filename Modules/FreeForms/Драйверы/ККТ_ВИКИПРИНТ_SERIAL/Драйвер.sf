@@ -7,8 +7,9 @@
 //DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintLastReceipt, 
 //  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer
 
-//Документация: https://htmlpreview.github.io/?https://github.com/dreamkas/pirit_documentation/blob/master/output/documentation_fm16_1_2.html
+//Документация: https://htmlpreview.github.io/?https://github.com/dreamkas/pirit_documentation/blob/master/output/documentation_fm16_1_2.html       (устарело)
 //              https://help.dreamkas.ru/upload/support/%D0%92%D0%B8%D0%BA%D0%B8%20%D0%9C%D0%B8%D0%BD%D0%B8%20%D0%A4%20(%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F%20003)%20%D0%A0%D0%AD.pdf
+//              https://help.dreamkas.ru/kb/viki-printy/integratsii-viki-print/biblioteka-piritlib-dlya-pirit-i-viki-print-f/
 
 Function TranslateError(aKernel32,КодОшибки)
   FORMAT_MESSAGE_FROM_SYSTEM:=$1000;
@@ -710,14 +711,26 @@ Function PrintReceipt(спНастройки)
     //6 -- Полный кредит
     //7 -- Оплата кредита
     
-    //0 - (Дробное число) Зарезервирован значением 20.00 (только чтение)
-    //1 - (Дробное число) Зарезервирован значением 10.00 (только чтение)
-    //2 - (Дробное число) Зарезервирован значением 0.00 (только чтение), 0%
-    //3 - (Дробное число) Зарезервирован значением 0.00 (только чтение), без НДС
-    //4 - (Дробное число) Зарезервирован значением 20.00 (только чтение)
-    //5 - (Дробное число) Зарезервирован значением 10.00 (только чтение)
-    //Без, 0%, 10%, 18%, 20%
-    спНДС:=List.Create("3","2","1","0","0");
+    //0 - НДС 20%
+    //1 - НДС 10%
+    //2 - НДС 0%
+    //3 - Без НДС
+    //4 - НДС 20/120
+    //5 - НДС 10/110
+    //6 - НДС 5%
+    //7 - НДС 7%
+    //8 - НДС 5/105
+    //9 - НДС 7/107
+    //Без, 0%, 5%, 7%, 10%, 18%, 20%
+    зЮЛ:=спНастройки["ЮрЛицо"];
+    If зЮЛ.СпециальнаяСтавкаУСН=5 Then
+      спНДС:=List.Create("3","2","6","6","6","6","6");
+    ElseIf зЮЛ.СпециальнаяСтавкаУСН=7 Then
+      спНДС:=List.Create("3","2","7","7","7","7","7");
+    Else
+      спНДС:=List.Create("3","2","6","7","1","0","0");
+    EndIf;
+    
     
     аТип0:=спНастройки["ТипЧека"];
     ФлРозничныйПокупатель:=Number(спНастройки["ФлРозничныйПокупатель"]);
@@ -906,7 +919,7 @@ Function PrintReceipt(спНастройки)
     
     
     //Позиции
-    ФлНДС:=спНастройки["ЮрЛицо"].УчитыватьНДС<>0;
+    ФлНДС:=зЮЛ.УчитыватьНДС<>0;
     См:=0;
     If (аТип0=10)Or(аТип0=13) Then
       См:=спНастройки["Сумма"];
@@ -1092,7 +1105,6 @@ Function PrintReceipt(спНастройки)
         //                 бит 5: 0 -- обычная печать, 1 -- отложеная печать
         ExecuteCommand(спНастройки,$30,"1"+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1)+Chr($1C,1));
                 
-        зЮЛ:=спНастройки["ЮрЛицо"];
         стрКПП:=Trim(зЮЛ.ИНН);
         стрИНН:=TearStr(стрКПП,"/");
         

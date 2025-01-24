@@ -104,6 +104,10 @@ Function СтавкаНДСИзСтроки(Ставка)
     Exit Enum.СтавкиНДС.НДС18;
   ElseIf Ставка="НДС20" Then
     Exit Enum.СтавкиНДС.НДС20;
+  ElseIf Ставка="НДС5" Then
+    Exit Enum.СтавкиНДС.НДС5;
+  ElseIf Ставка="НДС7" Then
+    Exit Enum.СтавкиНДС.НДС7;
   EndIf;
   Exit Enum.СтавкиНДС.НДС20;
 EndFunction
@@ -119,6 +123,10 @@ Function СтавкаНДС(Ставка)
     Exit "НДС18";
   ElseIf Ставка=Enum.СтавкиНДС.НДС20 Then
     Exit "НДС20";
+  ElseIf Ставка=Enum.СтавкиНДС.НДС5 Then
+    Exit "НДС5";
+  ElseIf Ставка=Enum.СтавкиНДС.НДС7 Then
+    Exit "НДС7";
   Else
     Exit "БезНДС";
   EndIf;

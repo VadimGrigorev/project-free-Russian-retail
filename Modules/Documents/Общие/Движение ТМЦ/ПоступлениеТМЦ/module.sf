@@ -7,10 +7,6 @@ Var СуммаМаржПрибыли Export;
 Var флТипЦенРеализации Export;
 Var ТЦеныЗакупок Export;
 
-Var ВыделятьСтроки Export;
-Var ВыделеннаяСтрокаПред Export;
-ВыделятьСтроки:=Number(RestoreValue("ВыделятьСтрокиТаблиц"));
-
 Function Видимость()
   aEl:=Form.Object;
   ФлЗП:=aEl.КодОперации=Enum.коПоступлениеТМЦ.ЗаявкаПоставщику;
@@ -446,5 +442,5 @@ Function OnUnknownAction(Тип)
     EndTry; 
        
     Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,MainTab.Size());
-    EndIf;
+  EndIf;
 EndFunction

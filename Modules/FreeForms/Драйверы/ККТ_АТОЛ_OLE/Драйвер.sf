@@ -496,21 +496,20 @@ Function PrintReceipt(спНастройки)
     
     спТип:=List.Create("LIBFPTR_RT_SELL","LIBFPTR_RT_SELL_RETURN","LIBFPTR_RT_SELL_CORRECTION","LIBFPTR_RT_SELL_CORRECTION","LIBFPTR_RT_BUY","LIBFPTR_RT_BUY_RETURN","LIBFPTR_RT_BUY_CORRECTION","LIBFPTR_RT_BUY_CORRECTION","",
       "LIBFPTR_RT_SELL","LIBFPTR_RT_SELL","LIBFPTR_RT_SELL","LIBFPTR_RT_SELL");
-    спНДС:=List.Create(аДрайвер.LIBFPTR_TAX_NO,аДрайвер.LIBFPTR_TAX_VAT0,аДрайвер.LIBFPTR_TAX_VAT10,аДрайвер.LIBFPTR_TAX_VAT18,аДрайвер.LIBFPTR_TAX_VAT20);
+    зЮЛ:=спНастройки["ЮрЛицо"];
+    //Без НДС, 0%, 5%, 7%, 10%, 18%, 20%
+    If зЮЛ.СпециальнаяСтавкаУСН=5 Then
+      спНДС:=List.Create(аДрайвер.LIBFPTR_TAX_NO,аДрайвер.LIBFPTR_TAX_VAT0,аДрайвер.LIBFPTR_TAX_VAT5,аДрайвер.LIBFPTR_TAX_VAT5,аДрайвер.LIBFPTR_TAX_VAT5,аДрайвер.LIBFPTR_TAX_VAT5,аДрайвер.LIBFPTR_TAX_VAT5);
+    ElseIf зЮЛ.СпециальнаяСтавкаУСН=7 Then
+      спНДС:=List.Create(аДрайвер.LIBFPTR_TAX_NO,аДрайвер.LIBFPTR_TAX_VAT0,аДрайвер.LIBFPTR_TAX_VAT7,аДрайвер.LIBFPTR_TAX_VAT7,аДрайвер.LIBFPTR_TAX_VAT7,аДрайвер.LIBFPTR_TAX_VAT7,аДрайвер.LIBFPTR_TAX_VAT7);
+    Else
+      //TODO: LIBFPTR_TAX_NO вместо 5% и 7% здесь для того, чтобы не обновлять драйверы Атола во всех магазинах. Позже нужно убрать.
+      спНДС:=List.Create(аДрайвер.LIBFPTR_TAX_NO,аДрайвер.LIBFPTR_TAX_VAT0,аДрайвер.LIBFPTR_TAX_NO,аДрайвер.LIBFPTR_TAX_NO,аДрайвер.LIBFPTR_TAX_VAT10,аДрайвер.LIBFPTR_TAX_VAT18,аДрайвер.LIBFPTR_TAX_VAT20);
+    EndIf;
     
     ФлРозничныйПокупатель:=Number(спНастройки["ФлРозничныйПокупатель"]);
     аТип:=Eval("аДрайвер."+спТип.Get(аТип0));
     
-    аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_RECEIPT_TYPE,аТип);
-    
-    ФлПочта:=0;
-    If Trim(спНастройки["ПочтаИлиТелефонКлиента"])<>"" Then
-      //"client@mail.ru" или "+79161234567"
-      аДрайвер.setParam(1008,Trim(спНастройки["ПочтаИлиТелефонКлиента"]));
-      ФлПочта:=1;
-    EndIf;
-    
-    аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY,Min(ФлПочта,спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]));
     If not ФлРозничныйПокупатель Then
       //Заполняем: 1227, 1228
       зК:=спНастройки["Контрагент"];
@@ -519,7 +518,25 @@ Function PrintReceipt(спНастройки)
       
       аДрайвер.setParam(1227,зК.ПолнНаименование);
       аДрайвер.setParam(1228,стрИНН);
+      If ФФД12 Then
+        аДрайвер.utilFormTlv;
+        аКлиент:=аДрайвер.getParamByteArray(аДрайвер.LIBFPTR_PARAM_TAG_VALUE);
+        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_RECEIPT_TYPE,аТип);
+        аДрайвер.setParam(1256,OLEVariant(аКлиент,_OLE_VT_ARRAY+_OLE_VT_UI1));
+      Else
+        аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_RECEIPT_TYPE,аТип);
+      EndIf;
+    Else
+      аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_RECEIPT_TYPE,аТип);
     EndIf;
+    
+    ФлПочта:=0;
+    If Trim(спНастройки["ПочтаИлиТелефонКлиента"])<>"" Then
+      //"client@mail.ru" или "+79161234567"
+      аДрайвер.setParam(1008,Trim(спНастройки["ПочтаИлиТелефонКлиента"]));
+      ФлПочта:=1;
+    EndIf;
+    аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY,Min(ФлПочта,спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]));
     
     If аДрайвер.openReceipt()<0 Then
       Exit "Невозможно создать чек. Ошибка "+аДрайвер.errorCode+": "+аДрайвер.errorDescription;
@@ -603,7 +620,7 @@ Function PrintReceipt(спНастройки)
     
       //Позиции
       См0:=0;
-      ФлНДС:=спНастройки["ЮрЛицо"].УчитыватьНДС<>0;
+      ФлНДС:=зЮЛ.УчитыватьНДС<>0;
       If (аТип0=10)Or(аТип0=13) Then
         См0:=спНастройки["Сумма"];
         аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_NAME,?(аТип0=10,"Аванс за товары","Закрытие кредита за товары"));
@@ -613,7 +630,7 @@ Function PrintReceipt(спНастройки)
           аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_MEASUREMENT_UNIT,аДрайвер.LIBFPTR_IU_PIECE);
         EndIf;
         If ФлНДС Then
-          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,аДрайвер.LIBFPTR_TAX_VAT20);
+          аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,спНДС[5]);
         Else
           аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,аДрайвер.LIBFPTR_TAX_NO);
         EndIf;
@@ -640,7 +657,7 @@ Function PrintReceipt(спНастройки)
               аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_PRICE,Round(aTab.Сумма/aTab.Количество,2));
               аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_QUANTITY,aTab.Количество);
             EndIf;
-            аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),аДрайвер.LIBFPTR_TAX_NO));
+            аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,?(ФлНДС,спНДС[aTab.СтавкаНДС.Index()],аДрайвер.LIBFPTR_TAX_NO));
             //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,aTab.Сумма);
             аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_PIECE,?((aTab.Номенклатура.флВесовойТовар)Or(aTab.ФлЛитры=1),0,1));
             If ФФД11 Then
@@ -690,7 +707,7 @@ Function PrintReceipt(спНастройки)
                 См0:=См0+зЦ;
                 аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_QUANTITY,1);
               EndIf;
-              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),аДрайвер.LIBFPTR_TAX_NO));
+              аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_TAX_TYPE,?(ФлНДС,спНДС[aTab.СтавкаНДС.Index()],аДрайвер.LIBFPTR_TAX_NO));
               //аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_POSITION_SUM,зЦ);
               аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_PIECE,?(aTab.Номенклатура.флВесовойТовар,0,1));
               If ФФД11 Then
@@ -856,7 +873,7 @@ Function PrintReceipt(спНастройки)
         EndDo;
       EndIf;
     EndTry;
-    аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_FN_DATA_TYPE,аДрайвер.LIBFPTR_FNDT_LAST_DOCUMENT);
+    аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_FN_DATA_TYPE,аДрайвер.LIBFPTR_FNDT_LAST_RECEIPT);
     аДрайвер.fnQueryData();
     спНастройки["НомерДокумента"]:=аДрайвер.getParamInt(аДрайвер.LIBFPTR_PARAM_DOCUMENT_NUMBER);
     
@@ -878,7 +895,6 @@ Function PrintReceipt(спНастройки)
                 
         аДрайвер.beginNonfiscalDocument;
       
-        зЮЛ:=спНастройки["ЮрЛицо"];
         стрКПП:=Trim(зЮЛ.ИНН);
         стрИНН:=TearStr(стрКПП,"/");
         
@@ -941,13 +957,14 @@ Function PrintReceipt(спНастройки)
       Message("Ошибка печати нефискальной части чека: "+PopError(),"!");
     EndTry;
   Except
+    Стр:=PopError();
     If ФлОтменитьЧек Then
       Try
         аДрайвер.cancelReceipt;
       Except
       EndTry;
     EndIf;
-    Exit PopError()+_NEWLINE+"Неудачная попытка выгрузки чека!";
+    Exit Стр+_NEWLINE+"Неудачная попытка выгрузки чека!";
   EndTry;
 EndFunction
 

@@ -9,10 +9,6 @@ Var флБезусловноеОбновление Export;
 Var флПрочийЖурнал Export;
 Var СписокЭлементов Export;
 
-Var ВыделятьСтроки Export;
-Var ВыделеннаяСтрокаПред Export;
-ВыделятьСтроки:=Number(RestoreValue("ВыделятьСтрокиТаблиц"));
-
 Function СоздатьТекущийПКО(Пар1=0,Пар2=0)
   //Dummy cover
 EndFunction

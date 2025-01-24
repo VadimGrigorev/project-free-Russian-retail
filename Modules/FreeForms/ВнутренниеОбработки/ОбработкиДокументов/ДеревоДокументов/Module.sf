@@ -232,8 +232,10 @@ Function OnDoubleClick(Т2)
     EndIf;
     If ДокР.Status()<>1 Then
       ДокР.Mark(1);
+      Logs.Write(Str(ДокР),ДокР,"MARK",0);
     Else
       ДокР.Mark(0);
+      Logs.Write(Str(ДокР),ДокР,"UNMARK",0);
     EndIf;
   EndIf;
   Печать(Док,Т);

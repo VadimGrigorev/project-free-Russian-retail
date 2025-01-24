@@ -38,6 +38,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=52
   LoadModes=0
+  CompileModule=
   Object GROUPBOX
     LayerName=4D00610069006E00
     Left=425
@@ -390,9 +391,9 @@ Object FORM
     HotKey=
     DropDownCount=10
     Items
-      @@>@e@Tr[+@Gd-=@+bB_D+@z@y@|_D6_/@G@w_D_i_m_m9@#_'1ifB@bM@7l_L@W@4_Q@U@?@GB@y@n@i
-      @_Mp_:@P@U_,~R_J@:@b@/\g,_RN@?@+DD_!yA@U;uCt_dx_._m@$_d@d@5_c@B_TO@j@?_H_H@F_]A@S
-      @_)R@-_F#_c45T
+      @@>@e@Trm+@GR-=@+bB@>6_N_,@d@NzJO_#_L_I_m_m_2@.y5@rl*q@,o-T9_P_iU{cdR_=u_;@7@j_Qp
+      @_.uoRa@:@L@0_'@k6o_B_'U22@f@c0k@R@q1%_d-@Q_m_I_X_?@~_$_k_]_GaI@<_M@X_D_(@4Z@5@|A
+      @plR_UV@^_+_k@H@x@nu9!
     End
   End
   Object LABEL

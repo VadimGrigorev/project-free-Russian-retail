@@ -126,8 +126,8 @@ Function DriverInit(спНастройки)
     ";LIBFPTR_RT_FN_TOTAL_COUNTERS=14;LIBFPTR_RT_FN_NOT_SENT_DOCUMENTS_COUNTERS=15;LIBFPTR_RT_COMMODITIES_BY_TAXATION_TYPES=16;LIBFPTR_RT_COMMODITIES_BY_DEPARTMENTS=17;LIBFPTR_RT_COMMODITIES_BY_SUMS=18;LIBFPTR_RT_START_SERVICE=19"+
     ";LIBFPTR_RT_DISCOUNTS=20;LIBFPTR_RT_JOURNAL_DOCUMENT_BY_NUMBERS=21;LIBFPTR_RT_JOURNAL_DOCUMENT_BY_SHIFTS=22;LIBFPTR_RT_CLOSE_SHIFT_REPORTS=23;LIBFPTR_PT_CASH=0;LIBFPTR_PT_ELECTRONICALLY=1;LIBFPTR_PT_PREPAID=2"+
     ";LIBFPTR_PT_CREDIT=3;LIBFPTR_PT_OTHER=4;LIBFPTR_PT_6=5;LIBFPTR_PT_7=6;LIBFPTR_PT_8=7;LIBFPTR_PT_9=8;LIBFPTR_PT_10=9;LIBFPTR_TAX_DEPARTMENT=0;LIBFPTR_TAX_VAT18=1;LIBFPTR_TAX_VAT10=2;LIBFPTR_TAX_VAT118=3"+
-    ";LIBFPTR_TAX_VAT110=4;LIBFPTR_TAX_VAT0=5;LIBFPTR_TAX_NO=6;LIBFPTR_TAX_VAT20=7;LIBFPTR_TAX_VAT120=8;LIBFPTR_TAX_INVALID=9;LIBFPTR_EXTERNAL_DEVICE_DISPLAY=0;LIBFPTR_EXTERNAL_DEVICE_PINPAD=1;LIBFPTR_EXTERNAL_DEVICE_MODEM=2"+
-    ";LIBFPTR_EXTERNAL_DEVICE_BARCODE_SCANNER=3;LIBFPTR_DT_STATUS=0;LIBFPTR_DT_CASH_SUM=1;LIBFPTR_DT_UNIT_VERSION=2;LIBFPTR_DT_PICTURE_INFO=3;LIBFPTR_DT_LICENSE_ACTIVATED=4;LIBFPTR_DT_REGISTRATIONS_SUM=5;LIBFPTR_DT_REGISTRATIONS_COUNT=6"+
+    ";LIBFPTR_TAX_VAT110=4;LIBFPTR_TAX_VAT0=5;LIBFPTR_TAX_NO=6;LIBFPTR_TAX_VAT20=7;LIBFPTR_TAX_VAT120=8;LIBFPTR_TAX_VAT5=9;LIBFPTR_TAX_VAT7=10;LIBFPTR_TAX_VAT105=11;LIBFPTR_TAX_VAT107=12;LIBFPTR_TAX_INVALID=13;LIBFPTR_EXTERNAL_DEVICE_DISPLAY=0;LIBFPTR_EXTERNAL_DEVICE_PINPAD=1"+
+    ";LIBFPTR_EXTERNAL_DEVICE_MODEM=2;LIBFPTR_EXTERNAL_DEVICE_BARCODE_SCANNER=3;LIBFPTR_DT_STATUS=0;LIBFPTR_DT_CASH_SUM=1;LIBFPTR_DT_UNIT_VERSION=2;LIBFPTR_DT_PICTURE_INFO=3;LIBFPTR_DT_LICENSE_ACTIVATED=4;LIBFPTR_DT_REGISTRATIONS_SUM=5;LIBFPTR_DT_REGISTRATIONS_COUNT=6"+
     ";LIBFPTR_DT_PAYMENT_SUM=7;LIBFPTR_DT_CASHIN_SUM=8;LIBFPTR_DT_CASHIN_COUNT=9;LIBFPTR_DT_CASHOUT_SUM=10;LIBFPTR_DT_CASHOUT_COUNT=11;LIBFPTR_DT_REVENUE=12;LIBFPTR_DT_DATE_TIME=13;LIBFPTR_DT_SHIFT_STATE=14"+
     ";LIBFPTR_DT_RECEIPT_STATE=15;LIBFPTR_DT_SERIAL_NUMBER=16;LIBFPTR_DT_MODEL_INFO=17;LIBFPTR_DT_RECEIPT_LINE_LENGTH=18;LIBFPTR_DT_CUTTER_RESOURCE=19;LIBFPTR_DT_STEP_RESOURCE=20;LIBFPTR_DT_TERMAL_RESOURCE=21"+
     ";LIBFPTR_DT_ENVD_MODE=22;LIBFPTR_DT_SHIFT_TAX_SUM=23;LIBFPTR_DT_RECEIPT_TAX_SUM=24;LIBFPTR_DT_NON_NULLABLE_SUM=25;LIBFPTR_DT_RECEIPT_COUNT=26;LIBFPTR_DT_CANCELLATION_COUNT_ALL=27;LIBFPTR_DT_CANCELLATION_SUM=28"+
@@ -827,21 +827,18 @@ Function PrintReceipt(спНастройки)
     
     спТип:=List.Create("LIBFPTR_RT_SELL","LIBFPTR_RT_SELL_RETURN","LIBFPTR_RT_SELL_CORRECTION","LIBFPTR_RT_SELL_CORRECTION","LIBFPTR_RT_BUY","LIBFPTR_RT_BUY_RETURN","LIBFPTR_RT_BUY_CORRECTION","LIBFPTR_RT_BUY_CORRECTION","",
       "LIBFPTR_RT_SELL","LIBFPTR_RT_SELL","LIBFPTR_RT_SELL","LIBFPTR_RT_SELL");
-    спНДС:=List.Create(спПеременные["LIBFPTR_TAX_NO"],спПеременные["LIBFPTR_TAX_VAT0"],спПеременные["LIBFPTR_TAX_VAT10"],спПеременные["LIBFPTR_TAX_VAT18"],спПеременные["LIBFPTR_TAX_VAT20"]);
-        
+    зЮЛ:=спНастройки["ЮрЛицо"];
+    If зЮЛ.СпециальнаяСтавкаУСН=5 Then
+      спНДС:=List.Create(спПеременные["LIBFPTR_TAX_NO"],спПеременные["LIBFPTR_TAX_VAT0"],спПеременные["LIBFPTR_TAX_VAT5"],спПеременные["LIBFPTR_TAX_VAT5"],спПеременные["LIBFPTR_TAX_VAT5"]);
+    ElseIf зЮЛ.СпециальнаяСтавкаУСН=7 Then
+      спНДС:=List.Create(спПеременные["LIBFPTR_TAX_NO"],спПеременные["LIBFPTR_TAX_VAT0"],спПеременные["LIBFPTR_TAX_VAT7"],спПеременные["LIBFPTR_TAX_VAT7"],спПеременные["LIBFPTR_TAX_VAT7"]);
+    Else
+      спНДС:=List.Create(спПеременные["LIBFPTR_TAX_NO"],спПеременные["LIBFPTR_TAX_VAT0"],спПеременные["LIBFPTR_TAX_VAT10"],спПеременные["LIBFPTR_TAX_VAT18"],спПеременные["LIBFPTR_TAX_VAT20"]);
+    EndIf;
+    
     ФлРозничныйПокупатель:=Number(спНастройки["ФлРозничныйПокупатель"]);
     аТип:=спПеременные[спТип.Get(аТип0)];
     
-    аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_RECEIPT_TYPE"],аТип);
-    
-    ФлПочта:=0;
-    If Trim(спНастройки["ПочтаИлиТелефонКлиента"])<>"" Then
-      //"client@mail.ru" или "+79161234567"
-      аДрайвер.libfptr_set_param_str(aHandle,1008,Trim(спНастройки["ПочтаИлиТелефонКлиента"]));
-      ФлПочта:=1;
-    EndIf;
-    
-    аДрайвер.libfptr_set_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"],Min(ФлПочта,спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]));
     If not ФлРозничныйПокупатель Then
       //Заполняем: 1227, 1228
       зК:=спНастройки["Контрагент"];
@@ -850,7 +847,30 @@ Function PrintReceipt(спНастройки)
       
       аДрайвер.libfptr_set_param_str(aHandle,1227,зК.ПолнНаименование);
       аДрайвер.libfptr_set_param_str(aHandle,1228,стрИНН);
+      If ФФД12 Then
+        аДрайвер.libfptr_util_form_tlv(aHandle);
+        аКлиент:=Buffer.Create(128);
+        аРазмер:=аДрайвер.libfptr_get_param_bytearray(aHandle,спПеременные["LIBFPTR_PARAM_TAG_VALUE"],аКлиент,аКлиент.Size());
+        If аРазмер>аКлиент.Size() Then
+          аКлиент:=Buffer.Create(аРазмер);
+          аРазмер:=аДрайвер.libfptr_get_param_bytearray(aHandle,спПеременные["LIBFPTR_PARAM_TAG_VALUE"],аКлиент,аКлиент.Size());
+        EndIf;
+        аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_RECEIPT_TYPE"],аТип);
+        аДрайвер.libfptr_set_param_bytearray(aHandle,1256,аКлиент,аРазмер);
+      Else
+        аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_RECEIPT_TYPE"],аТип);
+      EndIf;
+    Else
+      аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_RECEIPT_TYPE"],аТип);
     EndIf;
+    
+    ФлПочта:=0;
+    If Trim(спНастройки["ПочтаИлиТелефонКлиента"])<>"" Then
+      //"client@mail.ru" или "+79161234567"
+      аДрайвер.libfptr_set_param_str(aHandle,1008,Trim(спНастройки["ПочтаИлиТелефонКлиента"]));
+      ФлПочта:=1;
+    EndIf;
+    аДрайвер.libfptr_set_param_bool(aHandle,спПеременные["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"],Min(ФлПочта,спНастройки["LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY"]));
     
     If аДрайвер.libfptr_open_receipt(aHandle)<>0 Then
       Exit "Невозможно создать чек. Ошибка "+аДрайвер.libfptr_error_code(aHandle)+": "+_errorDescription(аДрайвер,aHandle);
@@ -1194,7 +1214,7 @@ Function PrintReceipt(спНастройки)
         EndDo;
       EndIf;
     EndTry;
-    аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_FN_DATA_TYPE"],спПеременные["LIBFPTR_FNDT_LAST_DOCUMENT"]);
+    аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_FN_DATA_TYPE"],спПеременные["LIBFPTR_FNDT_LAST_RECEIPT"]);
     аДрайвер.libfptr_fn_query_data(aHandle);
     спНастройки["НомерДокумента"]:=аДрайвер.libfptr_get_param_int(aHandle,спПеременные["LIBFPTR_PARAM_DOCUMENT_NUMBER"]);
     
@@ -1279,13 +1299,14 @@ Function PrintReceipt(спНастройки)
       Message("Ошибка печати нефискальной части чека: "+PopError(),"!");
     EndTry;
   Except
+    Стр:=PopError();
     If ФлОтменитьЧек Then
       Try
         аДрайвер.libfptr_cancel_receipt(aHandle);
       Except
       EndTry;
     EndIf;
-    Exit PopError()+_NEWLINE+"Неудачная попытка выгрузки чека!";
+    Exit Стр+_NEWLINE+"Неудачная попытка выгрузки чека!";
   EndTry;
 EndFunction
 

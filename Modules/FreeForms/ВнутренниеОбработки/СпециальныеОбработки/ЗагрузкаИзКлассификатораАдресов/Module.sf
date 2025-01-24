@@ -343,7 +343,7 @@ Function OnExecute()
     While База.Next() Do
       Чл0:=Чл0+1;
       If Чл0%100=0 Then
-        Form.StatusText("Подгтовка: "+Чл0);
+        Form.StatusText("Подготовка: "+Чл0);
       EndIf;
     EndDo;
     ВсегоЗаписей:=Чл0;
