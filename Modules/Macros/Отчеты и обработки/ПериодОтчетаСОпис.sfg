@@ -11,6 +11,7 @@ Object FORM
   OnTimerInterval=0
   MaxControlSerial=5
   LoadModes=0
+  CompileModule=
   Object EDITBOX
     LayerName=4D00610069006E00
     Left=215
@@ -59,23 +60,23 @@ Object FORM
       @E@P_c_'$_H@:@Op
     End
     OnAttachedButtons
-      @@>@e_(yqs_Gd1@f_.@eL_c_B$@sxW_bh@mV@z_8{@0@)@N_DF@W#*@0u@x6@hG@3+yl@m_l_j_)@b@#(
-      @@-@7@._T@j@{p^@|]@5_R_(@b@#;_?@i"_Iv@dH@>_9_T@I@4_T@QPK@n@r@A_Z@y@<s6~@l7_[_^H_J
-      @g/_D_Ob_e@&@3@8@L_F@e@y0@5_5q_Dy_X@D@V_2_c_C_L*_L_E_R9@<Z@NB_3q_j_1_\@4_M@\@O_H7
-      @@e@G(@O_a1:$_[$@C_2=C@8(@5@S_Iv@#@O@x@Kd_9t_.o@A"@$.@A@t6_S]G_Fx_=@{_l.@i+<_E@7
-      @@q@~%@>w@Cid@d_SR_L@6@M_G@JL@^_;_UY@y?c_-_)k@B_P_B_U@7?@F@S_D*@[_)$n@?_jL_#F@2_^
-      @oy@NtB_<~@L@v{t_E$_)@dmZ_h@|a0_F@>7_6@N_(,@t@o)O_kX_D@P_V_U_B_k@i_T@G_9_U]@s_*d_
-      @k_Q@\@x@6@1@V_f)W@-_+l_M:|@3@)_DCo@]h@-@r_O@y_W_D@4_Rw@z@l@f_5@2_C_7@el@:@q_<_g
-      @@m)@{_b@9_6j9o_%<_V@g@#@R?@1A@tF@.@b_V@z@3_S@?w@?_2z$@hc@0@f@r~@,~^_Z@0_!@"@P6_A
-      @jz_7_4l_Y@U@H_8P_Hi@JxI_F_b@3-_Q_Z@7@{jt_:xuX@P*@x_W_bm>@Y_C@-_.Z_<_E@%V@Z@h+_D@
-      @zr@O_G:[_.@I@d@/@U@O_e@vD@Da@~@t@9_S_A_8_Z_U-y@q[_W@^_<O&_.+@v_W@?_]@',@)_E_g_f@
-      @,R_(@^_>G@C_k_-@*@[U_\osi:@(}@n@A#@W@)_.@<_B_?=_7@>N{_]@8Y@)<@A_B_]@~@H@._$@F?_9
-      @q_C@sM-_QOT-@\@)@m_l?@#_W@f@X_KLS@Di_J5@Fcw@N@U_\@,@:@Q>@p~_.@v_1@OHP@g@-_]@*_Y.
-      @_^_[_aM]@D@H@w@=u_c@a@Ev_k_<@0@f_)@G_O)|{&@S_C@&5Q_/@6{_6S-_"X_V_jeI|:_>t_[_(@~G
-      @@t@rO@b@z~@k@V^_6@+2@,_Z@A@}!_S@rL%_2@#@h_2S@A_X"q@A_Ci_?@v_J@og@f@q/_%c@K@F#@D_
-      @J_E_g_&@MG_%6_A_6_+_b-@t_K_L,@y@|@M}~@md@z,@)hp_,f_dp@W@p@x_B_$D_mo_1h@5@ci}_Q2j
-      @_^_m@(@s@aP_K_S_S@u_M@t_V@.@0_^@S_+_S_V_*_?t@g@%r@x_T=@r@#@"Q@w_Q@E_C@^_C_*_fPZ_
-      @;_&_L@mh_[_S_9x@X_K"_)k_b_WQU@}@e@Is_Mb_0@C_J@]_e0_d)@|
+      @@>@e_(yqs_Gd1@f_.@eL_c_B$@sxW_b%vn@24B@~@z@Z_DF@W_^2_?@k@$Mbo~+yb@m_l_j_)@b@#(@-
+      @_O_;_;g@+@b@>@,@=_J_7@BU_&_?@qj@D_%@pX@T_]@e_>G_I_=W@#un4_c^@&@3h6~@lH_"@>,_[C(_
+      @X_]*_e@&@3@7@L_F@e@y0@5_5._D_W_D_i?@V_W@x_-4_+@|_.S_X@6'e@W<_f@T_M_I_1M2_$OZ"_e2
+      @_SCT'_J(_f@U[f_PP_J9_&@n_%1@%*Y@H@e@j@M@^_b#_'@0_bzM_9@=n@}@r@m@/_k@;@i+<_E@7@q@
+      @~%@>w@Cid@d_Q_;_S@6@Q_G@JL{_;_UY@y_RA@'_K@la@8_W_bZ@Vcj_X9nc!@n^@E6@"3X_g@n@sgJ@
+      @W@.@v_-_BM@q_X"_K_8F=_k_U@gk@3^@R_Q_.@4_,@sLfw_*.@<@k@A_%@;cL_F@p,_h@U_VQu@F@?_Q
+      @M_H_B_FEbf_8:Rv@>_hz_G9@<_3@YG_<}_VZ_X\_!@d_gx_X@0@pT_GWUI3>@0@:bK@IN_k_H_!2_1@Y
+      @_Z@M_%@p@+_<@)_Y_O\*~@o@A_X_D@?_Jv_J@z_A_+_S@V~@-@s@]@b7@V_&@cO{@(i@~@X6@9Tv_&@l
+      @@5@|,@=_<B_A@PX@D<f_$2r_B>_?Uy@[q@(_-@d\@Dv@N_P_c_ERr@:_d8_8_P@p#@<@u4_N@<j_9@y_
+      @L@,@cE_N@D@t_3@P@g_F_A@b_a_V@,_e@:@ML_?@a_d_6_T@]@I@'@LX_c_'_f@y@L@z_X@e_*:p_[_Q
+      @@:*@%_*R:_Q-_j_=wu@M|z@r@g!_P@q_G_9@c@c@JK@V_QL@$_Z@,@2g_:.@C_A2O_e_:_O_$_U~@;@L
+      @@j_'i@M@j@8@S_?_K@l<_(U_^G@o@x_3@d_N_[@-_V_;2_J@S_9@y_Op@1_#_C9_<_/_0_aN@g@u_(e
+      @_l@D@E@+@pQ_;_cP@s?_=s_F@a_I@iQ_L@>(@u_W#_1@1R@Q8@(_#@t_Q9@M<@;_l@iw@u-@/@i_e_
+      @J_F@"._A[_/_c3_9_^N_2g@s@;_C@l&Zs@72=@=@D7_2@6_H$@c_b@l@R@q@B_(C(\G>@:@:!_m9@e_K
+      @_E@b_%@HG~56_4_+_b=@t_K_L,@y@|@Q_g|@mdu_ECDH@&C@B_1_3@9@k_B@LD_mo_1h@5@Vi}_Q2j_^
+      @c@&@k@aP_K_S_S@u@Y_b\@c_6_Ae(j_D_ec@0J_:QIv@:@U_?P@w8_C@8_*_W_6_W@%@C_)0_b@C@h@]
+      @_T_k_H@bL_^]_+_e>_k_h_6-O@p_Lw_#sS@h@~_Q_k$@x@?w_E
     End
   End
   Object EDITBOX

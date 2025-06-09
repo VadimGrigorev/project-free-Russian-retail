@@ -285,12 +285,12 @@ Function Выгрузить()
       СпПар.SetByName("TINSUMDESC","");
       СпПар.SetByName("TINDESC","");
       СпПар.SetByName("TINSUM","");
-    ElseIf д.ЮрЛицо.УчитыватьНДС=0 Then
+    ElseIf глУчитыватьНДС(д.ЮрЛицо,д.DocDate)=0 Then
       СпПар.SetByName("TINSUMDESC","без НДС");//в т.ч. НДС(18%) - 2288-14
       СпПар.SetByName("TINDESC","без НДС");
       СпПар.SetByName("TINSUM","");
     Else
-      ЧлНДС:=глСтавкаНДСВЧисло(д.ЮрЛицо,20);
+      ЧлНДС:=глСтавкаНДСВЧисло(д.ЮрЛицо,20,д.DocDate);
       СпПар.SetByName("TINSUMDESC","в т.ч. НДС("+ЧлНДС+"%) "+FormatNumber(д.СуммаВзаиморасчетов*ЧлНДС/(100+ЧлНДС),0,"",2));//в т.ч. НДС(20%) - 2288-14
       СпПар.SetByName("TINDESC","в т.ч. НДС("+ЧлНДС+"%) "+FormatNumber(д.СуммаВзаиморасчетов*ЧлНДС/(100+ЧлНДС),0,"",2));
       СпПар.SetByName("TINSUM",""+FormatNumber(д.СуммаВзаиморасчетов*ЧлНДС/(100+ЧлНДС),0,"",2));

@@ -8,7 +8,7 @@ Function глОбновитьИнформациюВДокументе(aEl,флО
 Function глПересчитатьСуммыНДС(aEl) Export
   Вид:=aEl.DBName();
   If not isEmpty(Struct.Doc(Вид).LineParts("Номенклатура")) Then
-    Фл:=Min(aEl.УчитыватьВНалоговомУчете*aEl.ЮрЛицо.УчитыватьНДС,1);
+    Фл:=Min(aEl.УчитыватьВНалоговомУчете*глУчитыватьНДС(aEl.ЮрЛицо,aEl.DocDate),1);
     aLP:=aEl.LineParts("Номенклатура");
     If aLP.GetColumnIndex("СуммаНДС")>0 Then
       aLP.Select();
@@ -215,11 +215,11 @@ Function глВидимостьНалоговВТабличнойЧасти(aEl,
     MainTab:=Form.ControlByName(СтрочнаяЧасть).Value;
     If MainTab.GetColumnIndex("СтавкаНДС")>0 Then
       MainTab.Column("СтавкаНДС").isReadonly:=1-глПользователь.бухБухгалтер;
-      MainTab.Column("СтавкаНДС").isVisible:=aEl.ЮрЛицо.УчитыватьНДС<>0;
+      MainTab.Column("СтавкаНДС").isVisible:=глУчитыватьНДС(aEl.ЮрЛицо,aEl.DocDate)<>0;
     EndIf;
     
     If MainTab.GetColumnIndex("СуммаНДС")>0 Then
-      MainTab.Column("СуммаНДС").isVisible:=aEl.ЮрЛицо.УчитыватьНДС<>0;
+      MainTab.Column("СуммаНДС").isVisible:=глУчитыватьНДС(aEl.ЮрЛицо,aEl.DocDate)<>0;
     EndIf;
   EndIf;  
 EndFunction
@@ -251,7 +251,9 @@ Function глПриИзмененииДоговора(aEl) Export
   EndIf;
   
   If глЕстьРеквизитДокумента("УчитыватьВНалоговомУчете",Вид) Then
-    aEl.УчитыватьВНалоговомУчете:=1;
+    If Pos(Вид,",РегистрацияТМЦ,КорректировкаДолга,")=0 Then
+      aEl.УчитыватьВНалоговомУчете:=1;
+    EndIf;
     глПересчитатьСуммыНДС(aEl);
   EndIf;
   
@@ -319,7 +321,7 @@ Function глЗаполнитьШапку(aEl,флСкопировано=0) Expo
   If aEl.Selected()<0 Then
     aEl.Автор:=глПользователь;
     If _And(not флСкопировано,глЕстьРеквизитДокумента("УчитыватьВНалоговомУчете",Вид)) Then
-      aEl.УчитыватьВНалоговомУчете:=(Pos(Вид,",РегистрацияТМЦ,")=0);
+      aEl.УчитыватьВНалоговомУчете:=(Pos(Вид,",РегистрацияТМЦ,КорректировкаДолга,")=0);
     EndIf;
     If глЕстьРеквизитДокумента("Талон",Вид) Then
       aEl.Талон:=0;
@@ -764,7 +766,7 @@ Function глПриОткрытииДокумента(aEl,Param) Export
     If Pos(","+Вид+",",",РегистрацияТМЦ,РегистрацияОС,")>0 Then
       Form.УчитыватьВНалоговомУчете.Caption:="Включать в книгу продаж";
       Form.УчитыватьВНалоговомУчете.isDisabled:=1-глПользователь.бухГлавныйБухгалтер;
-    ElseIf aEl.ЮрЛицо.УчитыватьНДС=0 Then
+    ElseIf глУчитыватьНДС(aEl.ЮрЛицо,aEl.DocDate)=0 Then
       Form.УчитыватьВНалоговомУчете.Caption:="Включать в книгу доходов и расходов";
     Else
       Form.УчитыватьВНалоговомУчете.Caption:="Выписана счет-фактура";
@@ -794,9 +796,6 @@ Function глПриОткрытииДокумента(aEl,Param) Export
     If not Form.УникальныйИдентификатор4.isReadOnly Then
       Form.УникальныйИдентификатор4.Color:=_CLR_WINDOW;
     EndIf;
-  Endif;
-  If not isEmpty(Form.ControlByName("флИспользуютсяКодыСинхронизации")) Then
-    Form.флИспользуютсяКодыСинхронизации.isDisabled:=1-глРаботаетРобот;
   Endif;
   
   If not isEmpty(Form.ControlByName("оЗатраты")) Then
@@ -1292,7 +1291,7 @@ Function глКопированиеИзДокументаВДокумент(Из
     EndIf;
     
     If глЕстьРеквизитДокумента("УчитыватьВНалоговомУчете",ВДок.DBName()) Then
-      ВДок.УчитыватьВНалоговомУчете:=(Pos(ВДок.DBName(),",РегистрацияТМЦ,")=0);
+      ВДок.УчитыватьВНалоговомУчете:=(Pos(ВДок.DBName(),",РегистрацияТМЦ,КорректировкаДолга,")=0);
     EndIf;
     
     //Код операции

@@ -5,9 +5,9 @@
 
 Function ИзменитьГалкуНалУчета()
   aEl:=Form.Object;
-  If aEl.ЮрЛицо.УчитыватьНДС=0 Then
-    aEl.УчитыватьВНалоговомУчете:=?(aEl.КодОперации=Enum.коВыпискаБанкаРасход.Инкассация,0,aEl.УчитыватьВНалоговомУчете);
-  EndIf;
+  //If глУчитыватьНДС(aEl.ЮрЛицо,aEl.DocDate)=0 Then
+  aEl.УчитыватьВНалоговомУчете:=?(aEl.КодОперации=Enum.коВыпискаБанкаРасход.Инкассация,0,aEl.УчитыватьВНалоговомУчете);
+  //EndIf;
 EndFunction
 
 Function Видимость()
@@ -66,7 +66,7 @@ EndFunction
 
 Function OnAfterChangeAccount()
   aEl:=Form.Object;
-  If aEl.ЮрЛицо.УчитыватьНДС=0 Then
+  If глУчитыватьНДС(aEl.ЮрЛицо,aEl.DocDate)=0 Then
     If (Pos("58.",aEl.Счет.Code)=1)Or(Pos("66.",aEl.Счет.Code)=1)Or(Pos("68.5",aEl.Счет.Code)=1) Then
       aEl.УчитыватьВНалоговомУчете:=0;
     Else

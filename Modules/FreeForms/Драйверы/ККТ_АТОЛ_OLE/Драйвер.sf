@@ -498,9 +498,9 @@ Function PrintReceipt(спНастройки)
       "LIBFPTR_RT_SELL","LIBFPTR_RT_SELL","LIBFPTR_RT_SELL","LIBFPTR_RT_SELL");
     зЮЛ:=спНастройки["ЮрЛицо"];
     //Без НДС, 0%, 5%, 7%, 10%, 18%, 20%
-    If зЮЛ.СпециальнаяСтавкаУСН=5 Then
+    If глСпециальнаяСтавкаУСН(зЮЛ,Date())=5 Then
       спНДС:=List.Create(аДрайвер.LIBFPTR_TAX_NO,аДрайвер.LIBFPTR_TAX_VAT0,аДрайвер.LIBFPTR_TAX_VAT5,аДрайвер.LIBFPTR_TAX_VAT5,аДрайвер.LIBFPTR_TAX_VAT5,аДрайвер.LIBFPTR_TAX_VAT5,аДрайвер.LIBFPTR_TAX_VAT5);
-    ElseIf зЮЛ.СпециальнаяСтавкаУСН=7 Then
+    ElseIf глСпециальнаяСтавкаУСН(зЮЛ,Date())=7 Then
       спНДС:=List.Create(аДрайвер.LIBFPTR_TAX_NO,аДрайвер.LIBFPTR_TAX_VAT0,аДрайвер.LIBFPTR_TAX_VAT7,аДрайвер.LIBFPTR_TAX_VAT7,аДрайвер.LIBFPTR_TAX_VAT7,аДрайвер.LIBFPTR_TAX_VAT7,аДрайвер.LIBFPTR_TAX_VAT7);
     Else
       //TODO: LIBFPTR_TAX_NO вместо 5% и 7% здесь для того, чтобы не обновлять драйверы Атола во всех магазинах. Позже нужно убрать.
@@ -620,7 +620,7 @@ Function PrintReceipt(спНастройки)
     
       //Позиции
       См0:=0;
-      ФлНДС:=зЮЛ.УчитыватьНДС<>0;
+      ФлНДС:=глУчитыватьНДС(зЮЛ,Date())<>0;
       If (аТип0=10)Or(аТип0=13) Then
         См0:=спНастройки["Сумма"];
         аДрайвер.setParam(аДрайвер.LIBFPTR_PARAM_COMMODITY_NAME,?(аТип0=10,"Аванс за товары","Закрытие кредита за товары"));

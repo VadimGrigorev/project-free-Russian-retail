@@ -83,7 +83,48 @@ Function DriverConnect(спНастройки)
     EndIf;
     аДрайвер.Timeout:=Number(Ини.GetData("Timeout","5000"));
     спНастройки["_Password"]:=Number(Ини.GetData("Password","30"));
-    спНастройки["_FFDVersion"]:=Number(Ини.GetData("FFDVersion","105"));
+    спНастройки["_FFDVersion"]:=Number(Ини.GetData("FFDVersion","0"));
+    If спНастройки["_FFDVersion"]=0 Then
+      аДрайвер.TableNumber:=17;
+      аДрайвер.FieldNumber:=17;
+      аДрайвер.RowNumber:=1;
+      If аДрайвер.GetFieldStruct()<>0 Then
+        Exit "Ошибка чтения таблицы: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+      If аДрайвер.ReadTable()<>0 Then
+        Exit "Ошибка чтения таблицы: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+      Чл:=Number(аДрайвер.ValueOfFieldInteger);
+      //0 -- 1.0, 2 -- 1.05, 3 -- 1.1, 4 -- 1.2
+      If Чл=0 Then
+        Чл:=100;
+      ElseIf Чл=2 Then
+        Чл:=105;
+      ElseIf Чл=3 Then
+        Чл:=110;
+      ElseIf Чл=4 Then
+        Чл:=120;
+      Else
+        Чл:=120;
+      EndIf;
+      If аДрайвер.FNGetVersion()<>0 Then
+        Exit "Ошибка FNGetVersion: "+аДрайвер.ResultCodeDescription;
+      EndIf;
+      //fn_v_1_2
+      Стр:=Uppercase(аДрайвер.FNSoftVersion);
+      Стр:=Left(Replace(ReplaceCharacters(Стр,"_FNV","    ")," ","")+"0",3);
+      Чл2:=120;
+      If Стр="100" Then
+        Чл2:=100;
+      ElseIf Стр="105" Then
+        Чл2:=105;
+      ElseIf Стр="110" Then
+        Чл2:=110;
+      ElseIf Стр="120" Then
+        Чл2:=120;
+      EndIf;
+      спНастройки["_FFDVersion"]:=Min(Чл,Чл2);
+    EndIf;
     аДрайвер.Password:=спНастройки["_Password"];
     спНастройки["NoPaperWhenUsingEmail"]:=Number(Ини.GetData("NoPaperWhenUsingEmail","0"));
     
@@ -528,9 +569,9 @@ Function PrintReceipt(спНастройки)
     //10 -- НДС 7/107
     //Без, 0%, 5%, 7%, 10%, 18%, 20%
     зЮЛ:=спНастройки["ЮрЛицо"];
-    If зЮЛ.СпециальнаяСтавкаУСН=5 Then
+    If глСпециальнаяСтавкаУСН(зЮЛ,Date())=5 Then
       спНДС:=List.Create(4,3,7,7,7,7,7);
-    ElseIf зЮЛ.СпециальнаяСтавкаУСН=7 Then
+    ElseIf глСпециальнаяСтавкаУСН(зЮЛ,Date())=7 Then
       спНДС:=List.Create(4,3,8,8,8,8,8);
     Else
       спНДС:=List.Create(4,3,7,8,2,1,1);
@@ -812,7 +853,7 @@ Function PrintReceipt(спНастройки)
     
     
     //Позиции
-    ФлНДС:=зЮЛ.УчитыватьНДС<>0;
+    ФлНДС:=глУчитыватьНДС(зЮЛ,Date())<>0;
     См:=0;
     If (аТип0=10)Or(аТип0=13) Then
       См:=спНастройки["Сумма"];

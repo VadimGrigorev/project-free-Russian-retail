@@ -37,7 +37,7 @@ Function Видимость()
     MainTab.Column("Субконто1").isVisible:=not ФлПроводка;
     MainTab.Column("Субконто2").isVisible:=not ФлПроводка;
     MainTab.Column("Субконто3").isVisible:=not ФлПроводка;
-    Form.УчитыватьВНалоговомУчете.isInvisible:=(aEl.ЮрЛицо.УчитыватьНДС>0);
+    Form.УчитыватьВНалоговомУчете.isInvisible:=(глУчитыватьНДС(aEl.ЮрЛицо,aEl.DocDate)>0);
   EndIf;  
 EndFunction
 
