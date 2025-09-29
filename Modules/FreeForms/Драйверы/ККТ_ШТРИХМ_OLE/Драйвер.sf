@@ -9,6 +9,7 @@
 
 //Документация: http://doc.shtrih-m.ru/, http://doc.shtrih-m.ru/Files/Programmer.pdf
 //              https://doc.shtrih-m.ru/Files/manual.pdf (таблицы)
+//              https://docs.google.com/document/d/1oeLa0o4wNerGbAW5U-3aqJdZgtqtCHI4fipQ_G3jye4
 
 Function DriverInit(спНастройки)
   Try
@@ -486,7 +487,7 @@ EndFunction
 //ЕГАИСПодпись -- строка типа "79DED4A448069B0BFF602FF646F4E9B24D253D311679EA15307AEF38AEEE7933C9175DE5814C3DCF89BF63853CB75003D9FD979F3BEBBC93AFADF1D9A429623F"
 //ДополнительнаяИнформация -- текст для печати после всех чеков
 //ТабИСМП -- таблица "Партия,Марка,ФлНеПрошлаПроверку,Причина,Поле1,Поле2,Тег1262,Тег1263,Тег1264,Тег1265" для проверки и прикрепления к чеку
-//Таблица -- Номенклатура,Количество,Сумма,СтавкаНДС,ФлЛитры
+//Таблица -- Номенклатура,Количество,Сумма,Скидка,СтавкаНДС,ФлЛитры
 //Сумма -- сумма документа
 //ЭлектроннаяСумма -- сумма документа электронной оплатой
 //ДругаяБезналичнаяСумма -- сумма документа с особыми оплатами (подарочные сертификаты и пр.)
@@ -905,6 +906,8 @@ Function PrintReceipt(спНастройки)
             аДрайвер.DivisionalQuantity:=0;
           EndIf;
           аДрайвер.MeasureUnit:=аЕдиница;
+          //TODO: отразить скидку, если aTab.Скидка>0. Требуется проверка, FNDiscountOperation(), .Discount -- не работают (вроде). 
+          //      как вариант PrintString для каждой строки или в конце чека.
           If аДрайвер.FNOperation()<>0 Then
             Raise "(2)FNOperation: "+аДрайвер.ResultCodeDescription;
           EndIf;
@@ -940,6 +943,8 @@ Function PrintReceipt(спНастройки)
             EndIf;
             аДрайвер.MeasureUnit:=аЕдиница;
             
+            //TODO: отразить скидку, если aTab.Скидка>0. Требуется проверка, FNDiscountOperation(), .Discount -- не работают (вроде). 
+            //      как вариант PrintString для каждой строки или в конце чека.
             If аДрайвер.FNOperation()<>0 Then
               Raise "(3)FNOperation: "+аДрайвер.ResultCodeDescription;
             EndIf;            

@@ -31,6 +31,7 @@ Function DriverConnect(спНастройки)
     спНастройки["ОпXОтчет"]:=Number(Ини.GetData("X-Отчет","63+20"));
     спНастройки["МаксимальныйРазмерОтчетаДляПечати"]:=Number(Ини.GetData("МаксимальныйРазмерОтчетаДляПечати","4100"));
     спНастройки["ИдентификаторТерминала"]:=Ини.GetData("ИдентификаторТерминала","");
+    спНастройки["ResponseCodeHost"]:=Ини.GetData("ResponseCodeHost","");
     спНастройки["Соединено"]:=1;
   Except
     Exit PopError()+_NEWLINE+"(2) Драйвер не установлен или в нерабочем состоянии!";
@@ -56,6 +57,9 @@ Function CloseShift(спНастройки)
     аЗапрос.ReceiptData:="Test";//Требуется?
     If спНастройки["ИдентификаторТерминала"]<>"" Then
       аЗапрос.TerminalID:=спНастройки["ИдентификаторТерминала"];
+    EndIf;
+    If спНастройки["ResponseCodeHost"]<>"" Then
+      аЗапрос.ResponseCodeHost:=спНастройки["ResponseCodeHost"];
     EndIf;
     
     Стр:=спНастройки["ОпZОтчет"];
@@ -101,6 +105,9 @@ Function ReportX(спНастройки)
     If спНастройки["ИдентификаторТерминала"]<>"" Then
       аЗапрос.TerminalID:=спНастройки["ИдентификаторТерминала"];
     EndIf;
+    If спНастройки["ResponseCodeHost"]<>"" Then
+      аЗапрос.ResponseCodeHost:=спНастройки["ResponseCodeHost"];
+    EndIf;    
     Стр:=спНастройки["ОпXОтчет"];
     аЗапрос.OperationCode:=Number(TearStr(Стр,"+"));
     If Стр<>"" Then
@@ -176,6 +183,9 @@ Function RegisterTransaction(спНастройки)
     If спНастройки["ИдентификаторТерминала"]<>"" Then
       аЗапрос.TerminalID:=спНастройки["ИдентификаторТерминала"];
     EndIf;
+    If спНастройки["ResponseCodeHost"]<>"" Then
+      аЗапрос.ResponseCodeHost:=спНастройки["ResponseCodeHost"];
+    EndIf;    
     
     //OperationCode: 
     //1 -- оплата

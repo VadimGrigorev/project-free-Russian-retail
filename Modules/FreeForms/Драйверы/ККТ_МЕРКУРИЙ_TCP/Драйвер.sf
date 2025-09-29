@@ -7,7 +7,8 @@
 //DriverInit, DriverDeinit, DriverConnect, DriverDisconnect, ShiftInfo, OpenShift, CloseShift, DepositMoney, WithdrawMoney, PrintReportX, PrintReportZ, PrintReceipt, PrintLastReceipt, 
 //  DeviceInfo, PrintText, CashDrawerInfo, OpenCashDrawer
 
-//Документация: https://www.incotexkkm.ru/files/kkm/docs/vt-inecrman-exchange.pdf (https://www.incotexkkm.ru/support/inecrman)
+//Документация: https://www.incotexkkm.ru/files/kkm/docs/protokol-obmena-s-drayverom-kkt-merkuriy-v3-12-1-23.pdf 
+//              https://www.incotexkkm.ru/support/inecrman  -- дальше ищите протокол обмена со службой INECRMAN
 
 Function ОбновитьСессию(спНастройки) Forward;
 
@@ -117,6 +118,13 @@ Function DriverInit(спНастройки)
     Ини.AddFromString(СтрДоп);
     спНастройки["_TaxType"]:=Number(Ини.GetData("TaxType","0"));
     спНастройки["NoPaperWhenUsingEmail"]:=Number(Ини.GetData("NoPaperWhenUsingEmail","0"));
+    TimeZone:=Number(Ини.GetData("TimeZone","-1"));
+    If TimeZone<>0 Then
+      If Pos(Str(TimeZone)+",","2,3,4,5,6,7,8,9,10,11,12,")=0 Then
+        TimeZone:=(GetPeriod(GMTDate(),Date(),3)+29)\60;
+      EndIf;
+    EndIf;
+    спНастройки["TimeZone"]:=TimeZone;
     спНастройки["Соединено"]:=0;
     спНастройки["Сессия"]:="";    
   Except
@@ -449,7 +457,7 @@ EndFunction
 //ДополнительнаяИнформация -- текст для печати после всех чеков
 //ТабИСМП -- таблица "Номенклатура,Марка,ФлНеПрошлаПроверку,Причина,Поле1,Поле2,Тег1262,Тег1263,Тег1264,Тег1265" для проверки и прикрепления к чеку
 //ТабОшибкиПроверкиМарок -- исходящая таблица со столбцами "Марка,Причина"
-//Таблица -- Номенклатура,Количество,Сумма,СтавкаНДС,ФлЛитры
+//Таблица -- Номенклатура,Количество,Сумма,Скидка,СтавкаНДС,ФлЛитры
 //Сумма -- сумма документа
 //ЭлектроннаяСумма -- сумма документа электронной оплатой
 //ДругаяБезналичнаяСумма -- сумма документа с особыми оплатами (подарочные сертификаты и пр.)
@@ -687,6 +695,7 @@ Function PrintReceipt(спНастройки)
       СтрПеч:=",""printDoc"":false";
     EndIf;
     Кассир:=спНастройки["Кассир"];
+    TimeZone:=спНастройки["TimeZone"];
     пИНН:=Кассир.ИНН;
     пИНН:=TearStr(пИНН,"/");
     
@@ -722,7 +731,8 @@ Function PrintReceipt(спНастройки)
 
     Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""OpenCheck"",""checkType"":"+аТип+
       ",""taxSystem"":"+спНастройки["_TaxType"]+СтрПеч+",""cashierInfo"":{""cashierName"":"""+EncodeString(Кассир.ПолнНаименование,"JSON")
-      +""",""cashierINN"":"""+EncodeString(пИНН,"JSON")+"""}"+СтрКонтрагент+СтрКоррекция+"}";
+      +""",""cashierINN"":"""+EncodeString(пИНН,"JSON")+"""}"+СтрКонтрагент+СтрКоррекция+?(TimeZone=0,"",",""timeZone"":"+Str(TimeZone-1))+"}";
+
     СтрОшибка:=ВыполнитьКоманду(спНастройки,Стр);
     If СтрОшибка<>"" Then
       Exit "Ошибка создания нового чека: "+СтрОшибка;
@@ -768,8 +778,10 @@ Function PrintReceipt(спНастройки)
             аКоличество:=aTab.Количество*aTab.Номенклатура.ОбъемЛитров;
           EndIf;          
           зЦ:=Round(aTab.Сумма/аКоличество*100);
+          аСкидка:=?(aTab.Скидка>0,",""addInfo"":"""+EncodeString("Скидка: "+aTab.Скидка+" руб.","JSON")+"""","");
           Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""AddGoods"",""productName"":"""+EncodeString(aTab.Номенклатура.Name,"JSON")+
-            """,""qty"":"+Round(аКоличество*10000)+",""measureUnit"":"+аЕдиница+",""taxCode"":"+аНДС+",""paymentFormCode"":"+?(аТип0=12,5,4)+",""productTypeCode"":"+пТип+",""price"":"+зЦ+",""sum"":"+Round(aTab.Сумма*100)+"}";
+            """,""qty"":"+Round(аКоличество*10000)+",""measureUnit"":"+аЕдиница+",""taxCode"":"+аНДС+",""paymentFormCode"":"+?(аТип0=12,5,4)+",""productTypeCode"":"+пТип+",""price"":"+зЦ+
+            ",""sum"":"+Round(aTab.Сумма*100)+аСкидка+"}";
           СтрОшибка:=ВыполнитьКоманду(спНастройки,Стр);
           If СтрОшибка<>"" Then
             Exit "Невозможно зарегистрировать товар. Ошибка: "+СтрОшибка;
@@ -789,13 +801,15 @@ Function PrintReceipt(спНастройки)
             EndIf;
             If aTab.Номенклатура.флВесовойТовар Then
               аКоличество:=Round(aTab.Количество*10000);
+              аСкидка:=?(aTab.Скидка>0,",""addInfo"":"""+EncodeString("Скидка: "+aTab.Скидка+" руб.","JSON")+"""","");
             Else
               аКоличество:=10000;
+              аСкидка:=?(aTab.Скидка>0,",""addInfo"":"""+EncodeString("Скидка: "+Round(aTab.Скидка/aTab.Количество,2)+" руб.","JSON")+"""","");
             EndIf;
             If ФФД12 Then
               Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""AddGoods"",""mcInfo"":{""mc"":"""+EncodeString(ТабИСМП.Марка,"JSON")+
                 """,""processingMode"":0,""plannedStatus"":"+ТабИСМП.Поле1+"},productName"":"""+EncodeString(aTab.Номенклатура.Name,"JSON")+
-                """,""qty"":"+аКоличество+",""measureUnit"":"+аЕдиница+",""taxCode"":"+аНДС+",""paymentFormCode"":"+?(аТип0=12,5,4)+",""productTypeCode"":33,""price"":"+зЦ+",""sum"":"+зЦ;
+                """,""qty"":"+аКоличество+",""measureUnit"":"+аЕдиница+",""taxCode"":"+аНДС+",""paymentFormCode"":"+?(аТип0=12,5,4)+",""productTypeCode"":33,""price"":"+зЦ+",""sum"":"+зЦ+аСкидка;
               If not IsEmpty(ТабИСМП.Тег1265) Then
                 Стр:=Стр+",""industryAttribute"":[{""idFOIV"":"""+ТабИСМП.Тег1262+""",""docDate"":"""+ТабИСМП.Тег1263+""",""docNum"":"""+ТабИСМП.Тег1264+""",""value"":"""+EncodeString(ТабИСМП.Тег1265,"JSON")+"""}]";
               EndIf;
@@ -804,7 +818,7 @@ Function PrintReceipt(спНастройки)
               СтрМарка:=Left(ТабИСМП.Марка,30);//Макс. размер 1162 до 30 байт
               Стр:="{""sessionKey"":"""+спНастройки["Сессия"]+""",""command"":""AddGoods"",""markingCode"":"""+EncodeString(СтрМарка,"JSON")+
                 """,productName"":"""+EncodeString(aTab.Номенклатура.Name,"JSON")+
-                """,""qty"":"+аКоличество+",""measureUnit"":"+аЕдиница+",""taxCode"":"+аНДС+",""paymentFormCode"":"+?(аТип0=12,5,4)+",""productTypeCode"":2,""price"":"+зЦ+",""sum"":"+зЦ+"}";
+                """,""qty"":"+аКоличество+",""measureUnit"":"+аЕдиница+",""taxCode"":"+аНДС+",""paymentFormCode"":"+?(аТип0=12,5,4)+",""productTypeCode"":2,""price"":"+зЦ+",""sum"":"+зЦ+аСкидка+"}";
             EndIf;
             If aTab.Номенклатура.флВесовойТовар Then
               зК:=0;

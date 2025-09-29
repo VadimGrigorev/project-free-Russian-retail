@@ -407,6 +407,7 @@ Function DocumentsList(спНастройки)
       EndIf;
     EndIf;
     
+    СпДубли:=List.Create();//СБИС может отдавать дубли в нескольких запросах с разными фильтрами
     СпДокументы:=List.Create();
     спНастройки["Документы"]:=СпДокументы;
     For iLoop:=1 To СпФилиал.Size() Do
@@ -449,6 +450,10 @@ Function DocumentsList(спНастройки)
             //"Сумма":"784.14","Тип":"ДокОтгрВх","Удален":"Нет"},...
             Tr:=LoadJSONFromString(Стр,0);
             Tr0:=Tr;
+            If СпДубли.Find(Tr0["Идентификатор"],,1)>0 Then
+              Continue;
+            EndIf;
+            СпДубли.Add(Tr0["Идентификатор"],,,1);            
             //Сч.ф?
             Tr2:=Tr.FindByName("Вложение");
             If _And(TypeStr(Tr2)="TREE.BRANCH",Tr2.Size()>0) Then

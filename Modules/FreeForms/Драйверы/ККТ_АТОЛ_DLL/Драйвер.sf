@@ -743,7 +743,7 @@ EndFunction
 //ДополнительнаяИнформация -- текст для печати после всех чеков
 //ТабИСМП -- таблица "Номенклатура,Марка,ФлНеПрошлаПроверку,Причина,Поле1,Поле2,Тег1262,Тег1263,Тег1264,Тег1265" для проверки и прикрепления к чеку
 //ТабОшибкиПроверкиМарок -- исходящая таблица со столбцами "Марка,Причина"
-//Таблица -- Номенклатура,Количество,Сумма,СтавкаНДС,ФлЛитры
+//Таблица -- Номенклатура,Количество,Сумма,Скидка,СтавкаНДС,ФлЛитры
 //Сумма -- сумма документа
 //ЭлектроннаяСумма -- сумма документа электронной оплатой
 //ДругаяБезналичнаяСумма -- сумма документа с особыми оплатами (подарочные сертификаты и пр.)
@@ -1046,6 +1046,7 @@ Function PrintReceipt(спНастройки)
             аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_TAX_TYPE"],?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),спПеременные["LIBFPTR_TAX_NO"]));
             //аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],aTab.Сумма);
             аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_COMMODITY_PIECE"],?((aTab.Номенклатура.флВесовойТовар)Or(aTab.ФлЛитры=1),0,1));
+            аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_INFO_DISCOUNT_SUM"],aTab.Скидка);
             If ФФД11 Then
               аЕдиница:=спЕдиница[aTab.Номенклатура.базЕдиница.ВнешнийКод];
               If IsEmpty(аЕдиница) Then
@@ -1095,9 +1096,11 @@ Function PrintReceipt(спНастройки)
               If aTab.Номенклатура.флВесовойТовар Then
                 См0:=См0+Round(зЦ*зК,2);
                 аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],зК);
+                аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_INFO_DISCOUNT_SUM"],aTab.Скидка);
               Else
                 См0:=См0+зЦ;
                 аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_QUANTITY"],1);
+                аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_INFO_DISCOUNT_SUM"],Round(aTab.Скидка/aTab.Количество,2));
               EndIf;
               аДрайвер.libfptr_set_param_int(aHandle,спПеременные["LIBFPTR_PARAM_TAX_TYPE"],?(ФлНДС,спНДС.Get(aTab.СтавкаНДС.Index()),спПеременные["LIBFPTR_TAX_NO"]));
               //аДрайвер.libfptr_set_param_double(aHandle,спПеременные["LIBFPTR_PARAM_POSITION_SUM"],зЦ);
