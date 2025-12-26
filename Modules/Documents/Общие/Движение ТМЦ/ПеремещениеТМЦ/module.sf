@@ -7,7 +7,7 @@ Var флТипЦенРеализации Export;
 Var флТипЦенРеализацииПолучатель Export;
 Var ТОсновныеЦены Export;
 
-Function Видимость()
+Function Видимость(ФлОчиститьЦены=0)
   aEl:=Form.Object;
   MainTab:=Form.ControlByName("MainTab").Value;
   
@@ -24,6 +24,11 @@ Function Видимость()
   флВидимостьПартий:=(aEl.Склад.БезПартионногоУчета=0)Or(not aEl.СкладПолучатель.БезПартионногоУчета);
   MainTab.Column("Партия").isVisible:=Min(флВидимостьПартий And 1,глПользователь.бухБухгалтер);
   MainTab.Column("Партия").isReadonly:=1-глПользователь.бухБухгалтер;
+  
+  If ФлОчиститьЦены Then
+    ТОсновныеЦены.ClearLines();
+    Form.MainTab.InvokeEvent("OnInitLine","IndexFrom,IndexTo",1,MainTab.Size());
+  EndIf;
 EndFunction
 
 Function OnAfterChangeOperationCode()

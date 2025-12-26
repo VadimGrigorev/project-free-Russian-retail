@@ -445,6 +445,55 @@ Function ЗаписатьВДокумент(оТаблица,тТекст2,тТ�
   Exit 1;
 EndFunction
 
+Function ПолучитьВерсиюУтм(Сервер,ByRef Версия="",ByRef Билд="")
+  aTCP:=IPConnection.Create();
+  Прокси:="";
+  Сервер:=глРазделитьАдресИПрокси(Сервер,Прокси);
+  If not IsEmpty(Прокси) Then
+    ПроксиТип:=TearStr(Прокси,"@");
+    ПроксиАдр:=TearStr(Прокси,"@");
+    ПроксиПольз:=TearStr(Прокси,"@");
+    ДопСтр:="";
+    If ((ПроксиТип="NGRC")or(ПроксиТип="NGRCCHANNEL"))And(not IsEmpty(ПроксиПольз)) Then
+      ПроксиПольз:=DecodeString(ПроксиПольз,"base64");
+      ДопСтр:=Прокси;
+      Прокси:=TearStr(ДопСтр,"@");//Пароль ngRC сервера
+      ДопСтр:=Replace(ДопСтр,"|",Chr(1));//Пароль сервера каналов|Имя канала
+    EndIf;
+    aTCP.UseProxy(ПроксиАдр,ПроксиТип,ПроксиПольз,Прокси,ДопСтр);
+  EndIf;
+  aTCP.Connect(Сервер);
+  If Not aTCP.IsConnected Then
+    aTCP.Connect(Сервер);
+  EndIf;
+  aTCP.HTTPSetOperation("GET /info/version HTTP/1.1");
+  aTCP.HTTPSetHeaderField("Host",Сервер);
+  aTCP.HTTPSetHeaderField("User-Agent","Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
+  aTCP.HTTPSetHeaderField("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+  aTCP.HTTPSetHeaderField("Accept-Language","en");
+  aTCP.HTTPSetHeaderField("Connection","Close");
+  If not aTCP.HTTPSendAndReceive Then
+    Exit "";
+  EndIf;
+  Стр:=aTCP.HTTPGetOperation();
+  TearStr(Стр," ");
+  Стр:=TearStr(Стр," ");
+  If Стр<>"200" Then
+    Exit "";
+  EndIf;
+  aTCP.HTTPDecodeChunked();
+  стрРез:=UTF8ToUnicode(aTCP.HTTPBodyAsString);
+  СтрВерсияБилд:=стрРез;
+  СтрВерсия:=TearStr(СтрВерсияБилд,"b");
+  Версия:="";
+  While Pos(".",СтрВерсия)>0 Do
+    Версия:=Версия+TearStr(СтрВерсия,".");
+  EndDo;
+  Версия:=Number(Версия+СтрВерсия);
+  Билд:=Number(СтрВерсияБилд);
+  Exit стрРез;
+EndFunction;
+
 Function ЗавершитьВыполнениеЗапросаПоОстаткам(спУстановки)
   If TypeStr(спУстановки.GetByName("Функция"))="LIST" Then
     спУстановки:=спУстановки.GetByName("Функция");
@@ -499,6 +548,18 @@ Function ВыполнитьЗапросПоОстаткам(спУстановк
     EndIf;
   EndIf;
   
+  //Проверить версию утм.
+  ВерсияУтм:="";
+  БилдУтм:="";
+  If IsEmpty(ПолучитьВерсиюУтм(оМагазин.АдресЕГАИС,ВерсияУтм,БилдУтм)) Then
+    Box("Не удалось проверить версию УТМ. Проверьте соединение!",Q_STOP);
+    Exit 0;
+  EndIf;
+  СтрВерсияЗапроса:="v2";
+  If _OR(ВерсияУтм>420,_And(ВерсияУтм=420,БилдУтм>=2652)) Then
+    СтрВерсияЗапроса:="v3";
+  EndIf;
+  
   //Запросы по регистру 2 в цепочке
   спЦепочкаЗапросов:=List.Create(List.Create());
   спЗапрос2:=спЦепочкаЗапросов[1];
@@ -518,15 +579,15 @@ Function ВыполнитьЗапросПоОстаткам(спУстановк
     "xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"""+_NEWLINE+
     "xmlns:ns=""http://fsrar.ru/WEGAIS/WB_DOC_SINGLE_01"""+_NEWLINE+
     "xmlns:qp=""http://fsrar.ru/WEGAIS/QueryParameters"">"+_NEWLINE+
-    "<ns:Owner><ns:FSRAR_ID>"+оРегИд+"</ns:FSRAR_ID></ns:Owner><ns:Document><ns:QueryRests_v2>"+_NEWLINE+
-    "</ns:QueryRests_v2></ns:Document></ns:Documents>";
+    "<ns:Owner><ns:FSRAR_ID>"+оРегИд+"</ns:FSRAR_ID></ns:Owner><ns:Document><ns:QueryRests_"+СтрВерсияЗапроса+">"+_NEWLINE+
+    "</ns:QueryRests_"+СтрВерсияЗапроса+"></ns:Document></ns:Documents>";
   
   спУстановки.SetByName("ФайлОстатков",Имя);
   спУстановки.SetByName("ФайлОстатков2",Имя2);
   спУстановки.SetByName("спЦепочкаЗапросов",спЦепочкаЗапросов);
   спУстановки.SetByName("Прокси",Прокси);
   If not ФлСтарый Then
-    If _Or(НайтиСуществующийЗапрос(оСервер+"/opt/in/QueryRests_v2"),НайтиСуществующийЗапрос(оСервер+"/opt/in/QueryRestsShop_v2")) Then
+    If _Or(НайтиСуществующийЗапрос(оСервер+"/opt/in/QueryRests_"+СтрВерсияЗапроса),НайтиСуществующийЗапрос(оСервер+"/opt/in/QueryRestsShop_v2")) Then
       Box("Запрос по остаткам по этому юр. лицу уже выполняется, дождитесь его окончания!",Q_STOP);
       Exit 0;
     EndIf;
@@ -537,7 +598,7 @@ Function ВыполнитьЗапросПоОстаткам(спУстановк
       спУстановки.SetByName("Функция","ЗавершитьВыполнениеЗапросаПоОстаткам(спЗапрос)");
     EndIf;  
     
-    If not ВыполнитьЗапросЕГАИС(Стр,"opt/in/QueryRests_v2",2,флЖдатьОтвета,спУстановки,спУстановки.GetByName("ОписаниеОперацииОстатков")+" (регистр 2)") Then
+    If not ВыполнитьЗапросЕГАИС(Стр,"opt/in/QueryRests_"+СтрВерсияЗапроса,2,флЖдатьОтвета,спУстановки,спУстановки.GetByName("ОписаниеОперацииОстатков")+" (регистр 2)") Then
       Exit 0;
     EndIf;
   ElseIf not флЖдатьОтвета Then
@@ -573,6 +634,18 @@ Function ВыполнитьЗапросПоОстаткамКраткий(спУ
       EndIf;
     EndIf;
   EndIf;
+  
+  //Проверить версию утм.
+  ВерсияУтм:="";
+  БилдУтм:="";
+  If IsEmpty(ПолучитьВерсиюУтм(оМагазин.АдресЕГАИС,ВерсияУтм,БилдУтм)) Then
+    Box("Не удалось проверить версию УТМ. Проверьте соединение!",Q_STOP);
+    Exit 0;
+  EndIf;
+  СтрВерсияЗапроса:="";
+  If _OR(ВерсияУтм>420,_And(ВерсияУтм=420,БилдУтм>=2652)) Then
+    СтрВерсияЗапроса:="_v3";
+  EndIf;
 
   //Запрос по остаткам ЕГАИС краткая версия
   Стр:="<?xml version=""1.0"" encoding=""UTF-8""?>"+_NEWLINE+
@@ -584,8 +657,8 @@ Function ВыполнитьЗапросПоОстаткамКраткий(спУ
         "<ns:FSRAR_ID>"+оРегИд+"</ns:FSRAR_ID>"+_NEWLINE+
         "</ns:Owner>"+_NEWLINE+
         "<ns:Document>"+_NEWLINE+
-        "<ns:QueryRests_Mini>"+_NEWLINE+
-        "</ns:QueryRests_Mini>"+_NEWLINE+
+        "<ns:QueryRests_Mini"+СтрВерсияЗапроса+">"+_NEWLINE+
+        "</ns:QueryRests_Mini"+СтрВерсияЗапроса+">"+_NEWLINE+
         "</ns:Document>"+_NEWLINE+
         "</ns:Documents>";
   
@@ -593,7 +666,7 @@ Function ВыполнитьЗапросПоОстаткамКраткий(спУ
   //спУстановки.SetByName("спЦепочкаЗапросов",спЦепочкаЗапросов);
   спУстановки.SetByName("Прокси",Прокси);
   If not ФлСтарый Then
-    If НайтиСуществующийЗапрос(оСервер+"opt/in/QueryRests_Mini") Then
+    If НайтиСуществующийЗапрос(оСервер+"opt/in/QueryRests_Mini_"+СтрВерсияЗапроса) Then
       Box("Запрос по остаткам по этому юр. лицу уже выполняется, дождитесь его окончания!",Q_STOP);
       Exit 0;
     EndIf;
@@ -604,7 +677,7 @@ Function ВыполнитьЗапросПоОстаткамКраткий(спУ
       спУстановки.SetByName("Функция","ЗавершитьВыполнениеЗапросаПоОстаткам(спЗапрос)");
     EndIf;  
     
-    If not ВыполнитьЗапросЕГАИС(Стр,"opt/in/QueryRests_Mini",2,флЖдатьОтвета,спУстановки,спУстановки.GetByName("ОписаниеОперацииОстатков")) Then
+    If not ВыполнитьЗапросЕГАИС(Стр,"opt/in/QueryRests_Mini"+СтрВерсияЗапроса,2,флЖдатьОтвета,спУстановки,спУстановки.GetByName("ОписаниеОперацииОстатков")) Then
       Exit 0;
     EndIf;
   ElseIf not флЖдатьОтвета Then

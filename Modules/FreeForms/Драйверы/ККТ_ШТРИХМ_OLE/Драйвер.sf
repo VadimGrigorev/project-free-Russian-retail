@@ -10,6 +10,9 @@
 //Документация: http://doc.shtrih-m.ru/, http://doc.shtrih-m.ru/Files/Programmer.pdf
 //              https://doc.shtrih-m.ru/Files/manual.pdf (таблицы)
 //              https://docs.google.com/document/d/1oeLa0o4wNerGbAW5U-3aqJdZgtqtCHI4fipQ_G3jye4
+//              Далее называется "POSCenter: Драйвер ККТ"
+//              https://shtrih-m-nsk.ru/technical-library/drayvera-i-proshivki-dlya-on-line-kkm/
+//
 
 Function DriverInit(спНастройки)
   Try
@@ -568,14 +571,16 @@ Function PrintReceipt(спНастройки)
     //8 -- НДС 7%
     //9 -- НДС 5/105
     //10 -- НДС 7/107
-    //Без, 0%, 5%, 7%, 10%, 18%, 20%
+    //11 -- НДС 22%
+    //12 -- НДС 22/122
+    //Без, 0%, 5%, 7%, 10%, 18%, 20%, 22%
     зЮЛ:=спНастройки["ЮрЛицо"];
     If глСпециальнаяСтавкаУСН(зЮЛ,Date())=5 Then
-      спНДС:=List.Create(4,3,7,7,7,7,7);
+      спНДС:=List.Create(4,3,7,7,7,7,7,7);
     ElseIf глСпециальнаяСтавкаУСН(зЮЛ,Date())=7 Then
-      спНДС:=List.Create(4,3,8,8,8,8,8);
+      спНДС:=List.Create(4,3,8,8,8,8,8,8);
     Else
-      спНДС:=List.Create(4,3,7,8,2,1,1);
+      спНДС:=List.Create(4,3,7,8,2,1,1,11);
     EndIf;
     
     

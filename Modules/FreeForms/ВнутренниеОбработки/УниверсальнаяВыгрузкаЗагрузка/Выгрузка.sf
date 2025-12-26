@@ -27,6 +27,8 @@ EndFunction
 Function ПолучитьСтавкуНДС(зНДС)
   If зНДС=Enum.СтавкиНДС.НДС10 Then
     Exit 10;
+  ElseIf зНДС=Enum.СтавкиНДС.НДС22 Then
+    Exit 22;
   ElseIf зНДС=Enum.СтавкиНДС.НДС20 Then
     Exit 20;
   ElseIf зНДС=Enum.СтавкиНДС.НДС18 Then

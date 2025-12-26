@@ -2646,6 +2646,11 @@ Function глФункцияОдногоЗапросаЕГАИС(спЗапрос
         If стрНомерНакладной<>"" Then
           стрИД:=Replace(Lowercase(стрИД),"-","");//15ea5980625341de93fad736e460a59f
         EndIf;
+        //Для документов версии v4 (за исключением RepImportedProduct_v4, RepProducedProduct_v4,TTNActSingle_v4, TTNSingle_v4) и запросов QueryRests_v3 и QueryRests_Mini_v3 изменен
+        //формат идентификатора входящих документов uuid на составной fsrar_id-uuid, например:030000409715-a16d06ca-7521-4ccb-a811-42e014046afb
+        If _Or(Pos("QueryRests_v3",Ссылка)>0,Pos("QueryRests_Mini_v3",Ссылка)>0) Then
+          стрИД:=спЗапрос.GetByName("оРегИд")+"-"+стрИД;
+        EndIf;
         
         While 1 Do
           Sleep(1000);
