@@ -270,7 +270,7 @@ Function OnExecute()
             ТЗ:=ТЗ+_NEWLINE+"Condition(з"+Ид2+" IN тФильтр.Get("+тФильтр.CurLine+",""Фильтр"").Get(1));";
           EndIf;
           If тФильтр.Фильтр.Get(2).Size()>0 Then
-            ТЗ:=ТЗ+_NEWLINE+"Condition(з"+Ид2+" NOT IN тФильтр.Get("+тФильтр.CurLine+",""Фильтр"").Get(1));";
+            ТЗ:=ТЗ+_NEWLINE+"Condition(з"+Ид2+" NOT IN тФильтр.Get("+тФильтр.CurLine+",""Фильтр"").Get(2));";
           EndIf;
         EndIf;
         If (not флОстатки)or(тФильтр.ФлОст) Then
